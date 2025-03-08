@@ -1,9 +1,11 @@
 import {
   IconAperture,
   IconCopy,
+  IconEye,
   IconLayoutDashboard,
   IconLogin,
   IconMoodHappy,
+  IconTablePlus,
   IconTypography,
   IconUserPlus,
 } from "@tabler/icons-react";
@@ -21,6 +23,22 @@ const Menuitems = [
     title: "Dashboard",
     icon: IconLayoutDashboard,
     href: "/",
+  },
+  {
+    navlabel: true,
+    subheader: "Sản Phẩm",
+  },
+  {
+    id: uniqueId(),
+    title: "Thêm Sản Phẩm",
+    icon: IconTablePlus,
+    href: "/utilities/typography",
+  },
+  {
+    id: uniqueId(),
+    title: "Lượt Xem Sản Phẩm",
+    icon: IconEye,
+    href: "/utilities/shadow",
   },
   {
     navlabel: true,
