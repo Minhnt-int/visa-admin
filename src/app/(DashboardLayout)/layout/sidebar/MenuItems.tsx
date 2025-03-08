@@ -32,7 +32,7 @@ const Menuitems = [
     id: uniqueId(),
     title: "Thêm Sản Phẩm",
     icon: IconTablePlus,
-    href: "/utilities/typography",
+    href: "/products",
   },
   {
     id: uniqueId(),

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, AppBar, Toolbar, styled, Stack, IconButton, Badge, Button } from '@mui/material';
 import PropTypes from 'prop-types';
 import Link from 'next/link';
@@ -11,10 +11,7 @@ interface ItemType {
 }
 
 const TableHeader = ({toggleMobileSidebar}: ItemType) => {
-
-  // const lgUp = useMediaQuery((theme) => theme.breakpoints.up('lg'));
-  // const lgDown = useMediaQuery((theme) => theme.breakpoints.down('lg'));
-
+  const [selectedProducts, setSelectedProducts] = useState<number>(0);
 
   const AppBarStyled = styled(AppBar)(({ theme }) => ({
     boxShadow: 'none',
@@ -47,6 +44,23 @@ const TableHeader = ({toggleMobileSidebar}: ItemType) => {
           <IconMenu width="20" height="20" />
         </IconButton>
 
+        <Box flexGrow={1} />
+        <Stack spacing={1} direction="row" alignItems="center"></Stack>
+          <input type="text" placeholder="Search Product" />
+        {selectedProducts > 0 ? (
+          <Stack spacing={1} direction="row" alignItems="center">
+            <Button variant="contained" color="primary">
+              Select Product
+            </Button>
+            <Button variant="contained" color="secondary">
+              Delete Product
+            </Button>
+          </Stack>
+        ) : (
+          <Button variant="contained" color="inherit">
+            Search Product
+          </Button>
+        )}
 
         <IconButton
           size="large"
@@ -58,11 +72,10 @@ const TableHeader = ({toggleMobileSidebar}: ItemType) => {
           <Badge variant="dot" color="primary">
             <IconBellRinging size="21" stroke="1.5" />
           </Badge>
-
         </IconButton>
-        <Box flexGrow={1} />
+
         <Stack spacing={1} direction="row" alignItems="center">
-          <Button variant="contained" component={Link} href="/authentication/login"   disableElevation color="primary" >
+          <Button variant="contained" component={Link} href="/authentication/login" disableElevation color="primary">
             Login
           </Button>
           <Profile />
