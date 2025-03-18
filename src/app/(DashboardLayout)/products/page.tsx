@@ -9,6 +9,7 @@ import ProductPerformance from '@/app/(DashboardLayout)/components/dashboard/Pro
 import Blog from '@/app/(DashboardLayout)/components/dashboard/Blog';
 import MonthlyEarnings from '@/app/(DashboardLayout)/components/dashboard/MonthlyEarnings';
 import ProductShow from '../components/dashboard/ProductShow';
+import ProductsTable from '../components/shared/ProductsTable';
 
 const Dashboard = () => {
   return (
@@ -16,7 +17,7 @@ const Dashboard = () => {
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <ProductShow></ProductShow>
+            <ProductsTable></ProductsTable>
           </Grid>
         </Grid>
       </Box>
