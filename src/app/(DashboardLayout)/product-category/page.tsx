@@ -1,7 +1,7 @@
 'use client'
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import ProductsTable from '../components/products/ProductsTable';
+import ProductsTable from '../components/table/ProductsTable';
 
 
 

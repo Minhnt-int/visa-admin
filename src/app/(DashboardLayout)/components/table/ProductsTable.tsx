@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import AddProductPopup from './AddProductPopup';
+import AddProductPopup from '../popup/AddFormPopup';
 import products from '@/data/products.json';
 import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
 import { set } from 'lodash';
 import { Modal } from 'antd';
-import ConfirmPopup from './ConfirmPopup';
+import ConfirmPopup from '../popup/ConfirmPopup';
 interface ProductAttributes {
   id: number;
   name: string;
@@ -181,7 +181,21 @@ const ProductsTable: React.FC = () => {
   const updateAPI = async () => {
     if (formData) {
       try {
-        const response = await axioss.put(`/api/product/update`, formData);
+        const formatFormData = {
+          id: Number(formData.id),
+          name: formData.name,
+          price: formData.price,
+          description: formData.description,
+          categoryId: Number(formData.categoryId),
+          slug: formData.slug,
+          metaTitle: formData.metaTitle,
+          metaDescription: formData.metaDescription,
+          metaKeywords: formData.metaKeywords,
+        };
+        
+        console.log("formatFormData", formatFormData);
+        
+        const response = await axioss.put(`/api/product/update`, formatFormData);
         console.log(response.status);
         fetchData(Currentpagination);
         message.success('Product updated successfully!');
