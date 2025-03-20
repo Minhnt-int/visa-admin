@@ -30,7 +30,7 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
-    title: "Thêm Sản Phẩm",
+    title: "Quản lý Sản Phẩm",
     icon: IconTablePlus,
     href: "/products",
   },
@@ -39,6 +39,26 @@ const Menuitems = [
     title: "Lượt Xem Sản Phẩm",
     icon: IconEye,
     href: "/utilities/shadow",
+  },
+  {
+    navlabel: true,
+    subheader: "Mẫu mã",
+  },
+  {
+    id: uniqueId(),
+    title: "Quản lý mẫu mã",
+    icon: IconTablePlus,
+    href: "/product-category",
+  },
+  {
+    navlabel: true,
+    subheader: "Bài viết",
+  },
+  {
+    id: uniqueId(),
+    title: "Quản lý blog",
+    icon: IconTablePlus,
+    href: "/blog",
   },
   {
     navlabel: true,
