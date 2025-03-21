@@ -1,7 +1,7 @@
 'use client'
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import ProductsTable from '../components/table/ProductsTable';
+import ProductCategoryTable from '../components/table/ProductCategoryTable';
 
 
 
@@ -12,7 +12,7 @@ const Dashboard = () => {
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <ProductsTable></ProductsTable>
+            <ProductCategoryTable></ProductCategoryTable>
           </Grid>
         </Grid>
       </Box>

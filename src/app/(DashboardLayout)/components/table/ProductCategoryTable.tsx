@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message } from 'antd';
+import { Table, Button, Space, message, Card } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import AddProductPopup from '../popup/AddFormPopup';
+import AddFormPopup from '../popup/AddFormPopup';
 import products from '@/data/products.json';
 import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
@@ -9,25 +9,10 @@ import { Pagination } from "antd";
 import { set } from 'lodash';
 import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
-interface ProductCategory {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  categoryId: number;
-  slug: string;
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-const initialProducts: ProductCategory[] = products
 
 const ProductCategoryTable: React.FC = () => {
 
-  const [productCategory, setProductCategory] = useState<ProductCategory[]>(initialProducts);
+  const [productCategory, setProductCategory] = useState<ProductCategory[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isView, setIsView] = useState(true);
@@ -90,7 +75,7 @@ const ProductCategoryTable: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       fixed: 'right',
-      width: 150,
+      width: 250,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
@@ -109,7 +94,7 @@ const ProductCategoryTable: React.FC = () => {
 
   const fetchData = async (page: number) => {
     try {
-      const response = await axios.get(`/api/product/get-list?page=${page}&limit=10`);
+      const response = await axios.get(`/api/product-category/get-categories?page=${page}&limit=10`);
       setLoading(false);
       setData(response.data.data);
       setPagination(response.data.meta.totalPages); // Cập nhật tổng số trang
@@ -123,7 +108,7 @@ const ProductCategoryTable: React.FC = () => {
   const deleteAPI = async (record: ProductCategory) => {
     try {
       // Gửi yêu cầu DELETE đến API
-      const response = await axios.delete(`/api/product/delete/${record.id}`);
+      const response = await axios.delete(`/api/product-category/delete/${record.id}`);
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
       fetchData(Currentpagination);
       message.success(`Deleted Product Category: ${record.name}`);
@@ -143,7 +128,7 @@ const ProductCategoryTable: React.FC = () => {
   const updateAPI = async () => {
     if (formData) {
       try {
-        const response = await axioss.put(`/api/product-category/update`, formData);
+        const response = await axioss.put(`/api/product-category/update-category`, formData);
         console.log(response.status);
         fetchData(Currentpagination);
         message.success('Product Category updated successfully!');
@@ -172,6 +157,7 @@ const ProductCategoryTable: React.FC = () => {
 
     return (
       <>
+      <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
         <Space style={{ marginBottom: 16 }}>
           <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
             Log Selected
@@ -206,7 +192,7 @@ const ProductCategoryTable: React.FC = () => {
             }}
           />
         )}
-        <AddProductPopup
+        <AddFormPopup
           open={isModalOpen}
           isView={isView}
           onClose={handleModalClose}
@@ -225,6 +211,7 @@ const ProductCategoryTable: React.FC = () => {
           onSubmit={action === "delete" ? () => deleteAPI(formData!) : updateAPI}
           Content={""}
         />
+        </Card>
       </>
     );
   };

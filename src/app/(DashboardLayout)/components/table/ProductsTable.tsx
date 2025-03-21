@@ -9,6 +9,7 @@ import { Pagination } from "antd";
 import { set } from 'lodash';
 import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
+import { Card } from "antd";
 interface ProductAttributes {
   id: number;
   name: string;
@@ -73,62 +74,76 @@ const ProductsTable: React.FC = () => {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
+      width: 80, // Chiều rộng hợp lý cho cột ID
+      fixed: 'left',
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      width: 150, // Chiều rộng hợp lý cho cột Name
     },
     {
       title: 'Price',
       dataIndex: 'price',
       key: 'price',
+      width: 100, // Chiều rộng hợp lý cho cột Price
     },
     {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
+      width: 200, // Chiều rộng hợp lý cho cột Description
     },
     {
       title: 'Category ID',
       dataIndex: 'categoryId',
       key: 'categoryId',
+      width: 120, // Chiều rộng hợp lý cho cột Category ID
     },
     {
       title: 'Slug',
       dataIndex: 'slug',
       key: 'slug',
+      width: 150, // Chiều rộng hợp lý cho cột Slug
     },
     {
       title: 'Meta Title',
       dataIndex: 'metaTitle',
       key: 'metaTitle',
+      width: 150, // Chiều rộng hợp lý cho cột Meta Title
     },
     {
       title: 'Meta Description',
       dataIndex: 'metaDescription',
       key: 'metaDescription',
+      width: 200, // Chiều rộng hợp lý cho cột Meta Description
     },
     {
       title: 'Meta Keywords',
       dataIndex: 'metaKeywords',
       key: 'metaKeywords',
+      width: 200, // Chiều rộng hợp lý cho cột Meta Keywords
     },
     {
       title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
+      width: 150, // Chiều rộng hợp lý cho cột Created At
       render: (value) => (value ? new Date(value).toLocaleString() : ''),
     },
     {
       title: 'Updated At',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
+      width: 150, // Chiều rộng hợp lý cho cột Updated At
       render: (value) => (value ? new Date(value).toLocaleString() : ''),
     },
     {
       title: 'Actions',
       key: 'actions',
+      width: 250, // Chiều rộng hợp lý cho cột Actions
+      fixed: 'right',
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
@@ -224,6 +239,7 @@ const ProductsTable: React.FC = () => {
 
     return (
       <>
+      <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
         <Space style={{ marginBottom: 16 }}>
           <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
             Log Selected
@@ -237,6 +253,7 @@ const ProductsTable: React.FC = () => {
           </Button>
         </Space>
         <Table
+         style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
           loading={loading}
           rowSelection={{
             selectedRowKeys,
@@ -245,6 +262,7 @@ const ProductsTable: React.FC = () => {
           columns={columns}
           dataSource={data.map((product) => ({ ...product, key: product.id }))}
           pagination={false}
+          scroll={{ x: 700 }}
         />
         {!loading && (
           <Pagination
@@ -276,7 +294,9 @@ const ProductsTable: React.FC = () => {
           onSubmit={action === "delete" ? () => deleteAPI(formData!) : updateAPI}
           Content={""}
         />
+              </Card>
       </>
+
     );
   };
 export default ProductsTable;
