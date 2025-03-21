@@ -128,7 +128,12 @@ const ProductCategoryTable: React.FC = () => {
   const updateAPI = async () => {
     if (formData) {
       try {
-        const response = await axioss.put(`/api/product-category/update-category`, formData);
+        const formatFormData = {
+          id: Number(formData.id),
+          name: formData.name,
+          parentId: Number(formData.parentId),
+        };
+        const response = await axioss.put(`/api/product-category/update-category`, formatFormData);
         console.log(response.status);
         fetchData(Currentpagination);
         message.success('Product Category updated successfully!');
