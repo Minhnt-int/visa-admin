@@ -1,27 +1,17 @@
 import React from 'react';
+import { Input, DatePicker } from 'antd';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import dayjs from 'dayjs';
+import _ from 'lodash';
 
-
-interface AddFormPopup extends Record<string, any> {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  categoryId: number;
-  slug: string;
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
 interface AddFormPopupProps {
   open: boolean;
   isView: boolean;
   onClose: () => void;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (data: { name: string; value: any }) => void;
   onSubmit: () => void;
-  formData: ProductCategory | ProductAttributes; // Union Type
+  formData: ProductCategory | ProductAttributes | BlogPostAttributes;
+  formObject: { name: string; type: any }[]; // Thay đổi từ hàm thành mảng
 }
 
 const AddFormPopup: React.FC<AddFormPopupProps> = ({
@@ -31,26 +21,68 @@ const AddFormPopup: React.FC<AddFormPopupProps> = ({
   onChange,
   onSubmit,
   formData,
+  formObject,
 }) => {
+  const title = formData && formData.id ? "Edit Item" : "Add Item";
+
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{formData ? 'Edit Item' : 'Add Item'}</DialogTitle>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        {formData &&
-          Object.keys(formData).map((key) => (
-            <TextField
-              disabled={isView}
-              key={key}
-              margin="dense"
-              name={key}
-              label={key}
+        {formObject.map((field : any) => {
+          const value = (formData as any)[field.name]; // Lấy giá trị từ formData
+
+          // Xử lý các trường kiểu number
+          if (field.type === "number") {
+            return (
+              <Input
+                key={field.name}
+                name={field.name}
+                placeholder={field.name}
+                type="number"
+                value={value || ""}
+                disabled={isView}
+                onChange={(e) =>
+                  onChange({ name: field.name, value: Number(e.target.value) || 0 })
+                }
+                style={{ marginBottom: "16px" }}
+              />
+            );
+          }
+
+          // Xử lý các trường kiểu date
+          if (field.type === "date") {
+            return (
+              <DatePicker
+                key={field.name}
+                value={value ? dayjs(value) : null}
+                onChange={(date) => {
+                  onChange({
+                    name: field.name,
+                    value: date ? date.toISOString() : null,
+                  });
+                }}
+                format="YYYY-MM-DD"
+                disabled={isView}
+                style={{ width: "100%", marginBottom: "16px" }}
+              />
+            );
+          }
+
+          // Xử lý các trường kiểu text
+          return (
+            <Input
+              key={field.name}
+              name={field.name}
+              placeholder={field.name}
               type="text"
-              fullWidth
-              variant="standard"
-              value={(formData as any)[key] || ''} // Ép kiểu để TypeScript không báo lỗi
-              onChange={onChange}
+              value={value || ""}
+              disabled={isView}
+              onChange={(e) => onChange({ name: field.name, value: e.target.value })}
+              style={{ marginBottom: "16px" }}
             />
-          ))}
+          );
+        })}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>

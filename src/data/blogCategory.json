@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Technology",
+    "createdAt": "2023-03-01T10:00:00.000Z",
+    "updatedAt": "2023-03-10T12:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Health & Wellness",
+    "createdAt": "2023-03-02T11:30:00.000Z",
+    "updatedAt": "2023-03-11T14:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Travel",
+    "createdAt": "2023-03-03T09:00:00.000Z",
+    "updatedAt": "2023-03-12T13:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "name": "Education",
+    "createdAt": "2023-03-04T08:00:00.000Z",
+    "updatedAt": "2023-03-13T11:30:00.000Z"
+  },
+  {
+    "id": 5,
+    "name": "Lifestyle",
+    "createdAt": "2023-03-05T07:45:00.000Z",
+    "updatedAt": "2023-03-14T09:50:00.000Z"
+  }
+]

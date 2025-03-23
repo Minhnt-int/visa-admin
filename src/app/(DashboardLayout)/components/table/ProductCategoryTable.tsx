@@ -10,6 +10,24 @@ import { set } from 'lodash';
 import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
 
+  
+const initialFormData : ProductCategory = {
+  id: 0,
+  name: "",
+  parentId: 0
+}
+
+
+const convertToJsonList = (data: Record<string, any>) => {
+  return Object.keys(data).map((key) => ({
+    name: key,
+    type: typeof data[key] === 'object' && data[key] instanceof Date
+      ? 'date'
+      : typeof data[key],
+  }));
+};
+
+
 const ProductCategoryTable: React.FC = () => {
 
   const [productCategory, setProductCategory] = useState<ProductCategory[]>([]);
@@ -46,6 +64,12 @@ const ProductCategoryTable: React.FC = () => {
     setFormData(record);
     setIsModalOpen(true);
   };
+  const handleAdd = () => {
+    setIsView(false);
+    setFormData(initialFormData);
+    setIsModalOpen(true);
+  };
+
 
   const handleDelete = async (record: ProductCategory) => {
     setFormData(record);
@@ -94,7 +118,7 @@ const ProductCategoryTable: React.FC = () => {
 
   const fetchData = async (page: number) => {
     try {
-      const response = await axios.get(`/api/product-category/get-categories?page=${page}&limit=10`);
+      const response = await axios.get(`/api/product-category/get-list?page=${page}&limit=10`);
       setLoading(false);
       setData(response.data.data);
       setPagination(response.data.meta.totalPages); // Cập nhật tổng số trang
@@ -122,9 +146,29 @@ const ProductCategoryTable: React.FC = () => {
 
   const handleModalClose = () => {
     setIsModalOpen(false);
+    setConfirmingPopup(false);
     setFormData(null);
   };
 
+  const createAPI = async () => {
+    if (formData) {
+      try {
+        const formatFormData = {
+          id: Number(formData.id),
+          name: formData.name,
+          parentId: Number(formData.parentId),
+        };
+        const response = await axioss.put(`/api/product-category/create-category`, formatFormData);
+        console.log(response.status);
+        fetchData(Currentpagination);
+        message.success('Product Category updated successfully!');
+      } catch (error) {
+        console.error('Error submitting Product Category:', error);
+        message.error('Failed to submit Product Category.');
+      }
+      handleModalClose(); // Đóng modal sau khi xử lý xong
+    }
+  };
   const updateAPI = async () => {
     if (formData) {
       try {
@@ -144,11 +188,10 @@ const ProductCategoryTable: React.FC = () => {
       handleModalClose(); // Đóng modal sau khi xử lý xong
     }
   };
-
-    const handleModalSubmit = () => {
-      setConfirmingPopup(true);
-      setAction("update");
-    };
+  const handleModalSubmit = (action: string) => {
+    setConfirmingPopup(true);
+    setAction(action === 'create' ? "create" : "update");
+  };
     // Thêm useEffect để gửi request GET
     useEffect(() => {
       fetchData(1);
@@ -169,13 +212,15 @@ const ProductCategoryTable: React.FC = () => {
           </Button>
           <Button type="primary" onClick={() => {
             setIsView(false);
-            setFormData(null);
-            setIsModalOpen(true);
+            setFormData(initialFormData);
+            setAction("create");
+            handleAdd();
           }}>
             Add Product Category
           </Button>
         </Space>
         <Table
+        style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
           loading={loading}
           rowSelection={{
             selectedRowKeys,
@@ -201,19 +246,20 @@ const ProductCategoryTable: React.FC = () => {
           open={isModalOpen}
           isView={isView}
           onClose={handleModalClose}
-          onSubmit={handleModalSubmit}
-          formData={formData!}
-          onChange={(e) =>
+          onSubmit={() => handleModalSubmit(action)}
+          formData={formData || initialFormData}
+          formObject={convertToJsonList(initialFormData)} // Gọi hàm và truyền kết quả
+          onChange={({ name, value }) =>
             setFormData((prev) => ({
               ...prev!,
-              [e.target.name]: e.target.value,
+              [name]: value,
             }))
           }
         />
         <ConfirmPopup
           open={ConfirmingPopup}
           onClose={setConfirmingPopup.bind(this, false)}
-          onSubmit={action === "delete" ? () => deleteAPI(formData!) : updateAPI}
+          onSubmit={action === "delete" ? () => deleteAPI(formData!) : (action === "update" ? updateAPI : createAPI)}
           Content={""}
         />
         </Card>
