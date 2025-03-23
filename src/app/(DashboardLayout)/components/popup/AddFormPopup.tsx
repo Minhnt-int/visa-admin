@@ -65,6 +65,7 @@ const AddFormPopup: React.FC<AddFormPopupProps> = ({
                 format="YYYY-MM-DD"
                 disabled={isView}
                 style={{ width: "100%", marginBottom: "16px" }}
+                getPopupContainer={(trigger) => trigger.parentElement!} // Đặt vùng chứa là phần tử cha
               />
             );
           }
