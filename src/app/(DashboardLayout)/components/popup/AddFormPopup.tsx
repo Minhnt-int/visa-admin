@@ -3,6 +3,7 @@ import { Input, DatePicker } from 'antd';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import dayjs from 'dayjs';
 import _ from 'lodash';
+import { ProductAttributes } from '@/data/ProductAttributes';
 
 interface AddFormPopupProps {
   open: boolean;
@@ -23,67 +24,113 @@ const AddFormPopup: React.FC<AddFormPopupProps> = ({
   formData,
   formObject,
 }) => {
+
+  const fieldsHandler = (fields: any[]): React.ReactNode => {
+    return fields.map((field: any) => {
+      const value = (formData as any)[field.name]; // Lấy giá trị từ formData
+  
+      // Xử lý các trường kiểu number
+      if (field.type === "number") {
+        return (
+          <Input
+            key={field.name}
+            name={field.name}
+            placeholder={field.name}
+            type="number"
+            value={value || ""}
+            disabled={isView}
+            onChange={(e) =>
+              onChange({ name: field.name, value: Number(e.target.value) || 0 })
+            }
+            style={{ marginBottom: "16px" }}
+          />
+        );
+      }
+  
+      // Xử lý các trường kiểu date
+      if (field.type === "date") {
+        return (
+          <DatePicker
+            key={field.name}
+            value={value ? dayjs(value) : null}
+            onChange={(date) => {
+              onChange({
+                name: field.name,
+                value: date ? date.toISOString() : null,
+              });
+            }}
+            format="YYYY-MM-DD"
+            disabled={isView}
+            style={{ width: "100%", marginBottom: "16px" }}
+            getPopupContainer={(trigger) => trigger.parentElement!} // Đặt vùng chứa là phần tử cha
+          />
+        );
+      }
+  
+      if (field.type === "string") {
+        return (
+          <Input
+            key={field.name}
+            name={field.name}
+            placeholder={field.name}
+            type="text"
+            value={value || ""}
+            disabled={isView}
+            onChange={(e) => onChange({ name: field.name, value: e.target.value })}
+            style={{ marginBottom: "16px" }}
+          />
+        );
+      }
+  
+      // Xử lý các trường kiểu object - sử dụng đệ quy fieldsHandler
+      if (typeof field.type === 'object' && field.type !== null && !Array.isArray(field.type)) {
+        // Chuyển đổi object thành mảng các trường
+        const nestedFields = Object.keys(field.type).map(key => ({
+          name: key,
+          type: field.type[key]
+        }));
+        
+        return (
+          <div key={field.name} style={{ marginBottom: "16px", border: "1px solid #eee", padding: "10px" }}>
+            <h4>{field.name}</h4>
+            {fieldsHandler(nestedFields)}
+          </div>
+        );
+      }
+      
+      // Xử lý các trường kiểu mảng - sử dụng đệ quy fieldsHandler
+      if (Array.isArray(field.type)) {
+        return (
+          <div key={field.name} style={{ marginBottom: "16px", border: "1px solid #eee", padding: "10px" }}>
+            <h4>{field.name}</h4>
+            {fieldsHandler(field.type)}
+          </div>
+        );
+      }
+      
+      // Trường hợp mặc định
+      return (
+        <Input
+          key={field.name}
+          name={field.name}
+          placeholder={field.name}
+          type="text"
+          value={value || ""}
+          disabled={isView}
+          onChange={(e) => onChange({ name: field.name, value: e.target.value })}
+          style={{ marginBottom: "16px" }}
+        />
+      );
+    });
+  };
+
   const title = formData && formData.id ? "Edit Item" : "Add Item";
 
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        {formObject.map((field : any) => {
-          const value = (formData as any)[field.name]; // Lấy giá trị từ formData
-
-          // Xử lý các trường kiểu number
-          if (field.type === "number") {
-            return (
-              <Input
-                key={field.name}
-                name={field.name}
-                placeholder={field.name}
-                type="number"
-                value={value || ""}
-                disabled={isView}
-                onChange={(e) =>
-                  onChange({ name: field.name, value: Number(e.target.value) || 0 })
-                }
-                style={{ marginBottom: "16px" }}
-              />
-            );
-          }
-
-          // Xử lý các trường kiểu date
-          if (field.type === "date") {
-            return (
-              <DatePicker
-                key={field.name}
-                value={value ? dayjs(value) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: field.name,
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-                format="YYYY-MM-DD"
-                disabled={isView}
-                style={{ width: "100%", marginBottom: "16px" }}
-                getPopupContainer={(trigger) => trigger.parentElement!} // Đặt vùng chứa là phần tử cha
-              />
-            );
-          }
-
-          // Xử lý các trường kiểu text
-          return (
-            <Input
-              key={field.name}
-              name={field.name}
-              placeholder={field.name}
-              type="text"
-              value={value || ""}
-              disabled={isView}
-              onChange={(e) => onChange({ name: field.name, value: e.target.value })}
-              style={{ marginBottom: "16px" }}
-            />
-          );
-        })}
+        {fieldsHandler(formObject)}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>

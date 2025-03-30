@@ -10,14 +10,15 @@ import { set } from 'lodash';
 import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
+import { ProductAttributes } from '@/data/ProductAttributes';
+import AddProductFormPopup from '../popup/AddProductFormPopup';
 
-const initialProducts: ProductAttributes[] = products
+const initialProducts: ProductAttributes[] = []
 
 
 const initialFormData: ProductAttributes = {
   id: 0,
   name: "",
-  price: 0,
   description: "",
   categoryId: 0,
   slug: "",
@@ -26,7 +27,33 @@ const initialFormData: ProductAttributes = {
   metaKeywords: "",
   createdAt: new Date(),
   updatedAt: new Date(),
+  media: [
+    {
+        type: "image",
+        url: "https://example.com/image-main.jpg",
+        createdAt:  new Date(),
+        updatedAt:  new Date()
+    }
+],
+  items: [
+    {
+      name: "",
+      color: "",
+      price: 0,
+      originalPrice: 0,
+      status: "available"
+  },
+  {
+      name: "",
+      color: "",
+      price: 0,
+      originalPrice: 0,
+      status: "available"
+  }
+  ],
 };
+
+
 
 const ProductsTable: React.FC = () => {
 
@@ -41,6 +68,7 @@ const ProductsTable: React.FC = () => {
 
   const [data, setData] = useState<ProductAttributes[]>([]);
   const [pagination, setPagination] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -167,14 +195,16 @@ const ProductsTable: React.FC = () => {
     },
   ];
 
-  const fetchData = async (page: number) => {
+  const fetchData = async (page: number, limit: number) => {
     try {
-      const response = await axios.get(`/api/product/get-list?page=${page}&limit=10`);
+      const response = await axioss.get(`/api/product/list?page=${page}&limit=${limit}`);
+      console.log(page ,"Response data:", response.data);
+      
       setLoading(false);
       setData(response.data.data);
-      setPagination(response.data.meta.totalPages); // Cập nhật tổng số trang
-      setCurrentpagination(response.data.meta.currentPage); // Cập nhật trang hiện tại
-      console.log("Pagination updated:", response.data.meta.totalPages);
+      setPagination(response.data.pagination.totalPages); // Cập nhật tổng số trang
+      setCurrentpagination(response.data.pagination.currentPage); // Cập nhật trang hiện tại
+      console.log("Pagination updated:", response.data.pagination.totalPages);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -185,7 +215,7 @@ const ProductsTable: React.FC = () => {
       // Gửi yêu cầu DELETE đến API
       const response = await axios.delete(`/api/product/delete/${record.id}`);
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
-      fetchData(Currentpagination);
+      fetchData(Currentpagination, limit);
       message.success(`Deleted Product: ${record.name}`);
       console.log('Deleted Product:', record);
     } catch (error) {
@@ -200,23 +230,70 @@ const ProductsTable: React.FC = () => {
     setConfirmingPopup(false);
     setFormData(null);
   };
-
-  const convertToJsonList = (data: Record<string, any>) => {
-    return Object.keys(data).map((key) => ({
-      name: key,
-      type: typeof data[key] === 'object' && data[key] instanceof Date
-        ? 'date'
-        : typeof data[key],
-    }));
+  const convertToJsonList = (data: any): any[] => {
+    // Nếu không phải là object hoặc là null, trả về mảng rỗng
+    if (typeof data !== 'object' || data === null) {
+      return [];
+    }
+    
+    // Nếu là mảng, phân tích các phần tử trong mảng
+    if (Array.isArray(data)) {
+      // Nếu mảng rỗng, trả về mảng rỗng
+      if (data.length === 0) {
+        return [];
+      }
+      
+      // Lấy phần tử đầu tiên làm mẫu (giả sử các phần tử có cùng cấu trúc)
+      const sampleItem = data[0];
+      
+      // Nếu phần tử mẫu là object, phân tích cấu trúc của nó
+      if (typeof sampleItem === 'object' && sampleItem !== null) {
+        return convertToJsonList(sampleItem);
+      } else {
+        // Nếu không phải object, trả về kiểu dữ liệu của phần tử
+        return [{ name: 'item', type: typeof sampleItem }];
+      }
+    }
+    
+    // Nếu là Date, trả về mảng rỗng
+    if (data instanceof Date) {
+      return [];
+    }
+    
+    // Chuyển đổi object thành mảng các trường
+    const array = Object.keys(data).map((key) => {
+      const value = data[key];
+      
+      // Xác định kiểu dữ liệu
+      if (typeof value === 'string') {
+        return { name: key, type: 'string' };
+      } else if (typeof value === 'number') {
+        return { name: key, type: 'number' };
+      } else if (value instanceof Date) {
+        return { name: key, type: 'date' };
+      } else if (Array.isArray(value)) {
+        // Nếu là mảng, phân tích cấu trúc của mảng
+        const arrayFields = convertToJsonList(value);
+        return { name: key, type: arrayFields };
+      } else if (typeof value === 'object' && value !== null) {
+        // Nếu là object phức tạp, đệ quy
+        return { name: key, type: convertToJsonList(value) };
+      } else {
+        // Các trường hợp khác (boolean, undefined, ...)
+        return { name: key, type: typeof value };
+      }
+    });
+    console.log("array", array);
+    
+    return array;
   };
-
+  
   const createAPI = async () => {
     if (formData) {
       try {
         const formatFormData = {
           id: Number(formData.id),
           name: formData.name,
-          price: formData.price,
           description: formData.description,
           categoryId: Number(formData.categoryId),
           slug: formData.slug,
@@ -224,12 +301,10 @@ const ProductsTable: React.FC = () => {
           metaDescription: formData.metaDescription,
           metaKeywords: formData.metaKeywords,
         };
-
-        console.log("formatFormData", formatFormData);
-
-        const response = await axioss.post(`/api/product/create`, formatFormData);
-        console.log(response.status);
-        fetchData(Currentpagination);
+        console.log(formData);
+        
+        const response = await axioss.post(`/api/product/create`, formData);
+        fetchData(Currentpagination, limit);
         message.success('Product updated successfully!');
       } catch (error) {
         console.error('Error submitting product:', error);
@@ -244,7 +319,6 @@ const ProductsTable: React.FC = () => {
         const formatFormData = {
           id: Number(formData.id),
           name: formData.name,
-          price: formData.price,
           description: formData.description,
           categoryId: Number(formData.categoryId),
           slug: formData.slug,
@@ -253,11 +327,9 @@ const ProductsTable: React.FC = () => {
           metaKeywords: formData.metaKeywords,
         };
 
-        console.log("formatFormData", formatFormData);
 
         const response = await axioss.put(`/api/product/update`, formatFormData);
-        console.log(response.status);
-        fetchData(Currentpagination);
+        fetchData(Currentpagination, limit);
         message.success('Product updated successfully!');
       } catch (error) {
         console.error('Error submitting product:', error);
@@ -273,8 +345,7 @@ const ProductsTable: React.FC = () => {
   };
   // Thêm useEffect để gửi request GET
   useEffect(() => {
-    fetchData(1);
-    console.log("first", Currentpagination, pagination);
+    fetchData(1, limit);
 
   }, []); // Chỉ chạy một lần khi component được mount
 
@@ -319,17 +390,16 @@ const ProductsTable: React.FC = () => {
             total={pagination * 10} // Tổng số mục (giả sử mỗi trang có 10 mục)
             onChange={(page) => {
               setCurrentpagination(page); // Cập nhật trang hiện tại
-              fetchData(page); // Gọi API để lấy dữ liệu trang mới
+              fetchData(page, limit); // Gọi API để lấy dữ liệu trang mới
             }}
           />
         )}
-        <AddFormPopup
+        <AddProductFormPopup
           open={isModalOpen}
           isView={isView}
           onClose={handleModalClose}
           onSubmit={() => handleModalSubmit(action)}
           formData={formData || initialFormData}
-          formObject={convertToJsonList(initialFormData)} // Gọi hàm và truyền kết quả
           onChange={({ name, value }) =>
             setFormData((prev) => ({
               ...prev!,

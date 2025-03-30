@@ -1,14 +1,35 @@
 
-interface ProductAttributes {
-  id: number | null;
-  name: string | null;
-  price: number | null;
-  description: string | null;
-  categoryId: number | null;
-  slug: string | null;
-  metaTitle: string | null;
-  metaDescription: string | null;
-  metaKeywords: string | null;
-  createdAt?: Date | null;
-  updatedAt?: Date | null;
+
+// ProductCategory Model
+export interface ProductItemAttributes {
+  name: string;
+  color: string;
+  price: number;
+  originalPrice: number;
+  status: string;
+
+}
+
+
+export interface ProductMedia {
+  type: string;
+  url: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ProductCategory Model
+export interface ProductAttributes {
+  id: number;
+  name: string;
+  description?: string;
+  categoryId: number;
+  slug: string;
+  metaTitle: string;
+  metaDescription: string;
+  metaKeywords: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  items: ProductItemAttributes[];
+  media: ProductMedia[];
 }
