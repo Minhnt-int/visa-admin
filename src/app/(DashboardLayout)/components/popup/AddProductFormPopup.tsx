@@ -6,10 +6,7 @@ import _ from 'lodash';
 import { ProductAttributes, ProductItemAttributes, ProductMedia } from '@/data/ProductAttributes';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import TextEditor from '../textEditor/rich-text-editor/TextEditor';
-import RichTextEditor from '../textEditor/rich-text-editor';
-import ImageAdd from '../textEditor/rich-text-editor/image';
-
+import Editor from "../editor/Editor"
 interface AddFormPopupProps {
   open: boolean;
   isView: boolean;
@@ -138,23 +135,21 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
           value={formData.name || ""}
           disabled={isView}
           onChange={(e) => onChange({ name: 'name', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
         />
-
-        {/* <Input
+{/* 
+        <Input
           placeholder="Description"
           value={formData.description || ""}
           disabled={isView}
           onChange={(e) => onChange({ name: 'description', value: e.target.value })}
           style={{ marginBottom: "16px" }}
         /> */}
-        <RichTextEditor
-        disabled={isView}
-          content={formData.description || ""} // Truyền nội dung hiện tại
-          onChange={handleEditorChange}
-        />
-        <ImageAdd />
 
+<Editor 
+  disabled={isView} 
+  value={formData.description || ""}
+  onChange={(content) => onChange({ name: 'description', value: content })}
+/>
         <Input
           placeholder="Category ID"
           type="number"
@@ -210,7 +205,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
               });
             }}
             format="YYYY-MM-DD"
-            disabled={isView}
+            disabled={true}
             style={{ width: "100%" }}
             getPopupContainer={(trigger) => trigger.parentElement!}
           />
@@ -224,7 +219,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
               });
             }}
             format="YYYY-MM-DD"
-            disabled={isView}
+            disabled={true}
             style={{ width: "100%" }}
             getPopupContainer={(trigger) => trigger.parentElement!}
           />
@@ -282,7 +277,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
                     handleMediaChange(index, 'createdAt', date ? date.toISOString() : null);
                   }}
                   format="YYYY-MM-DD"
-                  disabled={isView}
+                  disabled={true}
                   style={{ width: "100%", marginBottom: "8px" }}
                   getPopupContainer={(trigger) => trigger.parentElement!}
                 />
@@ -293,7 +288,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
                     handleMediaChange(index, 'updatedAt', date ? date.toISOString() : null);
                   }}
                   format="YYYY-MM-DD"
-                  disabled={isView}
+                  disabled={true}
                   style={{ width: "100%", marginBottom: "8px" }}
                   getPopupContainer={(trigger) => trigger.parentElement!}
                 />

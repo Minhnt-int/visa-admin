@@ -12,7 +12,7 @@ const Dashboard = () => {
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <ProductCategoryTable></ProductCategoryTable>
+            <ProductCategoryTable limit={10} ></ProductCategoryTable>
           </Grid>
         </Grid>
       </Box>

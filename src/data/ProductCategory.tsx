@@ -1,6 +1,9 @@
-
-interface ProductCategory {
-  id: number;
+export interface ProductCategory {
+  id?: number;
   name: string;
-  parentId?: number | null;
+  slug: string;
+  description: string;
+  parentId: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 }

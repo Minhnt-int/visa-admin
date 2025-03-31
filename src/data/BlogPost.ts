@@ -1,5 +1,5 @@
 
-interface BlogPostAttributes {
+export interface BlogPostAttributes {
   id: number;
   title: string;
   content: string;

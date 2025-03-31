@@ -4,6 +4,8 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } 
 import dayjs from 'dayjs';
 import _ from 'lodash';
 import { ProductAttributes } from '@/data/ProductAttributes';
+import { ProductCategory } from '@/data/ProductCategory';
+import { BlogPostAttributes } from '@/data/BlogPost';
 
 interface AddFormPopupProps {
   open: boolean;

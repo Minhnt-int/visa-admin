@@ -125,12 +125,6 @@ const ProductsTable: React.FC = () => {
       width: 100, // Chiều rộng hợp lý cho cột Price
     },
     {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      width: 200, // Chiều rộng hợp lý cho cột Description
-    },
-    {
       title: 'Category ID',
       dataIndex: 'categoryId',
       key: 'categoryId',

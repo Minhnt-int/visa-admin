@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import AddFormPopup from '../popup/AddFormPopup';
 import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
-import { set } from 'lodash';
-import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
-import blogCategory from '@/data/blogCategory.json';
+import AddBlogFormPopup from '../popup/AddBlogFormPopup';
+import { BlogPostAttributes } from '@/data/BlogPost';
 
 const ProductsTable: React.FC = () => {
 
@@ -25,17 +23,6 @@ const ProductsTable: React.FC = () => {
   const [pagination, setPagination] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
-
-  
-
-  const convertToJsonList = (data: Record<string, any>) => {
-    return Object.keys(data).map((key) => ({
-      name: key,
-      type: typeof data[key] === 'object' && data[key] instanceof Date
-        ? 'date'
-        : typeof data[key],
-    }));
-  };
 
 const initialFormData : BlogPostAttributes = {
   id: 0,
@@ -154,12 +141,14 @@ const initialFormData : BlogPostAttributes = {
 
   const fetchData = async (page: number) => {
     try {
-      const response = await axios.get(`/api/blog/get-blogs?page=${page}&limit=10`);
+      const response = await axioss.get(`/api/blog/get-list?page=${page}&limit=10`);
+      console.log("Response data:", response.data);
+      
       setLoading(false);
       setData(response.data.data);
-      setPagination(response.data.meta.totalPages); // Cập nhật tổng số trang
-      setCurrentpagination(response.data.meta.currentPage); // Cập nhật trang hiện tại
-      console.log("Pagination updated:", response.data.meta.totalPages);
+      setPagination(response.data.pagination.totalPages); // Cập nhật tổng số trang
+      setCurrentpagination(response.data.pagination.page); // Cập nhật trang hiện tại
+      console.log("Pagination updated:", response.data.pagination.page);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -206,7 +195,7 @@ const initialFormData : BlogPostAttributes = {
         
         console.log("formatFormData", formatFormData);
         
-        const response = await axioss.put(`/api/blog/create-blog`, formatFormData);
+        const response = await axioss.post(`/api/blog/create-blog`, formatFormData);
         console.log(response.status);
         fetchData(Currentpagination);
         message.success('Product updated successfully!');
@@ -303,15 +292,14 @@ const initialFormData : BlogPostAttributes = {
             }}
           />
         )}
-        <AddFormPopup
+        <AddBlogFormPopup
           open={isModalOpen}
           isView={isView}
           onClose={handleModalClose}
           onSubmit={() => handleModalSubmit(action)}
           formData={formData || initialFormData}
-          formObject={convertToJsonList(initialFormData)} // Gọi hàm và truyền kết quả
           onChange={({ name, value }) =>
-            setFormData((prev) => ({
+            setFormData((prev : any) => ({
               ...prev!,
               [name]: value,
             }))
