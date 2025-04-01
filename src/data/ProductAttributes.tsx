@@ -23,6 +23,7 @@ export interface ProductAttributes {
   id: number;
   name: string;
   description?: string;
+  shortDescription?: string;
   categoryId: number;
   slug: string;
   metaTitle: string;

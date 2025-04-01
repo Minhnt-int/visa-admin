@@ -12,19 +12,21 @@ import '@/styles/editor.css';
  * This is a 24-hour evaluation key. Create a free account to use CDN: https://portal.ckeditor.com/checkout?plan=free
  */
 const LICENSE_KEY =
-	'eyJhbGciOiJFUzI1NiJ9.eyJleHAiOjE3NDM0NjU1OTksImp0aSI6IjI2NzFiZmMwLTVjOTEtNGM2YS1iMGNhLTFkM2Q2YmE2Mjk2YiIsImxpY2Vuc2VkSG9zdHMiOlsiKi53ZWJjb250YWluZXIuaW8iLCIqLmpzaGVsbC5uZXQiLCIqLmNzcC5hcHAiLCJjZHBuLmlvIiwiMTI3LjAuMC4xIiwibG9jYWxob3N0IiwiMTkyLjE2OC4qLioiLCIxMC4qLiouKiIsIjE3Mi4qLiouKiIsIioudGVzdCIsIioubG9jYWxob3N0IiwiKi5sb2NhbCJdLCJkaXN0cmlidXRpb25DaGFubmVsIjpbImNsb3VkIiwiZHJ1cGFsIiwic2giXSwibGljZW5zZVR5cGUiOiJldmFsdWF0aW9uIiwidmMiOiJmZjE1NDA5MiJ9.i4pbllIBtt50X0lcH2xtYFO6CJzcUbVSwfJKr-5Gxow8GHmSBAULytvDN9Mi4UX1cVF7CXkdxFQghgQKp0Y2jw';
+	'eyJhbGciOiJFUzI1NiJ9.eyJleHAiOjE3NzQ5MTUxOTksImp0aSI6IjJjYjFjYzgwLTFmMWItNGEyOC1hMjFlLTYwNGEwZjZkZTE1NyIsImxpY2Vuc2VkSG9zdHMiOlsiMTI3LjAuMC4xIiwibG9jYWxob3N0IiwiMTkyLjE2OC4qLioiLCIxMC4qLiouKiIsIjE3Mi4qLiouKiIsIioudGVzdCIsIioubG9jYWxob3N0IiwiKi5sb2NhbCJdLCJ1c2FnZUVuZHBvaW50IjoiaHR0cHM6Ly9wcm94eS1ldmVudC5ja2VkaXRvci5jb20iLCJkaXN0cmlidXRpb25DaGFubmVsIjpbImNsb3VkIiwiZHJ1cGFsIl0sImxpY2Vuc2VUeXBlIjoiZGV2ZWxvcG1lbnQiLCJmZWF0dXJlcyI6WyJEUlVQIl0sInZjIjoiODE2NjBjZWEifQ.hM4dHg0T2smRK_IoDM8s3UNGEfPoe33PWe4Uo9GCIW3HZN0tbIPXZMXL2Mat9Crith_8YBdjOBeAbgA5f1PThA';
 
 interface EditorProps {
     disabled?: boolean;
     onChange?: (content: string) => void;
     value?: string;
+	placeholder?: string;
 }
 
-export default function Editor({ disabled = false, onChange, value }: EditorProps) {
+export default function Editor({ disabled = false, onChange, value, placeholder}: EditorProps) {
 	const editorContainerRef = useRef(null);
 	const editorRef = useRef(null);
 	const [isLayoutReady, setIsLayoutReady] = useState(false);
 	const [editorInstance, setEditorInstance] = useState(null);
+	const [wordStats, setWordStats] = useState({ words: 0, characters: 0 });
 	const cloud = useCKEditorCloud({ version: '44.3.0', translations: ['vi'] });
 
 	useEffect(() => {
@@ -38,13 +40,27 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 		console.log(`Deleting image from server: ${src}`);
 	};
 
-	const { ClassicEditor, editorConfig } = useMemo(() => {
+	const { ClassicEditor, DecoupledEditor, Plugin, ButtonView, AutoLink, CKBox, CKBoxImageEdit, Code, ImageEditing, ImageUtils, PageBreak, PictureEditing, Strikethrough, Subscript, Superscript, editorConfig } = useMemo(() => {
 		if (cloud.status !== 'success' || !isLayoutReady) {
 			return {};
 		}
 
 		const {
 			ClassicEditor,
+			DecoupledEditor,
+			Plugin,
+			ButtonView,
+			AutoLink,
+			CKBox,
+			CKBoxImageEdit,
+			Code,
+			ImageEditing,
+			ImageUtils,
+			PageBreak,
+			PictureEditing,
+			Strikethrough,
+			Subscript,
+			Superscript,
 			Alignment,
 			Autoformat,
 			AutoImage,
@@ -112,11 +128,26 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 			TableToolbar,
 			TextTransformation,
 			TodoList,
-			 Underline
+			 Underline,
+			 WordCount
 		} = cloud.CKEditor;
 
 		return {
 			ClassicEditor,
+			DecoupledEditor,
+			Plugin,
+			ButtonView,
+			AutoLink,
+			CKBox,
+			CKBoxImageEdit,
+			Code,
+			ImageEditing,
+			ImageUtils,
+			PageBreak,
+			PictureEditing,
+			Strikethrough,
+			Subscript,
+			Superscript,
 			editorConfig: {
 				toolbar: {
 					items: [
@@ -230,7 +261,9 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 					TableToolbar,
 					TextTransformation,
 					TodoList,
-					Underline
+					Underline,
+					WordCount,
+					ImageUtils,
 				],
 				extraPlugins: [CustomUploadAdapterPlugin],
 				imageInsertViaUrl: {
@@ -240,7 +273,8 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 					// Mặc định cho phép insert image via URL
 					isEnabled: true
 				  },
-				balloonToolbar: ['bold', 'italic', '|', 'link', 'insertImage', '|', 'bulletedList', 'numberedList'],
+				// balloonToolbar: ['bold', 'italic', '|', 'link', 'insertImage', '|', 'bulletedList', 'numberedList'],
+				balloonToolbar: [ 'bold', 'italic', 'undo', 'redo' ],
 				fontFamily: {
 					supportAllValues: true
 				},
@@ -351,7 +385,7 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 				menuBar: {
 					isVisible: true
 				},
-				placeholder: 'Nhập đoạn văn bản của bạn ở đây...',
+				placeholder: placeholder,
 				style: {
 					definitions: [
 						{
@@ -403,6 +437,13 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 				},
 				table: {
 					contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties']
+				},
+				wordCount: {
+					displayWords: true,
+					displayCharacters: true,
+					onUpdate: (stats: any) => {
+						setWordStats(stats);
+					}
 				}
 			}
 		};
@@ -420,7 +461,7 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 								editor={ClassicEditor} 
 								config={editorConfig}
 								disabled={disabled}
-								onReady={editor => {
+								onReady={(editor: any) => {
 									setEditorInstance(editor);
 								}}
 								onChange={(event, editor) => {
@@ -437,6 +478,14 @@ export default function Editor({ disabled = false, onChange, value }: EditorProp
 					</div>
 				</div>
 			</div>  
+			<div style={{ 
+				marginTop: '8px', 
+				textAlign: 'right', 
+				fontSize: '14px', 
+				color: '#555' 
+			}}>
+				Số từ: {wordStats.words} | Số ký tự: {wordStats.characters}
+			</div>
 		</div>
 	);
 }

@@ -119,6 +119,12 @@ const ProductsTable: React.FC = () => {
       width: 150, // Chiều rộng hợp lý cho cột Name
     },
     {
+      title: 'Short Description',
+      dataIndex: 'shortDescription',
+      key: 'shortDescription',
+      width: 200, // Chiều rộng hợp lý cho cột Meta Description
+    },
+    {
       title: 'Price',
       dataIndex: 'price',
       key: 'price',
@@ -289,6 +295,7 @@ const ProductsTable: React.FC = () => {
           id: Number(formData.id),
           name: formData.name,
           description: formData.description,
+          shortDescription: formData.shortDescription,
           categoryId: Number(formData.categoryId),
           slug: formData.slug,
           metaTitle: formData.metaTitle,

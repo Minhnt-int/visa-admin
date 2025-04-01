@@ -71,6 +71,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
             disabled={isView} 
             value={formData.content || ""}
             onChange={(content) => onChange({ name: 'content', value: content })}
+            placeholder="Content"
           />
         </div>
 

@@ -149,7 +149,17 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
   disabled={isView} 
   value={formData.description || ""}
   onChange={(content) => onChange({ name: 'description', value: content })}
+  placeholder="Description"
 />
+
+
+        <Input
+          placeholder="shortDescription"
+          value={formData.shortDescription || ""}
+          disabled={isView}
+          onChange={(e) => onChange({ name: 'shortDescription', value: e.target.value })}
+          style={{ marginBottom: "16px" }}
+        />
         <Input
           placeholder="Category ID"
           type="number"

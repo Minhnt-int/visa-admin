@@ -1,10 +1,13 @@
 import {
   IconAperture,
+  IconCategory,
+  IconCategoryFilled,
   IconCopy,
   IconEye,
   IconLayoutDashboard,
   IconLogin,
   IconMoodHappy,
+  IconNews,
   IconTablePlus,
   IconTypography,
   IconUserPlus,
@@ -20,7 +23,7 @@ const Menuitems = [
 
   {
     id: uniqueId(),
-    title: "Dashboard",
+    title: "Trang chủ",
     icon: IconLayoutDashboard,
     href: "/",
   },
@@ -32,23 +35,19 @@ const Menuitems = [
     id: uniqueId(),
     title: "Quản lý Sản Phẩm",
     icon: IconTablePlus,
-    href: "/products",
+    href: "/san-pham",
   },
   {
     id: uniqueId(),
     title: "Lượt Xem Sản Phẩm",
     icon: IconEye,
-    href: "/utilities/shadow",
-  },
-  {
-    navlabel: true,
-    subheader: "Mẫu mã",
+    href: "/san-pham",
   },
   {
     id: uniqueId(),
     title: "Quản lý mẫu mã",
-    icon: IconTablePlus,
-    href: "/product-category",
+    icon: IconCategory,
+    href: "/danh-muc-san-pham",
   },
   {
     navlabel: true,
@@ -57,8 +56,14 @@ const Menuitems = [
   {
     id: uniqueId(),
     title: "Quản lý blog",
-    icon: IconTablePlus,
-    href: "/blog",
+    icon: IconNews,
+    href: "/bai-viet",
+  },
+  {
+    id: uniqueId(),
+    title: "Danh mục bài viết",
+    icon: IconCategoryFilled,
+    href: "/danh-muc-bai-viet",
   },
   {
     navlabel: true,
