@@ -8,7 +8,7 @@ import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
 import AddBlogFormPopup from '../popup/AddBlogFormPopup';
 import { BlogPostAttributes } from '@/data/BlogPost';
-
+import { createBlog, deleteBlog, fetchBlogList, updateBlog } from "@/services/blogService";
 const ProductsTable: React.FC = () => {
 
   const [blogs, setBlogs] = useState<BlogPostAttributes[]>([]);
@@ -22,6 +22,7 @@ const ProductsTable: React.FC = () => {
   const [data, setData] = useState<BlogPostAttributes[]>([]);
   const [pagination, setPagination] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(true);
 
 const initialFormData : BlogPostAttributes = {
@@ -57,6 +58,7 @@ const initialFormData : BlogPostAttributes = {
   const handleEdit = (record: BlogPostAttributes) => {
     setIsView(false);
     setFormData(record);
+    setAction("edit");
     setIsModalOpen(true);
   };
   const handleAdd = () => {
@@ -139,16 +141,24 @@ const initialFormData : BlogPostAttributes = {
     },
   ];
 
-  const fetchData = async (page: number) => {
+  const fetchData = async (page: number, limit: number) => {
     try {
-      const response = await axioss.get(`/api/blog/get-list?page=${page}&limit=10`);
+      const response = await fetchBlogList({
+        page: page,
+        limit: limit,
+        // Thêm các tham số khác nếu cần
+        categoryId: '',
+        search: '',
+        sortBy: '',
+        sortOrder: '',
+      }) as any;
       console.log("Response data:", response.data);
       
       setLoading(false);
-      setData(response.data.data);
-      setPagination(response.data.pagination.totalPages); // Cập nhật tổng số trang
-      setCurrentpagination(response.data.pagination.page); // Cập nhật trang hiện tại
-      console.log("Pagination updated:", response.data.pagination.page);
+      setData(response.data);
+      setPagination(response.pagination.totalPages); // Cập nhật tổng số trang
+      setCurrentpagination(response.pagination.page); // Cập nhật trang hiện tại
+      console.log("Pagination updated:", response.pagination.page);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -157,9 +167,9 @@ const initialFormData : BlogPostAttributes = {
   const deleteAPI = async (record: BlogPostAttributes) => {
     try {
       // Gửi yêu cầu DELETE đến API
-      const response = await axios.delete(`/api/blog/delete/${record.id}`);
+      const response = await deleteBlog(record.id);
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
-      fetchData(Currentpagination);
+      await fetchData(Currentpagination, limit);
       message.success(`Deleted blog: ${record.id}`);
       console.log('Deleted blog:', record);
     } catch (error) {
@@ -178,26 +188,11 @@ const initialFormData : BlogPostAttributes = {
   const createAPI = async () => {
     if (formData) {
       try {
-        const formatFormData = {
-          id: Number(formData.id),
-          title: formData.title,
-          content: formData.content,
-          slug: formData.slug,
-          metaTitle: formData.metaTitle,
-          metaDescription: formData.metaDescription,
-          metaKeywords:  formData.metaKeywords,
-          author: formData.author,
-          publishedAt: formData.publishedAt,
-          createdAt: formData.createdAt,
-          updatedAt: formData.updatedAt,
-          blogCategoryId: Number(formData.blogCategoryId),
-        };
+        console.log("formatFormData", formData);
         
-        console.log("formatFormData", formatFormData);
-        
-        const response = await axioss.post(`/api/blog/create-blog`, formatFormData);
+        const response = await createBlog(formData);
         console.log(response.status);
-        fetchData(Currentpagination);
+        await fetchData(Currentpagination, limit);
         message.success('Product updated successfully!');
       } catch (error) {
         console.error('Error submitting product:', error);
@@ -209,26 +204,11 @@ const initialFormData : BlogPostAttributes = {
   const updateAPI = async () => {
     if (formData) {
       try {
-        const formatFormData = {
-          id: Number(formData.id),
-          title: formData.title,
-          content: formData.content,
-          slug: formData.slug,
-          metaTitle: formData.metaTitle,
-          metaDescription: formData.metaDescription,
-          metaKeywords:  formData.metaKeywords,
-          author: formData.author,
-          publishedAt: formData.publishedAt,
-          createdAt: formData.createdAt,
-          updatedAt: formData.updatedAt,
-          blogCategoryId: Number(formData.blogCategoryId),
-        };
+        console.log("formatFormData", formData);
         
-        console.log("formatFormData", formatFormData);
-        
-        const response = await axioss.put(`/api/blog/update-blog`, formatFormData);
-        console.log(response.status);
-        fetchData(Currentpagination);
+        const response = await updateBlog(formData);
+        console.log(response);
+        fetchData(Currentpagination , limit);
         message.success('Product updated successfully!');
       } catch (error) {
         console.error('Error submitting product:', error);
@@ -244,7 +224,7 @@ const initialFormData : BlogPostAttributes = {
   };
     // Thêm useEffect để gửi request GET
     useEffect(() => {
-      fetchData(1);
+      fetchData(1, limit); // Gọi hàm fetchData với trang đầu tiên và số lượng sản phẩm trên mỗi trang
       console.log("first", Currentpagination, pagination);
 
     }, []); // Chỉ chạy một lần khi component được mount
@@ -288,7 +268,7 @@ const initialFormData : BlogPostAttributes = {
             total={pagination * 10} // Tổng số mục (giả sử mỗi trang có 10 mục)
             onChange={(page) => {
               setCurrentpagination(page); // Cập nhật trang hiện tại
-              fetchData(page); // Gọi API để lấy dữ liệu trang mới
+              fetchData(page,limit); // Gọi API để lấy dữ liệu trang mới
             }}
           />
         )}

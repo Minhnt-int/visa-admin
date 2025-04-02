@@ -11,7 +11,7 @@ import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
 import { ProductCategory } from '@/data/ProductCategory';
-
+import { fetchProductCategories } from "@/services/productService";
 
 const initialFormData: ProductCategory = {
   id: 0,
@@ -23,15 +23,6 @@ const initialFormData: ProductCategory = {
   updatedAt: "",
 }
 
-
-const convertToJsonList = (data: Record<string, any>) => {
-  return Object.keys(data).map((key) => ({
-    name: key,
-    type: typeof data[key] === 'object' && data[key] instanceof Date
-      ? 'date'
-      : typeof data[key],
-  }));
-};
 interface ProductCategoryTableProps {
   limit: number;
 }
@@ -112,11 +103,11 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
       key: 'description',
       width: 300,
       render: (text) => (
-        <div 
-          style={{ 
-            maxHeight: '100px', 
-            overflow: 'hidden', 
-            textOverflow: 'ellipsis' 
+        <div
+          style={{
+            maxHeight: '100px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
           }}
           dangerouslySetInnerHTML={{ __html: text }}
         />
@@ -135,7 +126,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
       key: 'createdAt',
       width: 170,
       render: (date) => new Date(date).toLocaleString(),
-      sorter: (a : any, b : any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      sorter: (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     {
       title: 'Updated At',
@@ -167,16 +158,16 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
 
   const fetchData = async (page: number, limit: number) => {
     console.log("Fetching data for page:", page, "with limit:", limit);
-    
-    try {
-      const response = await axioss.get(`/api/product-category/get-list?page=${page}&limit=${limit}`);
-      console.log("Response data:", response.data);
 
+    try {
+      // Gọi API với trang mới và categorySlug
+      const data = await fetchProductCategories();
+      // categoryId: categoryId // Thêm slug danh mục vào params
       setLoading(false);
-      setData(response.data.data);
-      setPagination(response.data.pagination.totalPages); // Cập nhật tổng số trang
-      setCurrentpagination(response.data.pagination.page); // Cập nhật trang hiện tại
-      console.log("setCurrentpagination" , response.data.pagination.page, Currentpagination);
+      setData(data.data);
+      setPagination(data.pagination.totalPages); // Cập nhật tổng số trang
+      setCurrentpagination(data.pagination.page); // Cập nhật trang hiện tại
+      console.log("setCurrentpagination", data.pagination.page, Currentpagination);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -187,7 +178,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
       // Gửi yêu cầu DELETE đến API
       const response = await axioss.delete(`/api/product-category/delete/${record.id}`);
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
-      fetchData(Currentpagination, limit);
+      await fetchData(Currentpagination, limit);
       message.success(`Deleted Product Category: ${record.name}`);
       console.log('Deleted Product Category:', record);
     } catch (error) {
@@ -213,7 +204,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
         };
         const response = await axioss.post(`/api/product-category/create-category`, formatFormData);
         console.log(response.status);
-        fetchData(Currentpagination, limit);
+        await fetchData(Currentpagination, limit);
         message.success('Product Category updated successfully!');
       } catch (error) {
         console.error('Error submitting Product Category:', error);
@@ -232,7 +223,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
         };
         const response = await axioss.put(`/api/product-category/update-category`, formatFormData);
         console.log(response.status);
-        fetchData(Currentpagination, limit);
+        await fetchData(Currentpagination, limit);
         message.success('Product Category updated successfully!');
       } catch (error) {
         console.error('Error submitting Product Category:', error);

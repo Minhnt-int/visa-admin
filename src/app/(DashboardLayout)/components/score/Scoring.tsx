@@ -5,22 +5,14 @@ import {
   CircularProgress, 
   Alert, 
   Button,
-  Paper
+  Paper,
+  LinearProgress
 } from '@mui/material';
 import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 import axios from 'axios';
 
 // API endpoint - thay đổi URL này theo endpoint thực tế của bạn
 const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/ai/chat'; 
-const sendContent = {
-  "messages": [
-    {
-      "role": "user",
-      "content": "<h1><mark class=pen-red>Búp bê Barbie Cao Cấp – Biểu tượng sắc đẹp và phong cách</mark></h1><h6><br>Búp bê Barbie từ lâu đã trở thành một biểu tượng của sự sáng tạo, phong cách và sự đa dạng. Được thiết kế với chất lượng cao cấp, Barbie không chỉ là món đồ chơi trẻ em, mà còn là một người bạn đồng hành, giúp kích thích trí tưởng tượng và niềm đam mê sáng tạo.</h6><figure class='image image_resized'style=width:45.85%><img height=2048 src=http://localhost:3000/uploads/0109fb62-a4c5-4c0c-8eae-d65df6714141.jpg style=aspect-ratio:1536/2048 width=1536></figure><h2><br>Đặc điểm nổi bật của Búp bê Barbie Cao Cấp</h2><p>Vì sao Búp bê Barbie Cao Cấp là sự lựa chọn hoàn hảo?<br>Không chỉ là một món đồ chơi thông thường, Barbie giúp trẻ rèn luyện sự tự tin và thể hiện bản thân. Với hàng loạt phụ kiện và mẫu mã đa dạng, Barbie mở ra một thế giới đầy màu sắc, nơi bé có thể khám phá phong cách riêng của mình.<br>Hãy để Barbie trở thành người bạn đồng hành đáng yêu của bé! 💖"
-    }
-  ],
-  "systemPrompt": "Bạn là trợ lý ảo của GiftWeb, Hãy đánh giá SEO trang này theo tiêu chuẩn Google (thang điểm 100), gửi lại cho tôi bản chỉnh sửa để tăng điểm SEO. Trả lời bằng tiếng Việt."
-};
 
 // Cập nhật hàm stripHtml để bảo toàn xuống dòng
 const stripHtml = (html: string) => {
@@ -30,20 +22,57 @@ const stripHtml = (html: string) => {
   return temp.textContent || '';
 };
 
-const Scoring = () => {
+interface ScoringProps {
+  blogContent: string;
+  onLoadingChange?: (isLoading: boolean) => void; // Callback để cập nhật loading
+}
+
+const Scoring: React.FC<ScoringProps> = ({ blogContent, onLoadingChange }) => {
   // States để quản lý dữ liệu và trạng thái
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0); // Thêm state để hiển thị tiến trình
 
   // Hàm gọi API
   const fetchData = async () => {
+    if (!blogContent) {
+      setContent(''); // Xóa nội dung cũ nếu không có blog content
+      return;
+    }
+    
     setLoading(true);
     setError(null);
+    setProgress(0); // Reset progress
+    
+    // Thông báo cho component cha về trạng thái loading
+    if (onLoadingChange) {
+      onLoadingChange(true);
+    }
+    
+    const sendContent = {
+      messages: [
+        {
+          role: "user",
+          content: blogContent
+        }
+      ],
+      systemPrompt: "Bạn là trợ lý ảo của GiftWeb, Hãy đánh giá SEO trang này theo tiêu chuẩn Google (thang điểm 100), gửi lại cho tôi bản chỉnh sửa để tăng điểm SEO. Trả lời bằng tiếng Việt."
+    };
+    
+    console.log('Sending content to API:', sendContent);
+    
+    // Giả lập tiến trình loading
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        const newProgress = prev + (100 - prev) * 0.1;
+        return Math.min(newProgress, 95); // Không đạt 100% cho đến khi thực sự hoàn thành
+      });
+    }, 500);
     
     try {
       const response = await axios.post(API_URL, sendContent);
-      console.log('Response:', response.data.data.response.content);
+      console.log('Response from API:', response.data);
       
       // Kiểm tra và lấy nội dung từ response
       if (response.data.data && response.data.data.response && response.data.data.response.content) {
@@ -55,18 +84,47 @@ const Scoring = () => {
       setError('Không thể kết nối với server. Vui lòng thử lại sau.');
       console.error('Error fetching data:', err);
     } finally {
-      setLoading(false);
+      clearInterval(progressInterval);
+      setProgress(100); // Đạt 100% khi hoàn thành
+      
+      // Đợi một chút để hiển thị 100% trước khi ẩn progress bar
+      setTimeout(() => {
+        setLoading(false);
+        // Thông báo cho component cha về trạng thái loading
+        if (onLoadingChange) {
+          onLoadingChange(false);
+        }
+      }, 500);
     }
   };
 
-  // Gọi API khi component mount
+  // Gọi API khi blogContent thay đổi
   useEffect(() => {
-    fetchData();
-  }, []);
+    console.log('Blog content changed, fetching new data...');
+    if (blogContent) {
+      fetchData();
+    } else {
+      // Nếu không có blog content, reset loading state
+      setLoading(false);
+      if (onLoadingChange) {
+        onLoadingChange(false);
+      }
+    }
+  }, [blogContent]); // Thêm blogContent vào dependency array
 
   return (
-    <DashboardCard title="Scoring Report">
+    <DashboardCard 
+      title="Chấm điểm SEO cho bài viết"
+      subtitle={loading ? `Đang phân tích SEO... ${Math.round(progress)}%` : ''}
+    >
+      <>
       {loading ? (
+        <Box sx={{ width: '100%', mb: 2 }}>
+          <LinearProgress variant="determinate" value={progress} />
+        </Box>
+      ) : null}
+      
+      {loading && progress < 30 ? (
         <Box display="flex" justifyContent="center" p={3}>
           <CircularProgress />
         </Box>
@@ -77,7 +135,7 @@ const Scoring = () => {
             size="small" 
             variant="outlined" 
             sx={{ ml: 2 }} 
-            onClick={fetchData}
+            onClick={() => fetchData()}
           >
             Thử lại
           </Button>
@@ -92,16 +150,23 @@ const Scoring = () => {
             minHeight: '200px'
           }}
         >
-          <Typography 
-            sx={{ 
-              lineHeight: 1.7,
-              whiteSpace: 'pre-wrap' // Quan trọng: giữ nguyên ký tự xuống dòng khi hiển thị
-            }}
-          >
-            {stripHtml(content)}
-          </Typography>
+          {content ? (
+            <Typography 
+              sx={{ 
+                lineHeight: 1.7,
+                whiteSpace: 'pre-wrap' // Quan trọng: giữ nguyên ký tự xuống dòng khi hiển thị
+              }}
+            >
+              {stripHtml(content)}
+            </Typography>
+          ) : (
+            <Typography color="text.secondary">
+              Chọn một blog để xem đánh giá SEO
+            </Typography>
+          )}
         </Paper>
       )}
+      </>
     </DashboardCard>
   );
 };
