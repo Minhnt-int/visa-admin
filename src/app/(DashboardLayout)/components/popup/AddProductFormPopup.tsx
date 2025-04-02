@@ -117,8 +117,6 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
 
   // Trong component cha
   const handleEditorChange = (content: string) => {
-    console.log('Editor content:', content);
-    
     onChange({ name: 'description', value: content });
   };
   

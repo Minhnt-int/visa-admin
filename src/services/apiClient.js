@@ -33,7 +33,6 @@ export const createApiUrl = (endpoint, params = {}) => {
 export const getRequest = async (endpoint, params = {}, options = {}) => {
   try {
     const url = createApiUrl(endpoint, params);
-    console.log(`Gọi GET request đến: ${url.toString()}`);
     
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -68,7 +67,6 @@ export const getRequest = async (endpoint, params = {}, options = {}) => {
 export const postRequest = async (endpoint, data, options = {}) => {
   try {
     const url = createApiUrl(endpoint);
-    console.log(`Gọi POST request đến: ${url.toString()}`);
     
     const response = await fetch(url.toString(), {
       method: 'POST',

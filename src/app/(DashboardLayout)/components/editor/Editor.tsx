@@ -37,7 +37,6 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 
 	const deleteImageFromServer = (src : any) => {
 		// Implement API call to delete image from server
-		console.log(`Deleting image from server: ${src}`);
 	};
 
 	const { ClassicEditor, DecoupledEditor, Plugin, ButtonView, AutoLink, CKBox, CKBoxImageEdit, Code, ImageEditing, ImageUtils, PageBreak, PictureEditing, Strikethrough, Subscript, Superscript, editorConfig } = useMemo(() => {
@@ -466,8 +465,6 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 								}}
 								onChange={(event, editor) => {
 									const data = editor.getData();
-									console.log('Editor content:', data);
-									
 									// Gọi hàm onChange được truyền vào từ props
 									if (onChange) {
 										onChange(data);

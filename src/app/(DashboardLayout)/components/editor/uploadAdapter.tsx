@@ -24,14 +24,10 @@ export class CustomUploadAdapter {
       try {
         // Thay thế alert bằng prompt
         const altText = await createPromptDialog('Nhập mô tả cho ảnh:', '');
-        console.log('Alt text entered:', altText);
-        
         const file = await this.loader.file;
         
         // Sử dụng altText trong quá trình upload
         const response = await this._uploadFile(file, altText);
-        console.log('Upload response:', response);
-        
         return response;
       } catch (error) {
         console.error('Upload failed:', error);
@@ -75,8 +71,6 @@ export class CustomUploadAdapter {
         const uploadPromise = new Promise<{default: string, alt: string}>((resolve, reject) => {
           xhr.onload = function() {
             if (xhr.status === 200 || xhr.status === 201) {
-              console.log('Upload response:', xhr.response);
-              
               // Trả về URL của ảnh đã upload và alt text
               resolve({
                 default: process.env.NEXT_PUBLIC_API_URL + xhr.response.data.pop().path,
@@ -128,8 +122,6 @@ export class CustomUploadAdapter {
 
 // Không thay đổi hàm CustomUploadAdapterPlugin (xóa từ khóa async)
 export function CustomUploadAdapterPlugin(editor: any) {
-  console.log('CustomUploadAdapterPlugin called');
-
   try {
     // Đăng ký adapter
     editor.plugins.get('FileRepository').createUploadAdapter = (loader: any) => {

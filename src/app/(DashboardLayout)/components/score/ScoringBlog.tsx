@@ -13,7 +13,6 @@ const ScoringBlog: React.FC<any> = ({ }) => {
     const [loading, setLoading] = useState(false); // State để quản lý loading
     
     const onBlogSelect = (blog: BlogPostAttributes) => {
-        console.log('Selected Blog:', blog);
         setLoading(true); // Bắt đầu loading khi chọn blog
         setSelectedBlog(blog);
         setRefreshKey(prevKey => prevKey + 1); // Tăng refreshKey để force re-render Scoring

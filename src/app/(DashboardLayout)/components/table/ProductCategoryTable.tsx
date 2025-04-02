@@ -48,7 +48,6 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
   };
 
   const handleLogSelected = () => {
-    console.log('Selected Product Category:', selectedRowKeys);
     message.info(`Selected Product Category: ${selectedRowKeys.join(', ')}`);
   };
 
@@ -157,17 +156,16 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
   ];
 
   const fetchData = async (page: number, limit: number) => {
-    console.log("Fetching data for page:", page, "with limit:", limit);
 
     try {
       // Gọi API với trang mới và categorySlug
-      const data = await fetchProductCategories();
+      const data : any = await fetchProductCategories();
+      
       // categoryId: categoryId // Thêm slug danh mục vào params
       setLoading(false);
       setData(data.data);
       setPagination(data.pagination.totalPages); // Cập nhật tổng số trang
       setCurrentpagination(data.pagination.page); // Cập nhật trang hiện tại
-      console.log("setCurrentpagination", data.pagination.page, Currentpagination);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -180,7 +178,6 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
       await fetchData(Currentpagination, limit);
       message.success(`Deleted Product Category: ${record.name}`);
-      console.log('Deleted Product Category:', record);
     } catch (error) {
       console.error('Error deleting Product Category:', error);
       message.error(`Failed to delete Product Category: ${record.name}`);
@@ -203,7 +200,6 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
           description: formData.description,
         };
         const response = await axioss.post(`/api/product-category/create-category`, formatFormData);
-        console.log(response.status);
         await fetchData(Currentpagination, limit);
         message.success('Product Category updated successfully!');
       } catch (error) {
@@ -222,7 +218,6 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
           description: formData.description,
         };
         const response = await axioss.put(`/api/product-category/update-category`, formatFormData);
-        console.log(response.status);
         await fetchData(Currentpagination, limit);
         message.success('Product Category updated successfully!');
       } catch (error) {
@@ -239,12 +234,10 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
   // Thêm useEffect để gửi request GET
   useEffect(() => {
     fetchData(1, limit);
-    console.log("first", Currentpagination, pagination);
 
   }, []); // Chỉ chạy một lần khi component được mount
 
   useEffect(() => {
-    console.log("Pagination updated:", pagination);
   }, [pagination]); // Chạy khi `pagination` thay đổi
 
   return (

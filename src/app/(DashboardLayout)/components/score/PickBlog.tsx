@@ -50,8 +50,6 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
       }) as any;
 
       if (response.data) {
-        console.log(response);
-        
         setBlogs(response.data);
         setTotalPages(Math.ceil(response.pagination.totalPages));
       } else {

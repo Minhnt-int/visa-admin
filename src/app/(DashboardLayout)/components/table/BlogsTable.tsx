@@ -45,7 +45,6 @@ const initialFormData : BlogPostAttributes = {
   };
 
   const handleLogSelected = () => {
-    console.log('Selected blogCategory:', selectedRowKeys);
     message.info(`Selected blogCategory: ${selectedRowKeys.join(', ')}`);
   };
 
@@ -152,13 +151,11 @@ const initialFormData : BlogPostAttributes = {
         sortBy: '',
         sortOrder: '',
       }) as any;
-      console.log("Response data:", response.data);
       
       setLoading(false);
       setData(response.data);
       setPagination(response.pagination.totalPages); // Cập nhật tổng số trang
       setCurrentpagination(response.pagination.page); // Cập nhật trang hiện tại
-      console.log("Pagination updated:", response.pagination.page);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -171,7 +168,6 @@ const initialFormData : BlogPostAttributes = {
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
       await fetchData(Currentpagination, limit);
       message.success(`Deleted blog: ${record.id}`);
-      console.log('Deleted blog:', record);
     } catch (error) {
       console.error('Error deleting blog:', error);
       message.error(`Failed to delete blog: ${record.id}`);
@@ -188,10 +184,8 @@ const initialFormData : BlogPostAttributes = {
   const createAPI = async () => {
     if (formData) {
       try {
-        console.log("formatFormData", formData);
         
         const response = await createBlog(formData);
-        console.log(response.status);
         await fetchData(Currentpagination, limit);
         message.success('Product updated successfully!');
       } catch (error) {
@@ -204,10 +198,8 @@ const initialFormData : BlogPostAttributes = {
   const updateAPI = async () => {
     if (formData) {
       try {
-        console.log("formatFormData", formData);
         
         const response = await updateBlog(formData);
-        console.log(response);
         fetchData(Currentpagination , limit);
         message.success('Product updated successfully!');
       } catch (error) {
@@ -225,12 +217,10 @@ const initialFormData : BlogPostAttributes = {
     // Thêm useEffect để gửi request GET
     useEffect(() => {
       fetchData(1, limit); // Gọi hàm fetchData với trang đầu tiên và số lượng sản phẩm trên mỗi trang
-      console.log("first", Currentpagination, pagination);
 
     }, []); // Chỉ chạy một lần khi component được mount
 
     useEffect(() => {
-      console.log("Pagination updated:", pagination);
     }, [pagination]); // Chạy khi `pagination` thay đổi
 
     return (

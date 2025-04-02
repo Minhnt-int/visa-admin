@@ -60,8 +60,6 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, onLoadingChange }) => {
       systemPrompt: "Bạn là trợ lý ảo của GiftWeb, Hãy đánh giá SEO trang này theo tiêu chuẩn Google (thang điểm 100), gửi lại cho tôi bản chỉnh sửa để tăng điểm SEO. Trả lời bằng tiếng Việt."
     };
     
-    console.log('Sending content to API:', sendContent);
-    
     // Giả lập tiến trình loading
     const progressInterval = setInterval(() => {
       setProgress(prev => {
@@ -72,8 +70,6 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, onLoadingChange }) => {
     
     try {
       const response = await axios.post(API_URL, sendContent);
-      console.log('Response from API:', response.data);
-      
       // Kiểm tra và lấy nội dung từ response
       if (response.data.data && response.data.data.response && response.data.data.response.content) {
         setContent(response.data.data.response.content);
@@ -100,7 +96,6 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, onLoadingChange }) => {
 
   // Gọi API khi blogContent thay đổi
   useEffect(() => {
-    console.log('Blog content changed, fetching new data...');
     if (blogContent) {
       fetchData();
     } else {

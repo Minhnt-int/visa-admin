@@ -12,9 +12,10 @@ import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
 import { ProductAttributes } from '@/data/ProductAttributes';
 import AddProductFormPopup from '../popup/AddProductFormPopup';
-import {  fetchProductList, createProduct, updateProduct, deleteProduct  } from "@/services/productService";
-const initialProducts: ProductAttributes[] = []
+import { fetchProductList, createProduct, updateProduct, deleteProduct, fetchProductBySlug } from "@/services/productService";
 
+
+const initialProducts: ProductAttributes[] = []
 
 const initialFormData: ProductAttributes = {
   id: 0,
@@ -54,7 +55,6 @@ const initialFormData: ProductAttributes = {
 };
 
 
-
 const ProductsTable: React.FC = () => {
 
   const [products, setProducts] = useState<ProductAttributes[]>(initialProducts);
@@ -77,22 +77,36 @@ const ProductsTable: React.FC = () => {
   };
 
   const handleLogSelected = () => {
-    console.log('Selected Products:', selectedRowKeys);
     message.info(`Selected Products: ${selectedRowKeys.join(', ')}`);
   };
 
-  const handleView = (record: ProductAttributes) => {
+  const handleView = async (record: ProductAttributes) => {
     setIsView(true);
-    setFormData(record);
+    
+    const productDetails = await getProductDetails(record.slug);
+    setFormData(productDetails);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (record: ProductAttributes) => {
+  const getProductDetails = async (slug: string): Promise<ProductAttributes | null> => {
+    try {
+      const response = await fetchProductBySlug(slug) as any;
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      return null;
+    }
+  };
+
+  const handleEdit = async (record: ProductAttributes) => {
     setIsView(false);
-    setFormData(record);
+    const productDetails = await getProductDetails(record.slug);
+    setFormData(productDetails);
+    
     setAction("edit");
     setIsModalOpen(true);
   };
+
   const handleAdd = () => {
     setIsView(false);
     setFormData(initialFormData);
@@ -202,13 +216,10 @@ const ProductsTable: React.FC = () => {
         sortOrder: '',
       }) as any; // hoặc as { data: { data: ProductAttributes[], pagination: { totalPages: number, currentPage: number } } };
       
-      console.log(page, "Response data:", response.data);
-      
       setLoading(false);
       setData(response.data);
       setPagination(response.pagination.totalPages);
       setCurrentpagination(response.pagination.currentPage);
-      console.log("Pagination updated:", response.pagination.totalPages);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -221,7 +232,6 @@ const ProductsTable: React.FC = () => {
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
       fetchData(Currentpagination, limit);
       message.success(`Deleted Product: ${record.name}`);
-      console.log('Deleted Product:', record);
     } catch (error) {
       console.error('Error deleting product:', error);
       message.error(`Failed to delete product: ${record.name}`);
@@ -236,7 +246,6 @@ const ProductsTable: React.FC = () => {
   };
   
   const createAPI = async () => {
-    console.log("Create API called with formData:", formData);
     
     if (formData) {
       try {
@@ -252,7 +261,6 @@ const ProductsTable: React.FC = () => {
     }
   };
   const updateAPI = async () => {
-    console.log("Update API called with formData:", formData);
     
     if (formData) {
       try {
@@ -280,7 +288,6 @@ const ProductsTable: React.FC = () => {
   }, []); // Chỉ chạy một lần khi component được mount
 
   useEffect(() => {
-    console.log("Pagination updated:", pagination);
   }, [pagination]); // Chạy khi `pagination` thay đổi
 
   return (

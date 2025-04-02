@@ -44,21 +44,22 @@ export const fetchBlogList = async ({
 };
 
 /**
- * Lấy thông tin chi tiết sản phẩm theo slug
- * @param {string} slug - Slug của sản phẩm
- * @returns {Promise<Object>} - Promise trả về dữ liệu sản phẩm
+ * Lấy thông tin chi tiết bài viết blog theo slug
+ * @param {string} slug - Slug của bài viết
+ * @returns {Promise<Object>} - Promise trả về dữ liệu bài viết
  */
 export const fetchBlogBySlug = async (slug) => {
-  
   try {
-    const response = await fetch(`${API_BASE_URL}/api/blog/${slug}`, {
-      next: { revalidate: 3600 }
+    const response = await axioss.get(`${API_BASE_URL}/api/blog/${slug}`, {
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200-299 là thành công
+        return status >= 200 && status < 300;
+      }
     });
     
-    
-    return response.data;
+    return response; // Trả về toàn bộ response để có thể truy cập response.data
   } catch (error) {
-    console.error(`Lỗi khi lấy thông tin sản phẩm với slug ${slug}:`, error);
+    console.error(`Lỗi khi lấy thông tin bài viết với slug ${slug}:`, error);
     throw error;
   }
 };
@@ -71,7 +72,6 @@ export const fetchPopularBlogs = async (
 
 ) => {
   // Trả về mảng rỗng để vô hiệu hóa tạm thời
-  console.log("fetchPopularBlogs đã bị vô hiệu hóa, trả về mảng rỗng");
   return [];
 };
 
@@ -106,7 +106,6 @@ export const createBlog = async (blogData) => {
       }
 
     });
-    console.log("response", response);
     
     return response.data;
   } catch (error) {

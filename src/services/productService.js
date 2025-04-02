@@ -49,13 +49,16 @@ export const fetchProductList = async ({
  * @returns {Promise<Object>} - Promise trả về dữ liệu sản phẩm
  */
 export const fetchProductBySlug = async (slug) => {
-  
   try {
-    const response = await fetch(`${API_BASE_URL}/api/product/get-product-by-slug?slug=${slug}`, {
-      next: { revalidate: 3600 }
+    const response = await axioss.get(`${API_BASE_URL}/api/product/get-product-by-slug`, {
+      params: { slug },
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200-299 là thành công
+        return status >= 200 && status < 300;
+      }
     });
     
-    return response.data;
+    return response; // Trả về toàn bộ response để có thể truy cập response.data
   } catch (error) {
     console.error(`Lỗi khi lấy thông tin sản phẩm với slug ${slug}:`, error);
     throw error;
@@ -74,20 +77,27 @@ export const fetchPopularProducts = async (
   return [];
 };
 
-
-export const fetchProductCategories = async (  page = 1,
-  limit = 10,) => {
- try {
-   const response = await fetch(`${API_BASE_URL}/api/product-category/get-list?page=` + page + `&limit=` + limit, {
-     next: { revalidate: 3600 }
-   });
-   
+/**
+ * Lấy danh sách danh mục sản phẩm
+ * @param {number} page - Số trang
+ * @param {number} limit - Số mục mỗi trang
+ * @returns {Promise<Object>} - Promise trả về dữ liệu danh mục sản phẩm
+ */
+export const fetchProductCategories = async (page = 1, limit = 10) => {
+  try {
+    const response = await axioss.get(`${API_BASE_URL}/api/product-category/get-list`, {
+      params: { page, limit },
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200-299 là thành công
+        return status >= 200 && status < 300;
+      }
+    });
     
-   return response.data;
- } catch (error) {
-   console.error(`Lỗi khi lấy thông tin loại sản phẩm:`, `${API_BASE_URL}/api/product-category/get-list?page=` + page + `&limit=` + limit , "\n Lỗi: " ,error);
-   throw error;
- }
+    return response.data;
+  } catch (error) {
+    console.error(`Lỗi khi lấy thông tin loại sản phẩm:`, error);
+    throw error;
+  }
 };
 
 export const createProduct = async (productData) => {
