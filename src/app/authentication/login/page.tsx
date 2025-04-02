@@ -4,11 +4,11 @@ import { Grid, Box, Card, Stack, Typography } from "@mui/material";
 // components
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
-import AuthLogin from "../auth/AuthLogin";
+import AuthLogin from "./AuthLogin";
 
 const Login2 = () => {
   return (
-    <PageContainer title="Login" description="this is Login page">
+    <PageContainer title="Đăng nhập" description="Trang đăng nhập hệ thống">
       <Box
         sx={{
           position: "relative",
@@ -48,6 +48,7 @@ const Login2 = () => {
                 <Logo />
               </Box>
               <AuthLogin
+                title="Đăng nhập"
                 subtext={
                   <Typography
                     variant="subtitle1"
@@ -55,7 +56,7 @@ const Login2 = () => {
                     color="textSecondary"
                     mb={1}
                   >
-                    Your Social Campaigns
+                    Vui lòng đăng nhập để tiếp tục
                   </Typography>
                 }
                 subtitle={
@@ -70,7 +71,7 @@ const Login2 = () => {
                       variant="h6"
                       fontWeight="500"
                     >
-                      New to Modernize?
+                      Chưa có tài khoản?
                     </Typography>
                     <Typography
                       component={Link}
@@ -81,7 +82,7 @@ const Login2 = () => {
                         color: "primary.main",
                       }}
                     >
-                      Create an account
+                      Đăng ký
                     </Typography>
                   </Stack>
                 }

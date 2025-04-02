@@ -27,6 +27,14 @@
       "./src/types"
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/services/productService.js", "src/services/apiClient.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/types/**/*.d.ts",
+    "src/services/productService.js",
+    "src/services/apiClient.js"
+  ],
   "exclude": ["node_modules"]
 }
