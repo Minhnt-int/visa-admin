@@ -34,7 +34,6 @@
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
     "src/services/productService.js",
-    "src/services/apiClient.js"
   ],
   "exclude": ["node_modules"]
 }

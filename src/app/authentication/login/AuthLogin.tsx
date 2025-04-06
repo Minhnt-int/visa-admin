@@ -13,9 +13,11 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 import CustomTextField from "@/app/(DashboardLayout)/components/forms/theme-elements/CustomTextField";
+import axios from "axios";
 
 interface loginType {
   title?: string;
@@ -25,59 +27,60 @@ interface loginType {
 
 const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
-  
-  const [username, setUsername] = useState("");
+
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
-    if (!username || !password) {
-      setError("Vui lòng nhập tên đăng nhập và mật khẩu");
+    if (!email || !password) {
+      setError('Vui lòng nhập email và mật khẩu');
       return;
     }
-    
+
     setLoading(true);
-    setError("");
     
     try {
-      // Gửi thông tin đăng nhập đến API server trước
-      const apiResponse = await fetch("http://localhost:3000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
+      // Gọi API login-token với full URL
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await axios.post(`${baseUrl}/api/auth/login-token`, {
+        email,
+        password
       });
 
-      const data = await apiResponse.json();
+      console.log('Login response:', response.data);
 
-      if (!apiResponse.ok) {
-        throw new Error(data.message || "Đăng nhập thất bại");
+      // Kiểm tra response
+      if (response.data.success) {
+        const accessToken = response.data.accessToken;
+        const refreshToken = response.data.refreshToken;
+        
+        // Lưu vào localStorage
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Đồng thời lưu vào cookie để middleware có thể đọc
+        Cookies.set('accessToken', accessToken, { expires: 1, path: '/' });
+        
+        // Hiển thị thông báo thành công
+        alert('Đăng nhập thành công');
+        
+        // Chuyển hướng ngay lập tức không đợi middleware
+        router.push('/');
+      } else {
+        // Xử lý lỗi từ API
+        setError(response.data.message || 'Đăng nhập thất bại');
       }
-
-      // Sau khi API xác thực thành công, sử dụng NextAuth để tạo session
-      const result = await signIn("credentials", {
-        username,
-        password,
-        redirect: false,
-        callbackUrl
-      });
-      
-      if (result?.error) {
-        setError("Tên đăng nhập hoặc mật khẩu không đúng");
-      } else if (result?.url) {
-        // Đăng nhập thành công, chuyển hướng đến trang được chỉ định
-        router.push(result.url);
-        router.refresh();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
-      console.error("Lỗi đăng nhập:", err);
+    } catch (error: any) {
+      console.error('Login error:', error);
+      // Hiển thị thông báo lỗi
+      const errorMessage = error.response?.data?.message || 'Đã xảy ra lỗi khi đăng nhập';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -106,17 +109,17 @@ const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
               variant="subtitle1"
               fontWeight={600}
               component="label"
-              htmlFor="username"
+              htmlFor="email"
               mb="5px"
             >
               Tên đăng nhập
             </Typography>
-            <CustomTextField 
-              id="username"
-              variant="outlined" 
-              fullWidth 
-              value={username}
-              onChange={(e:any) => setUsername(e.target.value)}
+            <CustomTextField
+              id="email"
+              variant="outlined"
+              fullWidth
+              value={email}
+              onChange={(e: any) => setEmail(e.target.value)}
             />
           </Box>
           <Box mt="25px">
@@ -129,13 +132,13 @@ const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
             >
               Mật khẩu
             </Typography>
-            <CustomTextField 
+            <CustomTextField
               id="password"
-              type="password" 
-              variant="outlined" 
-              fullWidth 
+              type="password"
+              variant="outlined"
+              fullWidth
               value={password}
-              onChange={(e:any) => setPassword(e.target.value)}
+              onChange={(e: any) => setPassword(e.target.value)}
             />
           </Box>
           <Stack

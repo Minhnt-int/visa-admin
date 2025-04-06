@@ -2,7 +2,6 @@
  * Service cho các cuộc gọi API liên quan đến sản phẩm
  */
 
-import { getRequest } from './apiClient';
 import axioss from '../../axiosConfig'; // Import axios từ thư viện axios
 // Thêm kiểm tra và fallback cho API URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -36,9 +35,24 @@ export const fetchBlogList = async ({
       limit
     };
     
-    return await getRequest('/api/blog/get-list', params);
+    // Lọc bỏ các tham số trống
+    const filteredParams = Object.fromEntries(
+      Object.entries(params).filter(([_, value]) => 
+        value !== undefined && value !== null && value !== ''
+      )
+    );
+    
+    const response = await axioss.get(`${API_BASE_URL}/api/blog/get-list`, {
+      params: filteredParams,
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200-299 là thành công
+        return status >= 200 && status < 300;
+      }
+    });
+    
+    return response.data;
   } catch (error) {
-    console.error("Lỗi khi lấy sản phẩm:", error);
+    console.error("Lỗi khi lấy danh sách blog:", error);
     throw error;
   }
 };
@@ -148,6 +162,21 @@ export const updateBlog = async (blogData) => {
 export const deleteBlog = async (blogId) => {
   try {
     const response = await axioss.delete(`/api/blog/delete/${blogId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi xóa sản phẩm:', error);
+    throw error;
+  }
+};
+
+/**
+ * Xóa sản phẩm theo ID
+ * @param {number} blogCategoryId - ID của sản phẩm cần xóa
+ * @returns {Promise<Object>} - Promise trả về kết quả xóa danh mục sản phẩm
+ */
+export const deleteCategoryBlog = async (blogCategoryId) => {
+  try {
+    const response = await axioss.delete(`/api/blog/delete/${blogCategoryId}`);
     return response.data;
   } catch (error) {
     console.error('Lỗi khi xóa sản phẩm:', error);

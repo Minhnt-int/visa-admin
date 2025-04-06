@@ -1,16 +1,11 @@
 import {
-  IconAperture,
+  IconArticle,
   IconCategory,
   IconCategoryFilled,
-  IconCopy,
   IconEye,
   IconLayoutDashboard,
-  IconLogin,
-  IconMoodHappy,
   IconNews,
   IconTablePlus,
-  IconTypography,
-  IconUserPlus,
 } from "@tabler/icons-react";
 
 import { uniqueId } from "lodash";
@@ -67,19 +62,13 @@ const Menuitems = [
   },
   {
     navlabel: true,
-    subheader: "Auth",
+    subheader: "Quản lý đơn hàng",
   },
   {
     id: uniqueId(),
-    title: "Login",
-    icon: IconLogin,
-    href: "/authentication/login",
-  },
-  {
-    id: uniqueId(),
-    title: "Register",
-    icon: IconUserPlus,
-    href: "/authentication/register",
+    title: "Đơn hàng",
+    icon: IconArticle,
+    href: "/don-hang",
   },
 ];
 

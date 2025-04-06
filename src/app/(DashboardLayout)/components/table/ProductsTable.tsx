@@ -14,9 +14,6 @@ import { ProductAttributes } from '@/data/ProductAttributes';
 import AddProductFormPopup from '../popup/AddProductFormPopup';
 import { fetchProductList, createProduct, updateProduct, deleteProduct, fetchProductBySlug } from "@/services/productService";
 
-
-const initialProducts: ProductAttributes[] = []
-
 const initialFormData: ProductAttributes = {
   id: 0,
   name: "",
@@ -57,7 +54,6 @@ const initialFormData: ProductAttributes = {
 
 const ProductsTable: React.FC = () => {
 
-  const [products, setProducts] = useState<ProductAttributes[]>(initialProducts);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isView, setIsView] = useState(true);
@@ -69,6 +65,7 @@ const ProductsTable: React.FC = () => {
   const [data, setData] = useState<ProductAttributes[]>([]);
   const [pagination, setPagination] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -82,27 +79,13 @@ const ProductsTable: React.FC = () => {
 
   const handleView = async (record: ProductAttributes) => {
     setIsView(true);
-    
-    const productDetails = await getProductDetails(record.slug);
-    setFormData(productDetails);
+    setFormData(record);
     setIsModalOpen(true);
-  };
-
-  const getProductDetails = async (slug: string): Promise<ProductAttributes | null> => {
-    try {
-      const response = await fetchProductBySlug(slug) as any;
-      return response.data.data;
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      return null;
-    }
   };
 
   const handleEdit = async (record: ProductAttributes) => {
     setIsView(false);
-    const productDetails = await getProductDetails(record.slug);
-    setFormData(productDetails);
-    
+    setFormData(record);
     setAction("edit");
     setIsModalOpen(true);
   };
@@ -215,8 +198,10 @@ const ProductsTable: React.FC = () => {
         sortBy: '',
         sortOrder: '',
       }) as any; // hoặc as { data: { data: ProductAttributes[], pagination: { totalPages: number, currentPage: number } } };
+      console.log("Response:", response);
       
       setLoading(false);
+      setTotal(response.pagination.total);
       setData(response.data);
       setPagination(response.pagination.totalPages);
       setCurrentpagination(response.pagination.currentPage);
@@ -324,7 +309,7 @@ const ProductsTable: React.FC = () => {
           <Pagination
             align="center"
             current={Currentpagination} // Trang hiện tại
-            total={pagination * 10} // Tổng số mục (giả sử mỗi trang có 10 mục)
+            total={total} // Tổng số mục (giả sử mỗi trang có 10 mục)
             onChange={(page) => {
               setCurrentpagination(page); // Cập nhật trang hiện tại
               fetchData(page, limit); // Gọi API để lấy dữ liệu trang mới

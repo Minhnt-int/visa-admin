@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, message, Card } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import AddFormPopup from '../popup/AddFormPopup';
-import products from '@/data/products.json';
-import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
-import { set } from 'lodash';
-import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
 import { ProductCategory } from '@/data/ProductCategory';
-import { fetchProductCategories } from "@/services/productService";
+import { fetchProductCategories, updateProductCategory, createProductCategory, deleteProduct, deleteProductCategory } from "@/services/productService";
 
 const initialFormData: ProductCategory = {
   id: 0,
@@ -24,12 +19,10 @@ const initialFormData: ProductCategory = {
 }
 
 interface ProductCategoryTableProps {
-  limit: number;
 }
 
-const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) => {
+const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
 
-  const [productCategory, setProductCategory] = useState<ProductCategory[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isView, setIsView] = useState(true);
@@ -37,7 +30,8 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
   const [action, setAction] = useState("");
   const [formData, setFormData] = useState<ProductCategory | null>(null);
 
-
+const [total, setTotal] = useState(1);
+const [limit, setLimit] = useState(10);
   const [data, setData] = useState<ProductCategory[]>([]);
   const [pagination, setPagination] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
@@ -59,11 +53,13 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
 
   const handleEdit = (record: ProductCategory) => {
     setIsView(false);
+    setAction("update");
     setFormData(record);
     setIsModalOpen(true);
   };
   const handleAdd = () => {
     setIsView(false);
+    setAction("create");
     setFormData(initialFormData);
     setIsModalOpen(true);
   };
@@ -159,13 +155,18 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
 
     try {
       // Gọi API với trang mới và categorySlug
-      const data : any = await fetchProductCategories();
+      const data : any = await fetchProductCategories(page, limit); // Gọi API để lấy dữ liệu
       
       // categoryId: categoryId // Thêm slug danh mục vào params
       setLoading(false);
       setData(data.data);
+      setLimit(data.pagination.limit);
+      setTotal(data.pagination.total); // Cập nhật tổng số trang
       setPagination(data.pagination.totalPages); // Cập nhật tổng số trang
       setCurrentpagination(data.pagination.page); // Cập nhật trang hiện tại
+
+      console.log(data);
+
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -174,7 +175,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
   const deleteAPI = async (record: ProductCategory) => {
     try {
       // Gửi yêu cầu DELETE đến API
-      const response = await axioss.delete(`/api/product-category/delete/${record.id}`);
+      const response = await deleteProductCategory(record.id);
       // Cập nhật danh sách sản phẩm sau khi xóa thành công
       await fetchData(Currentpagination, limit);
       message.success(`Deleted Product Category: ${record.name}`);
@@ -199,9 +200,9 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
           slug: formData.slug,
           description: formData.description,
         };
-        const response = await axioss.post(`/api/product-category/create-category`, formatFormData);
+        const response = await createProductCategory(formatFormData);
         await fetchData(Currentpagination, limit);
-        message.success('Product Category updated successfully!');
+        message.success('Product Category created successfully!');
       } catch (error) {
         console.error('Error submitting Product Category:', error);
         message.error('Failed to submit Product Category.');
@@ -213,11 +214,12 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
     if (formData) {
       try {
         const formatFormData = {
+          id: formData.id,
           name: formData.name,
           slug: formData.slug,
           description: formData.description,
         };
-        const response = await axioss.put(`/api/product-category/update-category`, formatFormData);
+        const response = await updateProductCategory(formatFormData);
         await fetchData(Currentpagination, limit);
         message.success('Product Category updated successfully!');
       } catch (error) {
@@ -272,7 +274,8 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = ({ limit }) =>
           <Pagination
             align="center"
             current={Currentpagination} // Trang hiện tại
-            total={pagination * 10} // Tổng số mục (giả sử mỗi trang có 10 mục)
+            total={total} // Tổng số mục (giả sử mỗi trang có 10 mục)
+            pageSize={limit} // Số lượng mục trên mỗi trang
             onChange={(page) => {
               setCurrentpagination(page); // Cập nhật trang hiện tại
               fetchData(page, limit); // Gọi API để lấy dữ liệu trang mới

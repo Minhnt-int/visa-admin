@@ -351,6 +351,7 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 				initialData: value || '',
 				language: 'vi',
 				licenseKey: LICENSE_KEY,
+				disableCheck: true,
 				link: {
 					addTargetToExternalLinks: true,
 					defaultProtocol: 'https://',

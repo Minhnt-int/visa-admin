@@ -23,26 +23,27 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedBlog, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  
+
   // States cho popup
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewBlog, setViewBlog] = useState<BlogPostAttributes | null>(null);
 
   // Số lượng blog mỗi trang
-  const blogsPerPage = 10;
 
   // Hàm fetch danh sách blog
-  const fetchBlogs = async (page: number, blogsPerPage: number) => {
+  const fetchBlogs = async (page: number, limit: number) => {
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetchBlogList({
         page: page,
-        limit: blogsPerPage,
+        limit: limit,
         categoryId: '',
         search: '',
         sortBy: '',
@@ -51,7 +52,10 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
 
       if (response.data) {
         setBlogs(response.data);
+        setTotal(response.pagination.total);
+        setLimit(response.pagination.limit);
         setTotalPages(Math.ceil(response.pagination.totalPages));
+
       } else {
         setError('Dữ liệu không đúng định dạng');
       }
@@ -65,13 +69,13 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
 
   // Fetch blogs khi component mount
   useEffect(() => {
-    fetchBlogs(page, blogsPerPage);
+    fetchBlogs(page, limit);
   }, [page]);
 
   // Xử lý chọn blog
   const handleSelectBlog = (blog: BlogPostAttributes) => {
     if (disabled) return; // Không cho phép chọn nếu disabled
-    
+
     setSelectedBlog(blog);
     setSelectedRowKeys([blog.id]);
     onBlogSelect(blog);
@@ -92,7 +96,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
   // Xử lý thay đổi trang
   const handlePageChange = (page: number) => {
     if (disabled) return; // Không cho phép đổi trang nếu disabled
-    
+    fetchBlogs(page, limit);
     setPage(page);
   };
 
@@ -109,9 +113,9 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
   const createExcerpt = (content: string, maxLength: number = 100) => {
     // Loại bỏ HTML tags
     const plainText = content.replace(/<[^>]*>/g, '');
-    
+
     if (plainText.length <= maxLength) return plainText;
-    
+
     // Cắt đến khoảng trắng gần nhất để không cắt giữa từ
     return plainText.substr(0, plainText.lastIndexOf(' ', maxLength)) + '...';
   };
@@ -159,18 +163,18 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
       fixed: 'right',
       render: (_, record) => (
         <Space>
-          <Button 
-            variant="outlined" 
-            color="info" 
+          <Button
+            variant="outlined"
+            color="info"
             size="small"
             onClick={() => handleViewBlog(record)}
             disabled={disabled}
           >
             Xem
           </Button>
-          <Button 
-            variant="contained" 
-            color="primary" 
+          <Button
+            variant="contained"
+            color="primary"
             size="small"
             onClick={() => handleSelectBlog(record)}
             disabled={disabled}
@@ -192,11 +196,11 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
         ) : error ? (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
-            <Button 
-              size="small" 
-              variant="outlined" 
-              sx={{ ml: 2 }} 
-              onClick={() => fetchBlogs(page, blogsPerPage)}
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{ ml: 2 }}
+              onClick={() => fetchBlogs(page, limit)}
               disabled={disabled}
             >
               Thử lại
@@ -212,7 +216,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
                 selectedRowKeys,
                 onChange: (selectedKeys) => {
                   if (disabled) return; // Không cho phép chọn nếu disabled
-                  
+
                   setSelectedRowKeys(selectedKeys);
                   const selectedBlog = blogs.find(blog => blog.id === selectedKeys[0]);
                   if (selectedBlog) {
@@ -232,16 +236,14 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
             />
 
             {/* Phân trang */}
-            {totalPages > 1 && (
-              <Box display="flex" justifyContent="center" mt={3}>
-                <Pagination
-                  current={page}
-                  total={totalPages * blogsPerPage}
-                  onChange={handlePageChange}
-                  showSizeChanger={false}
-                  disabled={disabled} // Disable phân trang khi disabled
-                />
-              </Box>
+            {!loading   && (
+              <Pagination
+                align="center"
+                current={page} // Trang hiện tại
+                total={total} // Tổng số mục (giả sử mỗi trang có 10 mục)
+                pageSize={limit} // Số lượng mục trên mỗi trang
+                onChange={handlePageChange}
+              />
             )}
           </>
         )}
@@ -251,7 +253,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
           open={isModalOpen}
           isView={true} // Chỉ cho phép xem, không cho phép chỉnh sửa
           onClose={handleModalClose}
-          onSubmit={() => {}} // Không cần xử lý submit vì chỉ xem
+          onSubmit={() => { }} // Không cần xử lý submit vì chỉ xem
           formData={viewBlog || {
             id: 0,
             title: "",
@@ -266,7 +268,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
             updatedAt: new Date(),
             blogCategoryId: 0,
           }}
-          onChange={() => {}} // Không cần xử lý onChange vì chỉ xem
+          onChange={() => { }} // Không cần xử lý onChange vì chỉ xem
         />
       </>
     </DashboardCard>

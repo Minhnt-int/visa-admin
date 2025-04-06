@@ -2,7 +2,6 @@
  * Service cho các cuộc gọi API liên quan đến sản phẩm
  */
 
-import { getRequest } from './apiClient';
 import axioss from '../../axiosConfig'; // Import axios từ thư viện axios
 // Thêm kiểm tra và fallback cho API URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -36,7 +35,22 @@ export const fetchProductList = async ({
       limit
     };
     
-    return await getRequest('/api/product/list', params);
+    // Lọc bỏ các tham số trống
+    const filteredParams = Object.fromEntries(
+      Object.entries(params).filter(([_, value]) => 
+        value !== undefined && value !== null && value !== ''
+      )
+    );
+    
+    const response = await axioss.get(`${API_BASE_URL}/api/product/get-list`, {
+      params: filteredParams,
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200-299 là thành công
+        return status >= 200 && status < 300;
+      }
+    });
+    
+    return response.data;
   } catch (error) {
     console.error("Lỗi khi lấy sản phẩm:", error);
     throw error;
@@ -153,6 +167,67 @@ export const updateProduct = async (productData) => {
 export const deleteProduct = async (productId) => {
   try {
     const response = await axioss.delete(`/api/product/delete/${productId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi xóa sản phẩm:', error);
+    throw error;
+  }
+};
+
+
+export const createProductCategory = async (productCategoryData) => {
+  try {
+    const response = await axioss.post(`${API_BASE_URL}/api/product-category/create-category`,productCategoryData , {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200 và 201 là thành công
+        return status >= 200 && status < 300;
+      }
+
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi tạo sản phẩm:', error);
+    throw error;
+  }
+};
+
+/**
+ * Cập nhật thông tin sản phẩm
+ * @param {ProductAttributes} productData - Dữ liệu sản phẩm cần cập nhật
+ * @returns {Promise<Object>} - Promise trả về kết quả cập nhật sản phẩm
+ */
+export const updateProductCategory = async (productCategoryData) => {
+  try {
+    // Sử dụng URL tương đối thay vì URL tuyệt đối
+    const response = await axioss.put('/api/product-category/update-category', productCategoryData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200 và 201 là thành công
+        return status >= 200 && status < 300;
+      }
+
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi cập nhật sản phẩm:', error);
+    throw error;
+  }
+};
+
+/**
+ * Xóa sản phẩm theo ID
+ * @param {number} productId - ID của sản phẩm cần xóa
+ * @returns {Promise<Object>} - Promise trả về kết quả xóa sản phẩm
+ */
+export const deleteProductCategory = async (productCategoryId) => {
+  try {
+    const response = await axioss.delete(`/api/product/delete/${productCategoryId}`);
     return response.data;
   } catch (error) {
     console.error('Lỗi khi xóa sản phẩm:', error);
