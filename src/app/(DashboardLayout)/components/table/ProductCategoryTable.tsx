@@ -1,83 +1,74 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, message, Card, Input, Select, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
 import ConfirmPopup from '../popup/ConfirmPopup';
-import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
 import { ProductCategory } from '@/data/ProductCategory';
-import { fetchProductCategories, updateProductCategory, createProductCategory, deleteProduct, deleteProductCategory } from "@/services/productService";
+import { useAppContext } from '@/contexts/AppContext';
+import { useRouter } from 'next/navigation';
 
 const initialFormData: ProductCategory = {
   id: 0,
   name: "",
-  parentId: 0,
+  parentId: null,
   slug: "",
   description: "",
-  createdAt: "",
-  updatedAt: "",
+  createdAt: new Date(),
+  updatedAt: new Date(),
 }
 
-interface ProductCategoryTableProps {
-}
-
-const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
-
+const ProductCategoryTable: React.FC = () => {
+  const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isView, setIsView] = useState(true);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
-  const [action, setAction] = useState("");
   const [formData, setFormData] = useState<ProductCategory | null>(null);
 
-  const [total, setTotal] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [data, setData] = useState<ProductCategory[]>([]);
-  const [pagination, setPagination] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
-  const [loading, setLoading] = useState(true);
 
   const [searchText, setSearchText] = useState('');
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
+
+  const {
+    // ProductCategory State
+    productCategories,
+    
+    // Shared State
+    loading,
+    
+    // ProductCategory Actions
+    fetchProductCategories,
+    deleteProductCategory,
+    
+    // Shared Actions
+    setLoadingState,
+    setErrorState,
+  } = useAppContext();
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
   };
 
   const handleLogSelected = () => {
-    message.info(`Selected Product Category: ${selectedRowKeys.join(', ')}`);
+    message.info(`Đã chọn danh mục: ${selectedRowKeys.join(', ')}`);
   };
 
   const handleView = (record: ProductCategory) => {
-    setIsView(true);
-    setFormData(record);
-    setIsModalOpen(true);
+    router.push(`/danh-muc-san-pham/view/${record.id}`);
   };
 
   const handleEdit = (record: ProductCategory) => {
-    setIsView(false);
-    setAction("update");
-    setFormData(record);
-    setIsModalOpen(true);
-  };
-  const handleAdd = () => {
-    setIsView(false);
-    setAction("create");
-    setFormData(initialFormData);
-    setIsModalOpen(true);
+    router.push(`/danh-muc-san-pham/action?id=${record.id}&mode=edit`);
   };
 
-  const handleDelete = async (record: ProductCategory) => {
+  const handleAdd = () => {
+    router.push(`/danh-muc-san-pham/action?mode=create`);
+  };
+
+  const handleDelete = (record: ProductCategory) => {
     setFormData(record);
     setConfirmingPopup(true);
-    setAction("delete");
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setConfirmingPopup(false);
-    setFormData(null);
   };
 
   const columns: ColumnsType<ProductCategory> = [
@@ -89,7 +80,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
       width: 80,
     },
     {
-      title: 'Name',
+      title: 'Tên danh mục',
       dataIndex: 'name',
       key: 'name',
       width: 200,
@@ -102,7 +93,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
       width: 200,
     },
     {
-      title: 'Description',
+      title: 'Mô tả',
       dataIndex: 'description',
       key: 'description',
       width: 300,
@@ -118,253 +109,163 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
       ),
     },
     {
-      title: 'Parent ID',
+      title: 'Danh mục cha',
       dataIndex: 'parentId',
       key: 'parentId',
       width: 120,
-      render: (parentId) => parentId === null ? <span style={{ color: 'gray' }}>Root category</span> : parentId,
+      render: (parentId) => parentId === null ? <span style={{ color: 'gray' }}>Danh mục gốc</span> : parentId,
     },
     {
-      title: 'Created At',
+      title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 170,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      render: (date) => date ? new Date(date).toLocaleString() : '',
+      sorter: (a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateA - dateB;
+      },
     },
     {
-      title: 'Updated At',
+      title: 'Ngày cập nhật',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: 170,
-      render: (date) => new Date(date).toLocaleString(),
+      render: (date) => date ? new Date(date).toLocaleString() : '',
     },
     {
-      title: 'Actions',
+      title: 'Thao tác',
       key: 'actions',
       fixed: 'right',
       width: 180,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
-            View
+            Xem
           </Button>
           <Button type="link" onClick={() => handleEdit(record)}>
-            Edit
+            Sửa
           </Button>
           <Button type="link" danger onClick={() => handleDelete(record)}>
-            Delete
+            Xóa
           </Button>
         </Space>
       ),
     },
   ];
 
-  const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
+  const fetchData = async () => {
     try {
-      const params = {
-        page,
-        limit,
-        search: search || '',
-        sortBy: sortBy || 'createdAt',
-        sortOrder: sortOrder || 'DESC'
-      };
-
-      const data: any = await fetchProductCategories(
-        page,
-        limit,
-        search,
-        sortBy,
-        sortOrder
-      );
-
-      setLoading(false);
-      setData(data.data);
-      setLimit(data.pagination.limit);
-      setTotal(data.pagination.total);
-      setPagination(data.pagination.totalPages);
-      setCurrentpagination(data.pagination.page);
-
-      console.log(data);
+      setLoadingState(true);
+      await fetchProductCategories();
+      setLoadingState(false);
     } catch (error) {
       console.error("Error fetching data:", error);
+      setErrorState(error instanceof Error ? error.message : 'Đã xảy ra lỗi');
     }
   };
 
   const handleSearch = () => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData();
   };
 
-  const handleSortChange = (field: string, order: string) => {
-    setSortField(field);
-    setSortOrder(order);
-    fetchData(1, limit, searchText, field, order);
-  };
-
-  const deleteAPI = async (record: ProductCategory) => {
-    try {
-      const response = await deleteProductCategory(record.id);
-      await fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-      message.success(`Deleted Product Category: ${record.name}`);
-    } catch (error) {
-      console.error('Error deleting Product Category:', error);
-      message.error(`Failed to delete Product Category: ${record.name}`);
-    }
-    handleModalClose();
-  };
-
-  const createAPI = async () => {
-    if (formData) {
+  const handleDeleteCategory = async () => {
+    if (formData && formData.id) {
       try {
-        const formatFormData = {
-          name: formData.name,
-          slug: formData.slug,
-          description: formData.description,
-        };
-        const response = await createProductCategory(formatFormData);
-        await fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-        message.success('Product Category created successfully!');
+        await deleteProductCategory(formData.id);
+        message.success(`Đã xóa danh mục: ${formData.name}`);
+        fetchData();
       } catch (error) {
-        console.error('Error submitting Product Category:', error);
-        message.error('Failed to submit Product Category.');
+        console.error('Error deleting category:', error);
+        message.error(`Không thể xóa danh mục: ${formData.name}`);
       }
-      handleModalClose();
+      setConfirmingPopup(false);
+      setFormData(null);
     }
-  };
-
-  const updateAPI = async () => {
-    if (formData) {
-      try {
-        const formatFormData = {
-          id: formData.id,
-          name: formData.name,
-          slug: formData.slug,
-          description: formData.description,
-        };
-        const response = await updateProductCategory(formatFormData);
-        await fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-        message.success('Product Category updated successfully!');
-      } catch (error) {
-        console.error('Error submitting Product Category:', error);
-        message.error('Failed to submit Product Category.');
-      }
-      handleModalClose();
-    }
-  };
-
-  const handleModalSubmit = (action: string) => {
-    setConfirmingPopup(true);
-    setAction(action === 'create' ? "create" : "update");
   };
 
   useEffect(() => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData();
   }, []);
-
-  useEffect(() => {
-  }, [pagination]);
 
   return (
     <>
-      <Card title="Product Categories" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
+      <Card title="Danh mục sản phẩm" style={{ width: '100%', margin: '0 auto' }}>
         <Row style={{ marginBottom: 16 }}>
           <Col span={12}>
             <Space>
               <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
-                Log Selected
+                Xem đã chọn
               </Button>
-              <Button type="primary" onClick={() => {
-                setIsView(false);
-                setFormData(initialFormData);
-                setAction("create");
-                handleAdd();
-              }}>
-                Add Product Category
+              <Button type="primary" onClick={handleAdd}>
+                Thêm danh mục
               </Button>
             </Space>
           </Col>
           <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Space>
-              <Input.Search
-                placeholder="Tìm kiếm danh mục..."
-                allowClear
+              <Input
+                placeholder="Tìm kiếm..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                onSearch={handleSearch}
-                style={{ width: 250 }}
+                style={{ width: 200 }}
               />
               <Select
                 defaultValue="createdAt"
-                style={{ width: 140 }}
-                value={sortField}
-                onChange={(value) => handleSortChange(value, sortOrder)}
+                style={{ width: 120 }}
+                onChange={(value) => setSortField(value)}
                 options={[
                   { value: 'id', label: 'ID' },
-                  { value: 'name', label: 'Tên danh mục' },
-                  { value: 'slug', label: 'Slug' },
+                  { value: 'name', label: 'Tên' },
                   { value: 'createdAt', label: 'Ngày tạo' },
-                  { value: 'updatedAt', label: 'Ngày cập nhật' },
                 ]}
               />
               <Select
                 defaultValue="DESC"
                 style={{ width: 120 }}
-                value={sortOrder}
-                onChange={(value) => handleSortChange(sortField, value)}
+                onChange={(value) => setSortOrder(value)}
                 options={[
                   { value: 'ASC', label: 'Tăng dần' },
                   { value: 'DESC', label: 'Giảm dần' },
                 ]}
               />
+              <Button type="primary" onClick={handleSearch}>Tìm kiếm</Button>
             </Space>
           </Col>
         </Row>
-
         <Table
-          style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
+          columns={columns}
+          dataSource={productCategories}
+          rowKey="id"
+          pagination={false}
           loading={loading}
+          scroll={{ x: 1100 }}
           rowSelection={{
             selectedRowKeys,
             onChange: handleSelectChange,
           }}
-          columns={columns}
-          scroll={{ x: 700 }}
-          dataSource={data.map((productCategory) => ({ ...productCategory, key: productCategory.id }))}
-          pagination={false}
         />
-        {!loading && (
+        {productCategories.length > 0 && (
           <Pagination
-            align="center"
+            style={{ marginTop: 16, textAlign: 'center' }}
             current={Currentpagination}
-            total={total}
+            total={productCategories.length}
             pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
-              fetchData(page, limit, searchText, sortField, sortOrder);
             }}
           />
         )}
-        <AddProductCategoryFormPopup
-          open={isModalOpen}
-          isView={isView}
-          onClose={handleModalClose}
-          onSubmit={() => handleModalSubmit(action)}
-          formData={formData || initialFormData}
-          onChange={({ name, value }) =>
-            setFormData((prev) => ({
-              ...prev!,
-              [name]: value,
-            }))
-          }
-        />
         <ConfirmPopup
           open={ConfirmingPopup}
-          onClose={setConfirmingPopup.bind(this, false)}
-          onSubmit={action === "delete" ? () => deleteAPI(formData!) : (action === "update" ? updateAPI : createAPI)}
-          Content={""}
+          onClose={() => setConfirmingPopup(false)}
+          onSubmit={handleDeleteCategory}
+          Content={`Bạn có chắc chắn muốn xóa danh mục "${formData?.name}"?`}
         />
       </Card>
     </>
   );
 };
+
 export default ProductCategoryTable;

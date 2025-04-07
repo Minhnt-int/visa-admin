@@ -2,23 +2,23 @@
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
 import { useState, useEffect } from 'react';
-import { BlogCategory } from '@/data/blogCategory';
-import { Button, Space, message, Form, Input, Upload, Card, Spin } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { ProductCategory } from '@/data/ProductCategory';
+import { Button, Space, message, Form, Input, Select, Card, Spin } from 'antd';
 import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ConfirmPopup from '../../components/popup/ConfirmPopup';
 
-const initialFormData: BlogCategory = {
+const initialFormData: ProductCategory = {
   id: 0,
   name: "",
   slug: "",
-  avatarUrl: "",
+  description: "",
+  parentId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
 
-const BlogCategoryAction = () => {
+const ProductCategoryAction = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams?.get('id') ? Number(searchParams.get('id')) : null;
@@ -27,19 +27,21 @@ const BlogCategoryAction = () => {
   const isEdit = mode === 'edit';
 
   const [confirmingPopup, setConfirmingPopup] = useState(false);
-  const [formData, setFormData] = useState<BlogCategory>(initialFormData);
+  const [formData, setFormData] = useState<ProductCategory>(initialFormData);
   
   const {
-    // BlogCategory State
-    selectedBlogCategory,
+    // ProductCategory State
+    productCategories,
+    selectedProductCategory,
     
     // Shared State
     loading,
     
-    // BlogCategory Actions
-    fetchBlogCategoryById,
-    createBlogCategory,
-    updateBlogCategory,
+    // ProductCategory Actions
+    fetchProductCategories,
+    fetchProductCategoryById,
+    createProductCategory,
+    updateProductCategory,
     
     // Shared Actions
     setLoadingState,
@@ -49,12 +51,15 @@ const BlogCategoryAction = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Tải danh sách danh mục để có danh mục cha
+        await fetchProductCategories();
+        
         if (id) {
           setLoadingState(true);
-          await fetchBlogCategoryById(id);
+          await fetchProductCategoryById(id);
           setLoadingState(false);
         } else {
-          setCurrentAction(ActionType.CREATE, 'blogCategory');
+          setCurrentAction(ActionType.CREATE, 'productCategory');
         }
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu:', error);
@@ -63,24 +68,31 @@ const BlogCategoryAction = () => {
     };
     
     loadData();
-  }, [id, fetchBlogCategoryById, setLoadingState, setCurrentAction]);
+  }, [id, fetchProductCategoryById, fetchProductCategories, setLoadingState, setCurrentAction]);
 
   useEffect(() => {
-    if (selectedBlogCategory && (isEdit || isView)) {
-      setFormData(selectedBlogCategory);
+    if (selectedProductCategory && (isEdit || isView)) {
+      setFormData(selectedProductCategory);
       if (isEdit) {
-        setCurrentAction(ActionType.EDIT, 'blogCategory', id || undefined);
+        setCurrentAction(ActionType.EDIT, 'productCategory', id || undefined);
       } else if (isView) {
-        setCurrentAction(ActionType.VIEW, 'blogCategory', id || undefined);
+        setCurrentAction(ActionType.VIEW, 'productCategory', id || undefined);
       }
     }
-  }, [selectedBlogCategory, isEdit, isView, id, setCurrentAction]);
+  }, [selectedProductCategory, isEdit, isView, id, setCurrentAction]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value,
+    }));
+  };
+  
+  const handleSelectChange = (value: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      parentId: value,
     }));
   };
 
@@ -91,13 +103,13 @@ const BlogCategoryAction = () => {
   const handleConfirm = async () => {
     try {
       if (isEdit && id) {
-        await updateBlogCategory(id, formData);
+        await updateProductCategory(id, formData);
         message.success('Đã cập nhật danh mục thành công!');
       } else {
-        await createBlogCategory(formData);
+        await createProductCategory(formData);
         message.success('Đã tạo danh mục mới thành công!');
       }
-      router.push('/danh-muc-bai-viet');
+      router.push('/danh-muc-san-pham');
     } catch (error) {
       console.error('Error saving category:', error);
       message.error('Không thể lưu danh mục. Vui lòng thử lại sau.');
@@ -107,7 +119,7 @@ const BlogCategoryAction = () => {
 
   return (
     <PageContainer title={isView ? 'Chi tiết danh mục' : isEdit ? 'Cập nhật danh mục' : 'Thêm danh mục mới'} 
-      description="Quản lý danh mục bài viết">
+      description="Quản lý danh mục sản phẩm">
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
@@ -131,49 +143,44 @@ const BlogCategoryAction = () => {
                     placeholder="Nhập slug"
                   />
                 </Form.Item>
-                <Form.Item label="Hình ảnh">
+                <Form.Item label="Danh mục cha">
+                  <Select
+                    allowClear
+                    placeholder="Chọn danh mục cha (nếu có)"
+                    value={formData.parentId}
+                    onChange={handleSelectChange}
+                    disabled={isView}
+                    options={productCategories
+                      .filter(cat => cat.id !== formData.id) // Loại bỏ danh mục hiện tại
+                      .map(category => ({
+                        value: category.id,
+                        label: category.name
+                      }))}
+                  />
+                </Form.Item>
+                <Form.Item label="Mô tả">
                   {isView ? (
-                    formData.avatarUrl ? (
-                      <img 
-                        src={formData.avatarUrl} 
-                        alt={formData.name} 
-                        style={{ maxWidth: '100%', maxHeight: 200 }}
-                      />
-                    ) : (
-                      <div>Không có hình ảnh</div>
-                    )
+                    <div dangerouslySetInnerHTML={{ __html: formData.description || '' }} />
                   ) : (
-                    <Upload
-                      name="avatar"
-                      listType="picture"
-                      maxCount={1}
-                      beforeUpload={() => false}
-                      onChange={({ file }) => {
-                        if (file && file.originFileObj) {
-                          const reader = new FileReader();
-                          reader.onload = (e) => {
-                            setFormData(prev => ({
-                              ...prev,
-                              avatarUrl: e.target?.result as string
-                            }));
-                          };
-                          reader.readAsDataURL(file.originFileObj);
-                        }
-                      }}
-                    >
-                      <Button icon={<UploadOutlined />}>Tải lên hình ảnh</Button>
-                    </Upload>
+                    <Input.TextArea
+                      rows={6}
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      disabled={isView}
+                      placeholder="Nhập mô tả"
+                    />
                   )}
                 </Form.Item>
                 <Form.Item>
                   <Space>
                     {isView ? (
-                      <Button type="primary" onClick={() => router.push('/danh-muc-bai-viet')}>
+                      <Button type="primary" onClick={() => router.push('/danh-muc-san-pham')}>
                         Quay lại
                       </Button>
                     ) : (
                       <>
-                        <Button onClick={() => router.push('/danh-muc-bai-viet')}>
+                        <Button onClick={() => router.push('/danh-muc-san-pham')}>
                           Hủy
                         </Button>
                         <Button type="primary" onClick={handleSubmit}>
@@ -201,4 +208,4 @@ const BlogCategoryAction = () => {
   )
 }
 
-export default BlogCategoryAction;
+export default ProductCategoryAction; 

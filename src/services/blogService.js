@@ -78,7 +78,6 @@ export const fetchBlogCategories = async (
         value !== undefined && value !== null && value !== ''
       )
     );
-    
     const response = await axioss.get(`${API_BASE_URL}/api/blog-categories`, {
       params: filteredParams,
       validateStatus: function (status) {
@@ -108,7 +107,7 @@ export const fetchBlogBySlug = async (slug) => {
       }
     });
     
-    return response; // Trả về toàn bộ response để có thể truy cập response.data
+    return response.data; // Trả về toàn bộ response để có thể truy cập response.data
   } catch (error) {
     console.error(`Lỗi khi lấy thông tin bài viết với slug ${slug}:`, error);
     throw error;

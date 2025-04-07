@@ -4,6 +4,6 @@ export interface ProductCategory {
   slug: string;
   description: string;
   parentId: number | null;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
