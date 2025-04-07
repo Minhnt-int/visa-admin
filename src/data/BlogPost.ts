@@ -13,3 +13,18 @@ export interface BlogPostAttributes {
   updatedAt: Date;
   blogCategoryId: number; // Thêm trường blogCategoryId
 }
+
+export const initBlog = {
+  id: 0,
+  title: '',
+  content: '',
+  slug: '',
+  metaTitle: '',
+  metaDescription: '',
+  metaKeywords: '',
+  author: '',
+  publishedAt: new Date(),
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  blogCategoryId: 0, // Thêm trường blogCategoryId
+};

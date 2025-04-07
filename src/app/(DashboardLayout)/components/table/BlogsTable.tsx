@@ -10,7 +10,7 @@ import { Card } from "antd";
 import AddBlogFormPopup from '../popup/AddBlogFormPopup';
 import { BlogPostAttributes } from '@/data/BlogPost';
 import { createBlog, deleteBlog, fetchBlogList, updateBlog } from "@/services/blogService";
-import { ActionType, useBlogContext } from '@/contexts/BlogContext';
+import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'; // Add usePathname, useSearchParams
 
 const ProductsTable: React.FC = () => {
@@ -34,8 +34,8 @@ const ProductsTable: React.FC = () => {
   const { 
     loading, 
     selectBlog,
-    setActionOn
-  } = useBlogContext();
+    setCurrentAction
+  } = useAppContext();
 
   const router = useRouter();
   const pathname = usePathname(); // Get current pathname
@@ -82,7 +82,7 @@ const ProductsTable: React.FC = () => {
     router.push(`/bai-viet/action`);
   }
   const handleAdd = () => {
-    setActionOn(ActionType.CREATE);
+    setCurrentAction(ActionType.CREATE);
     router.push(`/bai-viet/action`);
   };
 

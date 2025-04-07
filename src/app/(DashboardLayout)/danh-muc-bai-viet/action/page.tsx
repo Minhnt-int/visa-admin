@@ -9,8 +9,8 @@ import { BlogPostAttributes } from '@/data/BlogPost';
 import { createBlog, updateBlog } from '@/services/blogService';
 import ConfirmPopup from '../../components/popup/ConfirmPopup';
 import { Table, Button, Space, message } from 'antd';
+import { ActionType, useBlogContext } from '@/contexts/BlogContext';
 import { useRouter} from 'next/navigation';
-import { useAppContext, ActionType } from '@/contexts/AppContext';
 
 
 const Dashboard = () => {
@@ -19,8 +19,8 @@ const Dashboard = () => {
     selectedBlog, 
     loading, 
     error,
-    currentAction
-  } = useAppContext();
+    actionOn
+  } = useBlogContext();
   const router = useRouter();
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<BlogPostAttributes | null>(selectedBlog || null);
@@ -46,9 +46,9 @@ const Dashboard = () => {
             open={ConfirmingPopup}
             onClose={() => setConfirmingPopup(false)}
             onSubmit={async () => {
-              if (currentAction.type === ActionType.EDIT) {
+              if (actionOn.type === ActionType.EDIT) {
                 await updateBlog(formData!);
-              } else if (currentAction.type === ActionType.CREATE) {
+              } else if (actionOn.type === ActionType.CREATE) {
                 await createBlog(formData!);
               } else {
                 message.error("Có lỗi xảy ra");
@@ -56,7 +56,7 @@ const Dashboard = () => {
               setConfirmingPopup(false)
               router.push('/bai-viet')
             }}
-            Content={currentAction.type === ActionType.EDIT ? "Bạn có chắc chắn muốn lưu bài viết này?" : "Bạn có chắc chắn muốn tạo bài viết mới?"}
+            Content={actionOn.type === ActionType.EDIT ? "Bạn có chắc chắn muốn lưu bài viết này?" : "Bạn có chắc chắn muốn tạo bài viết mới?"}
           />
           </Grid>
         </Grid>

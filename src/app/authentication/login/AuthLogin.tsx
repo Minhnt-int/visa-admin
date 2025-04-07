@@ -68,8 +68,6 @@ const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
         Cookies.set('accessToken', accessToken, { expires: 1, path: '/' });
         
         // Hiển thị thông báo thành công
-        alert('Đăng nhập thành công');
-        
         // Chuyển hướng ngay lập tức không đợi middleware
         router.push('/');
       } else {

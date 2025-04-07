@@ -11,29 +11,65 @@ import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
 import AddProductFormPopup from '../popup/AddProductFormPopup';
 import { fetchProductList, createProduct, updateProduct, deleteProduct, fetchProductBySlug } from "@/services/productService";
-import { BlogPostAttributes } from '@/data/BlogPost';
+import { BlogCategory, initBlogCategory } from '@/data/blogCategory';
+import { fetchBlogCategories } from '@/services/blogService';
+import { useRouter } from 'next/navigation';
+import { useAppContext } from '@/contexts/AppContext';
 
 
-const ProductsTable: React.FC = () => {
+const BlogCategoryTable: React.FC = () => {
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isView, setIsView] = useState(true);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [action, setAction] = useState("");
-  const [formData, setFormData] = useState<BlogPostAttributes | null>(null);
+  const [formData, setFormData] = useState<BlogCategory | null>(null);
 
 
-  const [data, setData] = useState<BlogPostAttributes[]>([]);
+  const [data, setData] = useState<BlogCategory[]>([]);
   const [pagination, setPagination] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
-  const [loading, setLoading] = useState(true);
 
   const [searchText, setSearchText] = useState('');
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
+
+  const {
+    // Blog State
+    blogs,
+    selectedBlog,
+    
+    // Product State
+    products,
+    selectedProduct,
+    
+    // Shared State
+    loading,
+    error,
+    currentAction, // Thay đổi tên
+    
+    // Blog Actions
+    setBlogsData,
+    setSelectedBlogData,
+    selectBlog,
+    clearSelectedBlog,
+    
+    // Product Actions
+    fetchProducts,
+    fetchProductById,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    clearSelectedProduct,
+    
+    // Shared Actions
+    setLoadingState,
+    setErrorState,
+    setCurrentAction, // Thay đổi tên
+  } = useAppContext();
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
@@ -43,17 +79,14 @@ const ProductsTable: React.FC = () => {
     message.info(`Selected Products: ${selectedRowKeys.join(', ')}`);
   };
 
-  const handleView = async (record: BlogPostAttributes) => {
+  const handleView = async (record: BlogCategory) => {
     setIsView(true);
     setFormData(record);
     setIsModalOpen(true);
   };
-
-  const handleEdit = async (record: BlogPostAttributes) => {
-    setIsView(false);
-    setFormData(record);
-    setAction("edit");
-    setIsModalOpen(true);
+  const router = useRouter();
+  const handleEdit = async (record: BlogCategory) => {
+    router.push(`/danh-muc-bai-viet/action`);
   };
 
   const handleAdd = () => {
@@ -62,80 +95,57 @@ const ProductsTable: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (record: BlogPostAttributes) => {
+  const handleDelete = async (record: BlogCategory) => {
     setFormData(record);
     setConfirmingPopup(true);
     setAction("delete");
   };
 
-  const columns: ColumnsType<BlogPostAttributes> = [
+  const columns: ColumnsType<BlogCategory> = [
     {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
-      width: 80, // Chiều rộng hợp lý cho cột ID
+      width: 80,
       fixed: 'left',
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      width: 150, // Chiều rộng hợp lý cho cột Name
-    },
-    {
-      title: 'Short Description',
-      dataIndex: 'shortDescription',
-      key: 'shortDescription',
-      width: 200, // Chiều rộng hợp lý cho cột Meta Description
-    },
-    {
-      title: 'Category ID',
-      dataIndex: 'categoryId',
-      key: 'categoryId',
-      width: 120, // Chiều rộng hợp lý cho cột Category ID
+      width: 150,
     },
     {
       title: 'Slug',
       dataIndex: 'slug',
       key: 'slug',
-      width: 150, // Chiều rộng hợp lý cho cột Slug
+      width: 150,
     },
     {
-      title: 'Meta Title',
-      dataIndex: 'metaTitle',
-      key: 'metaTitle',
-      width: 150, // Chiều rộng hợp lý cho cột Meta Title
-    },
-    {
-      title: 'Meta Description',
-      dataIndex: 'metaDescription',
-      key: 'metaDescription',
-      width: 200, // Chiều rộng hợp lý cho cột Meta Description
-    },
-    {
-      title: 'Meta Keywords',
-      dataIndex: 'metaKeywords',
-      key: 'metaKeywords',
-      width: 200, // Chiều rộng hợp lý cho cột Meta Keywords
+      title: 'Avatar',
+      dataIndex: 'avatarUrl',
+      key: 'avatarUrl',
+      width: 150,
+      render: (url) => url ? <img src={url} alt="Avatar" style={{ width: 50, height: 50, objectFit: 'cover' }} /> : 'No Image',
     },
     {
       title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 150, // Chiều rộng hợp lý cho cột Created At
+      width: 150,
       render: (value) => (value ? new Date(value).toLocaleString() : ''),
     },
     {
       title: 'Updated At',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
-      width: 150, // Chiều rộng hợp lý cho cột Updated At
+      width: 150,
       render: (value) => (value ? new Date(value).toLocaleString() : ''),
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 250, // Chiều rộng hợp lý cho cột Actions
+      width: 250,
       fixed: 'right',
       render: (_, record) => (
         <Space>
@@ -155,21 +165,21 @@ const ProductsTable: React.FC = () => {
 
   const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
     try {
-      const response = await fetchProductList({
-        page: page,
-        limit: limit,
-        categoryId: '',
-        search: search || '',
-        sortBy: sortBy || 'createdAt',
-        sortOrder: sortOrder || 'DESC',
-      }) as any;
-      console.log("Response:", response);
+      const response = await fetchBlogCategories(
+        page,
+        limit,
+        search,
+        sortBy,
+        sortOrder,
+      ) as any;
       
-      setLoading(false);
-      setTotal(response.pagination.total);
-      setData(response.data);
-      setPagination(response.pagination.totalPages);
-      setCurrentpagination(response.pagination.currentPage);
+      setLoadingState(false);
+      setTotal(response.data.pagination.total);
+
+      setData(response.data.categories); 
+      setPagination(response.data.pagination.totalPages);
+      setCurrentpagination(response.data.pagination.page);
+
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -185,7 +195,7 @@ const ProductsTable: React.FC = () => {
     fetchData(1, limit, searchText, field, order);
   };
 
-  const deleteAPI = async (record: BlogPostAttributes) => {
+  const deleteAPI = async (record: BlogCategory) => {
     try {
       await deleteProduct(record.id);
       fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
@@ -202,48 +212,14 @@ const ProductsTable: React.FC = () => {
     setConfirmingPopup(false);
     setFormData(null);
   };
-  
-  const createAPI = async () => {
-    
-    if (formData) {
-      try {
-        const response = await createProduct(formData);
-        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-        message.success('Product created successfully!');
-      } catch (error) {
-        console.error('Error submitting product:', error);
-        message.error('Failed to submit product.');
-      }
-      handleModalClose();
-    }
-  };
-  const updateAPI = async () => {
-    
-    if (formData) {
-      try {
-        const response = await updateProduct(formData);
-        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-        message.success('Product updated successfully!');
-      } catch (error) {
-        console.error('Error updating product:', error);
-        message.error('Failed to update product.');
-      }
-      handleModalClose();
-    }
-  };
 
-  const handleModalSubmit = (action: string) => {
-    setConfirmingPopup(true);
-    setAction(action === 'create' ? "create" : "update");
-  };
+  useEffect(() => {
+    fetchData(1, limit, searchText, sortField, sortOrder);
+  }, [Currentpagination]);
 
   useEffect(() => {
     fetchData(1, limit, searchText, sortField, sortOrder);
   }, []);
-
-  useEffect(() => {
-  }, [pagination]);
-
   return (
     <>
       <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
@@ -255,11 +231,11 @@ const ProductsTable: React.FC = () => {
               </Button>
               <Button type="primary" onClick={() => {
                 setIsView(false);
-                setFormData(initialFormData);
+                setFormData(null);
                 setAction("create");
                 handleAdd();
               }}>
-                Add Product
+                Add Blog Category
               </Button>
             </Space>
           </Col>
@@ -298,7 +274,7 @@ const ProductsTable: React.FC = () => {
             </Space>
           </Col>
         </Row>
-        <Table
+        <Table<BlogCategory>
           style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
           loading={loading}
           rowSelection={{
@@ -321,23 +297,10 @@ const ProductsTable: React.FC = () => {
             }}
           />
         )}
-        <AddProductFormPopup
-          open={isModalOpen}
-          isView={isView}
-          onClose={handleModalClose}
-          onSubmit={() => handleModalSubmit(action)}
-          formData={formData || initialFormData}
-          onChange={({ name, value }) =>
-            setFormData((prev) => ({
-              ...prev!,
-              [name]: value,
-            }))
-          }
-        />
         <ConfirmPopup
           open={ConfirmingPopup}
           onClose={setConfirmingPopup.bind(this, false)}
-          onSubmit={action === "delete" ? () => deleteAPI(formData!) : (action === "update" ? updateAPI : createAPI)}
+          onSubmit={() => deleteAPI(formData!)}
           Content={""}
         />
       </Card>
@@ -345,4 +308,4 @@ const ProductsTable: React.FC = () => {
 
   );
 };
-export default ProductsTable;
+export default BlogCategoryTable;

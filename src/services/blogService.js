@@ -57,6 +57,43 @@ export const fetchBlogList = async ({
   }
 };
 
+export const fetchBlogCategories = async (
+  page = 1,
+  limit = 12,
+  search = '',
+  sortBy = '',
+  sortOrder = '') => {
+  try {
+    const params = {
+      search,
+      sortBy,
+      sortOrder,
+      page,
+      limit
+    };
+    
+    // Filter out empty parameters
+    const filteredParams = Object.fromEntries(
+      Object.entries(params).filter(([_, value]) => 
+        value !== undefined && value !== null && value !== ''
+      )
+    );
+    
+    const response = await axioss.get(`${API_BASE_URL}/api/blog-categories`, {
+      params: filteredParams,
+      validateStatus: function (status) {
+        // Accept 200-299 status codes as successful
+        return status >= 200 && status < 300;
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error(`Lỗi khi lấy danh sách blog categories:`, error);
+    throw error;
+  }
+};
+
 /**
  * Lấy thông tin chi tiết bài viết blog theo slug
  * @param {string} slug - Slug của bài viết
@@ -89,24 +126,6 @@ export const fetchPopularBlogs = async (
   return [];
 };
 
-
-// export const fetchBlogCategories = async (  page = 1,
-//   limit = 10,) => {
-//  try {
-//    const response = await fetch(`${API_BASE_URL}/api/blog-category/get-list?page=` + page + `&limit=` + limit, {
-//      next: { revalidate: 3600 }
-//    });
-   
-//    if (!response.ok) {
-//      throw new Error(`Lỗi API: ${response.status}`);
-//    }
-   
-//    return await response.json();
-//  } catch (error) {
-//    console.error(`Lỗi khi lấy thông tin loại sản phẩm:`, `${API_BASE_URL}/api/Blog-category/get-list?page=` + page + `&limit=` + limit , "\n Lỗi: " ,error);
-//    throw error;
-//  }
-// };
 
 export const createBlog = async (blogData) => {
   try {

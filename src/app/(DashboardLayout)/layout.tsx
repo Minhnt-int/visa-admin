@@ -5,6 +5,7 @@ import Header from "@/app/(DashboardLayout)/layout/header/Header";
 import Sidebar from "@/app/(DashboardLayout)/layout/sidebar/Sidebar";
 import { BlogProvider } from "@/contexts/BlogContext";
 import { ProductProvider } from "@/contexts/ProductContext";
+import { AppProvider } from "@/contexts/AppContext";
 
 
 const MainWrapper = styled("div")(() => ({
@@ -66,11 +67,9 @@ export default function RootLayout({
           {/* Page Route */}
           {/* ------------------------------------------- */}
           <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
-            <BlogProvider>
-              <ProductProvider>
+              <AppProvider>
                 {children}
-              </ProductProvider>
-            </BlogProvider>
+              </AppProvider>
           </Box>
           {/* ------------------------------------------- */}
           {/* End Page */}

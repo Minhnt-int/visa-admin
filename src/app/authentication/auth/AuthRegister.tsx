@@ -88,7 +88,7 @@ const AuthRegister = ({ title, subtitle, subtext }: registerType) => {
                         id="email" 
                         variant="outlined" 
                         fullWidth 
-                        type="text"
+                        type="email"
                         value={formData.email}
                         onChange={handleChange}
                         required
