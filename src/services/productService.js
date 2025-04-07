@@ -97,10 +97,16 @@ export const fetchPopularProducts = async (
  * @param {number} limit - Số mục mỗi trang
  * @returns {Promise<Object>} - Promise trả về dữ liệu danh mục sản phẩm
  */
-export const fetchProductCategories = async (page = 1, limit = 10) => {
+export const fetchProductCategories = async (page = 1, limit = 10,  search = '',
+  sortBy = '',
+  sortOrder = '') => {
   try {
     const response = await axioss.get(`${API_BASE_URL}/api/product-category/get-list`, {
-      params: { page, limit },
+      params: { page, limit,
+        search,
+        sortBy,
+        sortOrder,
+       },
       validateStatus: function (status) {
         // Chấp nhận mã trạng thái 200-299 là thành công
         return status >= 200 && status < 300;

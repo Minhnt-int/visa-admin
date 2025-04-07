@@ -2,7 +2,7 @@
  * This configuration was generated using the CKEditor 5 Builder. You can modify it anytime using this link:
  * https://ckeditor.com/ckeditor-5/builder/?redirect=portal#installation/NoNgNARATAdAzPCkQBYCsB2NBOAjFDEKADhGKim2xThDJVLTJDTRQwxqiQgDcBLJAAYwwXGHEjx0gLqQU7XLQDGEGUA=
  */
-
+"use client";
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { CKEditor, useCKEditorCloud } from '@ckeditor/ckeditor5-react';
 import { CustomUploadAdapterPlugin } from './uploadAdapter';

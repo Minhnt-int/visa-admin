@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message } from 'antd';
+import { Table, Button, Space, message, Input, Select, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import AddFormPopup from '../popup/AddFormPopup';
-import products from '@/data/products.json';
 import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
@@ -68,6 +67,10 @@ const ProductsTable: React.FC = () => {
   const [total, setTotal] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
+
+  const [searchText, setSearchText] = useState('');
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('DESC');
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
@@ -187,17 +190,16 @@ const ProductsTable: React.FC = () => {
     },
   ];
 
-  const fetchData = async (page: number, limit: number) => {
+  const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
     try {
       const response = await fetchProductList({
         page: page,
         limit: limit,
-        // Thêm các tham số khác nếu cần
         categoryId: '',
-        search: '',
-        sortBy: '',
-        sortOrder: '',
-      }) as any; // hoặc as { data: { data: ProductAttributes[], pagination: { totalPages: number, currentPage: number } } };
+        search: search || '',
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'DESC',
+      }) as any;
       console.log("Response:", response);
       
       setLoading(false);
@@ -210,18 +212,26 @@ const ProductsTable: React.FC = () => {
     }
   };
 
+  const handleSearch = () => {
+    fetchData(1, limit, searchText, sortField, sortOrder);
+  };
+
+  const handleSortChange = (field: string, order: string) => {
+    setSortField(field);
+    setSortOrder(order);
+    fetchData(1, limit, searchText, field, order);
+  };
+
   const deleteAPI = async (record: ProductAttributes) => {
     try {
-      // Gọi hàm deleteProduct từ productService
       await deleteProduct(record.id);
-      // Cập nhật danh sách sản phẩm sau khi xóa thành công
-      fetchData(Currentpagination, limit);
+      fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
       message.success(`Deleted Product: ${record.name}`);
     } catch (error) {
       console.error('Error deleting product:', error);
       message.error(`Failed to delete product: ${record.name}`);
     }
-    handleModalClose(); // Đóng modal sau khi xử lý xong
+    handleModalClose();
   };
 
   const handleModalClose = () => {
@@ -234,31 +244,28 @@ const ProductsTable: React.FC = () => {
     
     if (formData) {
       try {
-        // Gọi hàm createProduct từ productService
         const response = await createProduct(formData);
-        fetchData(Currentpagination, limit);
+        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
         message.success('Product created successfully!');
       } catch (error) {
         console.error('Error submitting product:', error);
         message.error('Failed to submit product.');
       }
-      handleModalClose(); // Đóng modal sau khi xử lý xong
+      handleModalClose();
     }
   };
   const updateAPI = async () => {
     
     if (formData) {
       try {
-
-        // Gọi hàm updateProduct từ productService
         const response = await updateProduct(formData);
-        fetchData(Currentpagination, limit);
+        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
         message.success('Product updated successfully!');
       } catch (error) {
         console.error('Error updating product:', error);
         message.error('Failed to update product.');
       }
-      handleModalClose(); // Đóng modal sau khi xử lý xong
+      handleModalClose();
     }
   };
 
@@ -266,33 +273,68 @@ const ProductsTable: React.FC = () => {
     setConfirmingPopup(true);
     setAction(action === 'create' ? "create" : "update");
   };
-  // Thêm useEffect để gửi request GET
-  useEffect(() => {
-    fetchData(1, limit);
-
-  }, []); // Chỉ chạy một lần khi component được mount
 
   useEffect(() => {
-  }, [pagination]); // Chạy khi `pagination` thay đổi
+    fetchData(1, limit, searchText, sortField, sortOrder);
+  }, []);
+
+  useEffect(() => {
+  }, [pagination]);
 
   return (
     <>
       <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
-        <Space style={{ marginBottom: 16 }}>
-          <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
-            Log Selected
-          </Button>
-          <Button type="primary" onClick={() => {
-
-            setIsView(false);
-            setFormData(initialFormData);
-            setAction("create");
-            handleAdd();
-
-          }}>
-            Add Product
-          </Button>
-        </Space>
+        <Row style={{ marginBottom: 16 }}>
+          <Col span={12}>
+            <Space>
+              <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
+                Log Selected
+              </Button>
+              <Button type="primary" onClick={() => {
+                setIsView(false);
+                setFormData(initialFormData);
+                setAction("create");
+                handleAdd();
+              }}>
+                Add Product
+              </Button>
+            </Space>
+          </Col>
+          <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Space>
+              <Input.Search
+                placeholder="Tìm kiếm sản phẩm..."
+                allowClear
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onSearch={handleSearch}
+                style={{ width: 250 }}
+              />
+              <Select
+                defaultValue="createdAt"
+                style={{ width: 140 }}
+                value={sortField}
+                onChange={(value) => handleSortChange(value, sortOrder)}
+                options={[
+                  { value: 'name', label: 'Tên sản phẩm' },
+                  { value: 'categoryId', label: 'Danh mục' },
+                  { value: 'createdAt', label: 'Ngày tạo' },
+                  { value: 'updatedAt', label: 'Ngày cập nhật' },
+                ]}
+              />
+              <Select
+                defaultValue="DESC"
+                style={{ width: 120 }}
+                value={sortOrder}
+                onChange={(value) => handleSortChange(sortField, value)}
+                options={[
+                  { value: 'ASC', label: 'Tăng dần' },
+                  { value: 'DESC', label: 'Giảm dần' },
+                ]}
+              />
+            </Space>
+          </Col>
+        </Row>
         <Table
           style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
           loading={loading}
@@ -308,11 +350,11 @@ const ProductsTable: React.FC = () => {
         {!loading && (
           <Pagination
             align="center"
-            current={Currentpagination} // Trang hiện tại
-            total={total} // Tổng số mục (giả sử mỗi trang có 10 mục)
+            current={Currentpagination}
+            total={total}
             onChange={(page) => {
-              setCurrentpagination(page); // Cập nhật trang hiện tại
-              fetchData(page, limit); // Gọi API để lấy dữ liệu trang mới
+              setCurrentpagination(page);
+              fetchData(page, limit, searchText, sortField, sortOrder);
             }}
           />
         )}

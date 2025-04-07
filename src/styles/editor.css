@@ -175,3 +175,8 @@
 .editor-container_include-word-count.editor-container_classic-editor .editor-container__editor .ck-editor .ck-editor__editable {
 	border-radius: 0;
 }
+
+:root {
+    --ck-z-default: 1500;
+    --ck-z-panel: calc( var(--ck-z-default) + 999 );
+}

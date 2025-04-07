@@ -3,6 +3,8 @@ import { styled, Container, Box } from "@mui/material";
 import React, { useState } from "react";
 import Header from "@/app/(DashboardLayout)/layout/header/Header";
 import Sidebar from "@/app/(DashboardLayout)/layout/sidebar/Sidebar";
+import { BlogProvider } from "@/contexts/BlogContext";
+import { ProductProvider } from "@/contexts/ProductContext";
 
 
 const MainWrapper = styled("div")(() => ({
@@ -63,7 +65,13 @@ export default function RootLayout({
           {/* ------------------------------------------- */}
           {/* Page Route */}
           {/* ------------------------------------------- */}
-          <Box sx={{ minHeight: "calc(100vh - 170px)" }}>{children}</Box>
+          <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
+            <BlogProvider>
+              <ProductProvider>
+                {children}
+              </ProductProvider>
+            </BlogProvider>
+          </Box>
           {/* ------------------------------------------- */}
           {/* End Page */}
           {/* ------------------------------------------- */}

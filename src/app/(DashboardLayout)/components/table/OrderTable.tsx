@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message, Tag, Tooltip } from 'antd';
+import { Table, Button, Space, message, Tag, Tooltip, Input, Select, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { Pagination } from "antd";
 import ConfirmPopup from '../popup/ConfirmPopup';
@@ -19,6 +19,10 @@ const OrderTable: React.FC = () => {
   const [total, setTotal] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
+
+  const [searchText, setSearchText] = useState('');
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('DESC');
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
@@ -138,7 +142,7 @@ const OrderTable: React.FC = () => {
     },
   ];
 
-  const fetchData = async (page: number, limit: number) => {
+  const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
     try {
       const response = await fetchOrderList({
         page: page,
@@ -147,6 +151,9 @@ const OrderTable: React.FC = () => {
         endDate: null,
         userId: null, 
         status: null,
+        search: search || '',
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'DESC',
       }) as any;
       console.log("Response:", response);
       
@@ -164,7 +171,7 @@ const OrderTable: React.FC = () => {
     try {
       if (record.id) {
         await deleteOrder(record.id);
-        fetchData(Currentpagination, limit);
+        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
         message.success(`Deleted Order #${record.id}`);
       }
     } catch (error) {
@@ -178,13 +185,61 @@ const OrderTable: React.FC = () => {
     setConfirmingPopup(false);
   };
 
+  const handleSearch = () => {
+    fetchData(1, limit, searchText, sortField, sortOrder);
+  };
+
+  const handleSortChange = (field: string, order: string) => {
+    setSortField(field);
+    setSortOrder(order);
+    fetchData(1, limit, searchText, field, order);
+  };
+
   useEffect(() => {
-    fetchData(1, limit);
+    fetchData(1, limit, searchText, sortField, sortOrder);
   }, []);
 
   return (
     <>
       <Card title="Orders Management" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
+        <Row style={{ marginBottom: 16 }}>
+          <Col span={24} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Space>
+              <Input.Search
+                placeholder="Tìm kiếm đơn hàng..."
+                allowClear
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onSearch={handleSearch}
+                style={{ width: 250 }}
+              />
+              <Select
+                defaultValue="createdAt"
+                style={{ width: 140 }}
+                value={sortField}
+                onChange={(value) => handleSortChange(value, sortOrder)}
+                options={[
+                  { value: 'id', label: 'ID' },
+                  { value: 'recipientName', label: 'Tên khách hàng' },
+                  { value: 'recipientPhone', label: 'Số điện thoại' },
+                  { value: 'status', label: 'Trạng thái' },
+                  { value: 'createdAt', label: 'Ngày tạo' },
+                  { value: 'updatedAt', label: 'Ngày cập nhật' },
+                ]}
+              />
+              <Select
+                defaultValue="DESC"
+                style={{ width: 120 }}
+                value={sortOrder}
+                onChange={(value) => handleSortChange(sortField, value)}
+                options={[
+                  { value: 'ASC', label: 'Tăng dần' },
+                  { value: 'DESC', label: 'Giảm dần' },
+                ]}
+              />
+            </Space>
+          </Col>
+        </Row>
         <Table
           style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
           loading={loading}
@@ -205,7 +260,7 @@ const OrderTable: React.FC = () => {
             pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
-              fetchData(page, limit);
+              fetchData(page, limit, searchText, sortField, sortOrder);
             }}
           />
         )}

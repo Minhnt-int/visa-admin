@@ -12,7 +12,7 @@ import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCa
 import axios from 'axios';
 
 // API endpoint - thay đổi URL này theo endpoint thực tế của bạn
-const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/ai/chat'; 
+const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/ai'; 
 
 // Cập nhật hàm stripHtml để bảo toàn xuống dòng
 const stripHtml = (html: string) => {
@@ -51,13 +51,8 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, onLoadingChange }) => {
     }
     
     const sendContent = {
-      messages: [
-        {
-          role: "user",
-          content: blogContent
-        }
-      ],
-      systemPrompt: "Bạn là trợ lý ảo của GiftWeb, Hãy đánh giá SEO trang này theo tiêu chuẩn Google (thang điểm 100), gửi lại cho tôi bản chỉnh sửa để tăng điểm SEO. Trả lời bằng tiếng Việt."
+      content: blogContent + 
+      "\nHãy giúp tôi đánh giá SEO của bài viết này với các tiêu chí của Google theo thang điểm 100, gợi ý và gửi lại một bản hoàn thiện để tăng điểm SEO.\n"
     };
     
     // Giả lập tiến trình loading
@@ -71,8 +66,8 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, onLoadingChange }) => {
     try {
       const response = await axios.post(API_URL, sendContent);
       // Kiểm tra và lấy nội dung từ response
-      if (response.data.data && response.data.data.response && response.data.data.response.content) {
-        setContent(response.data.data.response.content);
+      if (response.data && response.data.data && response.data.data.result) {
+        setContent(response.data.data.result);
       } else {
         setError('Dữ liệu không đúng định dạng');
       }

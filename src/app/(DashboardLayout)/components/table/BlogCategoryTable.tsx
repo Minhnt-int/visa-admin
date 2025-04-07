@@ -1,39 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message, Card, Input, Select, Row, Col } from 'antd';
+import { Table, Button, Space, message, Input, Select, Row, Col } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import AddFormPopup from '../popup/AddFormPopup';
+import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
+import { set } from 'lodash';
+import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
-import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
-import { ProductCategory } from '@/data/ProductCategory';
-import { fetchProductCategories, updateProductCategory, createProductCategory, deleteProduct, deleteProductCategory } from "@/services/productService";
+import { Card } from "antd";
+import AddProductFormPopup from '../popup/AddProductFormPopup';
+import { fetchProductList, createProduct, updateProduct, deleteProduct, fetchProductBySlug } from "@/services/productService";
+import { BlogPostAttributes } from '@/data/BlogPost';
 
-const initialFormData: ProductCategory = {
-  id: 0,
-  name: "",
-  parentId: 0,
-  slug: "",
-  description: "",
-  createdAt: "",
-  updatedAt: "",
-}
 
-interface ProductCategoryTableProps {
-}
-
-const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
+const ProductsTable: React.FC = () => {
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isView, setIsView] = useState(true);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [action, setAction] = useState("");
-  const [formData, setFormData] = useState<ProductCategory | null>(null);
+  const [formData, setFormData] = useState<BlogPostAttributes | null>(null);
 
-  const [total, setTotal] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [data, setData] = useState<ProductCategory[]>([]);
+
+  const [data, setData] = useState<BlogPostAttributes[]>([]);
   const [pagination, setPagination] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(1);
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -46,104 +40,103 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
   };
 
   const handleLogSelected = () => {
-    message.info(`Selected Product Category: ${selectedRowKeys.join(', ')}`);
+    message.info(`Selected Products: ${selectedRowKeys.join(', ')}`);
   };
 
-  const handleView = (record: ProductCategory) => {
+  const handleView = async (record: BlogPostAttributes) => {
     setIsView(true);
     setFormData(record);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (record: ProductCategory) => {
+  const handleEdit = async (record: BlogPostAttributes) => {
     setIsView(false);
-    setAction("update");
     setFormData(record);
-    setIsModalOpen(true);
-  };
-  const handleAdd = () => {
-    setIsView(false);
-    setAction("create");
-    setFormData(initialFormData);
+    setAction("edit");
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (record: ProductCategory) => {
+  const handleAdd = () => {
+    setIsView(false);
+    setFormData(null);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (record: BlogPostAttributes) => {
     setFormData(record);
     setConfirmingPopup(true);
     setAction("delete");
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setConfirmingPopup(false);
-    setFormData(null);
-  };
-
-  const columns: ColumnsType<ProductCategory> = [
+  const columns: ColumnsType<BlogPostAttributes> = [
     {
       title: 'ID',
       dataIndex: 'id',
       key: 'id',
+      width: 80, // Chiều rộng hợp lý cho cột ID
       fixed: 'left',
-      width: 80,
     },
     {
       title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      width: 200,
-      sorter: (a, b) => a.name.localeCompare(b.name),
+      width: 150, // Chiều rộng hợp lý cho cột Name
+    },
+    {
+      title: 'Short Description',
+      dataIndex: 'shortDescription',
+      key: 'shortDescription',
+      width: 200, // Chiều rộng hợp lý cho cột Meta Description
+    },
+    {
+      title: 'Category ID',
+      dataIndex: 'categoryId',
+      key: 'categoryId',
+      width: 120, // Chiều rộng hợp lý cho cột Category ID
     },
     {
       title: 'Slug',
       dataIndex: 'slug',
       key: 'slug',
-      width: 200,
+      width: 150, // Chiều rộng hợp lý cho cột Slug
     },
     {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      width: 300,
-      render: (text) => (
-        <div
-          style={{
-            maxHeight: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}
-          dangerouslySetInnerHTML={{ __html: text }}
-        />
-      ),
+      title: 'Meta Title',
+      dataIndex: 'metaTitle',
+      key: 'metaTitle',
+      width: 150, // Chiều rộng hợp lý cho cột Meta Title
     },
     {
-      title: 'Parent ID',
-      dataIndex: 'parentId',
-      key: 'parentId',
-      width: 120,
-      render: (parentId) => parentId === null ? <span style={{ color: 'gray' }}>Root category</span> : parentId,
+      title: 'Meta Description',
+      dataIndex: 'metaDescription',
+      key: 'metaDescription',
+      width: 200, // Chiều rộng hợp lý cho cột Meta Description
+    },
+    {
+      title: 'Meta Keywords',
+      dataIndex: 'metaKeywords',
+      key: 'metaKeywords',
+      width: 200, // Chiều rộng hợp lý cho cột Meta Keywords
     },
     {
       title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 170,
-      render: (date) => new Date(date).toLocaleString(),
-      sorter: (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      width: 150, // Chiều rộng hợp lý cho cột Created At
+      render: (value) => (value ? new Date(value).toLocaleString() : ''),
     },
     {
       title: 'Updated At',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
-      width: 170,
-      render: (date) => new Date(date).toLocaleString(),
+      width: 150, // Chiều rộng hợp lý cho cột Updated At
+      render: (value) => (value ? new Date(value).toLocaleString() : ''),
     },
     {
       title: 'Actions',
       key: 'actions',
+      width: 250, // Chiều rộng hợp lý cho cột Actions
       fixed: 'right',
-      width: 180,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
@@ -162,30 +155,21 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
 
   const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
     try {
-      const params = {
-        page,
-        limit,
+      const response = await fetchProductList({
+        page: page,
+        limit: limit,
+        categoryId: '',
         search: search || '',
         sortBy: sortBy || 'createdAt',
-        sortOrder: sortOrder || 'DESC'
-      };
-
-      const data: any = await fetchProductCategories(
-        page,
-        limit,
-        search,
-        sortBy,
-        sortOrder
-      );
-
+        sortOrder: sortOrder || 'DESC',
+      }) as any;
+      console.log("Response:", response);
+      
       setLoading(false);
-      setData(data.data);
-      setLimit(data.pagination.limit);
-      setTotal(data.pagination.total);
-      setPagination(data.pagination.totalPages);
-      setCurrentpagination(data.pagination.page);
-
-      console.log(data);
+      setTotal(response.pagination.total);
+      setData(response.data);
+      setPagination(response.pagination.totalPages);
+      setCurrentpagination(response.pagination.currentPage);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -201,52 +185,48 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
     fetchData(1, limit, searchText, field, order);
   };
 
-  const deleteAPI = async (record: ProductCategory) => {
+  const deleteAPI = async (record: BlogPostAttributes) => {
     try {
-      const response = await deleteProductCategory(record.id);
-      await fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-      message.success(`Deleted Product Category: ${record.name}`);
+      await deleteProduct(record.id);
+      fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+      message.success(`Deleted Product: ${record.name}`);
     } catch (error) {
-      console.error('Error deleting Product Category:', error);
-      message.error(`Failed to delete Product Category: ${record.name}`);
+      console.error('Error deleting product:', error);
+      message.error(`Failed to delete product: ${record.name}`);
     }
     handleModalClose();
   };
 
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setConfirmingPopup(false);
+    setFormData(null);
+  };
+  
   const createAPI = async () => {
+    
     if (formData) {
       try {
-        const formatFormData = {
-          name: formData.name,
-          slug: formData.slug,
-          description: formData.description,
-        };
-        const response = await createProductCategory(formatFormData);
-        await fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-        message.success('Product Category created successfully!');
+        const response = await createProduct(formData);
+        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+        message.success('Product created successfully!');
       } catch (error) {
-        console.error('Error submitting Product Category:', error);
-        message.error('Failed to submit Product Category.');
+        console.error('Error submitting product:', error);
+        message.error('Failed to submit product.');
       }
       handleModalClose();
     }
   };
-
   const updateAPI = async () => {
+    
     if (formData) {
       try {
-        const formatFormData = {
-          id: formData.id,
-          name: formData.name,
-          slug: formData.slug,
-          description: formData.description,
-        };
-        const response = await updateProductCategory(formatFormData);
-        await fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-        message.success('Product Category updated successfully!');
+        const response = await updateProduct(formData);
+        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+        message.success('Product updated successfully!');
       } catch (error) {
-        console.error('Error submitting Product Category:', error);
-        message.error('Failed to submit Product Category.');
+        console.error('Error updating product:', error);
+        message.error('Failed to update product.');
       }
       handleModalClose();
     }
@@ -266,7 +246,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
 
   return (
     <>
-      <Card title="Product Categories" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
+      <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
         <Row style={{ marginBottom: 16 }}>
           <Col span={12}>
             <Space>
@@ -279,14 +259,14 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
                 setAction("create");
                 handleAdd();
               }}>
-                Add Product Category
+                Add Product
               </Button>
             </Space>
           </Col>
           <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Space>
               <Input.Search
-                placeholder="Tìm kiếm danh mục..."
+                placeholder="Tìm kiếm sản phẩm..."
                 allowClear
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -299,9 +279,8 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
                 value={sortField}
                 onChange={(value) => handleSortChange(value, sortOrder)}
                 options={[
-                  { value: 'id', label: 'ID' },
-                  { value: 'name', label: 'Tên danh mục' },
-                  { value: 'slug', label: 'Slug' },
+                  { value: 'name', label: 'Tên sản phẩm' },
+                  { value: 'categoryId', label: 'Danh mục' },
                   { value: 'createdAt', label: 'Ngày tạo' },
                   { value: 'updatedAt', label: 'Ngày cập nhật' },
                 ]}
@@ -319,7 +298,6 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
             </Space>
           </Col>
         </Row>
-
         <Table
           style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
           loading={loading}
@@ -328,23 +306,22 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
             onChange: handleSelectChange,
           }}
           columns={columns}
-          scroll={{ x: 700 }}
-          dataSource={data.map((productCategory) => ({ ...productCategory, key: productCategory.id }))}
+          dataSource={data.map((product) => ({ ...product, key: product.id }))}
           pagination={false}
+          scroll={{ x: 700 }}
         />
         {!loading && (
           <Pagination
             align="center"
             current={Currentpagination}
             total={total}
-            pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
               fetchData(page, limit, searchText, sortField, sortOrder);
             }}
           />
         )}
-        <AddProductCategoryFormPopup
+        <AddProductFormPopup
           open={isModalOpen}
           isView={isView}
           onClose={handleModalClose}
@@ -365,6 +342,7 @@ const ProductCategoryTable: React.FC<ProductCategoryTableProps> = () => {
         />
       </Card>
     </>
+
   );
 };
-export default ProductCategoryTable;
+export default ProductsTable;

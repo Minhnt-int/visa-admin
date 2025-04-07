@@ -40,7 +40,7 @@ const ScoringBlog: React.FC<any> = ({ }) => {
                         width: '100%', 
                         height: '100%', 
                         backgroundColor: 'rgba(0, 0, 0, 0.1)', 
-                        zIndex: 9999,
+                        zIndex: 2,
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center'
