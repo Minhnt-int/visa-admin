@@ -1,184 +1,362 @@
-import React from 'react';
-import { Input, DatePicker } from 'antd';
-import { Button, Card, CardContent, Typography, Box } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Input, DatePicker, message, Modal } from 'antd';
+import { Button, Card, CardContent, Typography, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, CircularProgress } from '@mui/material';
 import dayjs from 'dayjs';
-import Editor from "../editor/Editor";
-import { BlogPostAttributes } from '@/data/BlogPost';
+import { BlogCategory, initBlogCategory } from '@/data/blogCategory';
+import { ActionType, useAppContext } from '@/contexts/AppContext';
+import MediaPopup from '../popup/MediaPopup';
+import ConfirmPopup from '../popup/ConfirmPopup';
+import { useRouter } from 'next/navigation';
 
 interface BlogCategoryFormProps {
   isView?: boolean;
-  onChange: (data: { name: string; value: any }) => void;
-  onSubmit: () => void;
+  onSuccess?: () => void;
   onCancel?: () => void;
-  formData: BlogPostAttributes;
+  initialData?: BlogCategory;
+  afterDelete?: () => void;
 }
 
 const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   isView = false,
-  onChange,
-  onSubmit,
+  onSuccess,
   onCancel,
-  formData,
+  initialData,
+  afterDelete,
 }) => {
-  const formTitle = formData && formData?.id ? "Edit Blog Post" : "Add Blog Post";
+  const [formData, setFormData] = useState<BlogCategory>(initialData || initBlogCategory);
+  const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [confirmingPopup, setConfirmingPopup] = useState(false);
+  const router = useRouter();
+  const {
+    currentAction,
+    selectedBlogCategory,
+    setSelectedBlogCategory,
+    updateBlogCategory,
+    createBlogCategory,
+    setLoadingState,
+    setCurrentAction,
+    deleteBlogCategory,
+  } = useAppContext();
+
+  // Update form data when initialData or selectedBlogCategory changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else if (selectedBlogCategory && currentAction.type === ActionType.EDIT) {
+      setFormData(selectedBlogCategory);
+    } else {
+      setFormData(initBlogCategory);
+    }
+  }, [initialData, selectedBlogCategory, currentAction]);
+
+  const formTitle = currentAction.type === ActionType.EDIT ? "Edit Blog Category" : "Add Blog Category";
+  
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Update context if editing existing category
+    if (selectedBlogCategory && field in selectedBlogCategory) {
+      setSelectedBlogCategory({
+        ...selectedBlogCategory,
+        [field]: value
+      });
+    }
+  };
+  
+  const handleMediaSelect = (path: string) => {
+    handleInputChange('avatarUrl', path);
+    setIsMediaPopupOpen(false);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsLoading(true);
+      
+      if (formData.id) {
+        const result = await updateBlogCategory(formData);
+        
+        if (result) {
+          message.success(`Blog category updated successfully`);
+          router.push('/danh-muc-bai-viet');
+          // Reset form after successful update
+          setFormData(initBlogCategory);
+          
+          // Notify parent component of success
+          if (onSuccess) {
+            onSuccess();
+          }
+        }
+      } else {
+        const result = await createBlogCategory(formData);
+        if (result) {
+          message.success(`Blog category created successfully`);
+          router.push('/danh-muc-bai-viet');
+          // Reset form after successful creation
+          setFormData(initBlogCategory);
+          
+          // Notify parent component of success
+          if (onSuccess) {
+            onSuccess();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error saving blog category:', error);
+      message.error('Failed to save blog category');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setIsLoading(true);
+      
+      const result = await deleteBlogCategory(formData.id);
+      
+      if (result) {
+        // Reset selected category
+        setSelectedBlogCategory(null);
+        
+        // Close confirm dialog
+        setIsDeleteConfirmOpen(false);
+        
+        // Notify parent component of deletion
+        if (afterDelete) {
+          afterDelete();
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting blog category:', error);
+      message.error('Failed to delete blog category');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    try {
+      if (currentAction.type === ActionType.EDIT) {
+        await updateBlogCategory(formData);
+        message.success('Đã cập nhật danh mục thành công!');
+      } else {
+        await createBlogCategory(formData);
+        message.success('Đã tạo danh mục mới thành công!');
+      }
+      router.push('/danh-muc-bai-viet');
+    } catch (error) {
+      console.error('Error saving category:', error);
+      message.error('Không thể lưu danh mục. Vui lòng thử lại sau.');
+    }
+    setConfirmingPopup(false);
+  };
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h5" component="h2" gutterBottom>
-          {formTitle}
-        </Typography>
-        
-        {/* Basic Information */}
-        <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
-          Blog Post Information
-        </Typography>
-        
-        <Input
-          placeholder="Title"
-          value={formData?.title || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'title', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Slug"
-          value={formData?.slug || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Author"
-          value={formData?.author || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'author', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Blog Category ID"
-          type="number"
-          value={formData?.blogCategoryId || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'blogCategoryId', value: Number(e.target.value) || 0 })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <div style={{ marginBottom: "16px" }}>
-          <Typography variant="body2" gutterBottom>Content</Typography>
-          <Editor 
-            disabled={isView} 
-            value={formData?.content || ""}
-            onChange={(content) => onChange({ name: 'content', value: content })}
-            placeholder="Content"
+    <>
+      <Card>
+        <CardContent>
+          <Typography variant="h5" component="h2" gutterBottom>
+            {formTitle}
+          </Typography>
+          
+          {/* Basic Information */}
+          <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
+            Blog Category Information
+          </Typography>
+          
+          <Input
+            placeholder="Name"
+            value={formData?.name || ""}
+            disabled={isView || isLoading}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            style={{ marginBottom: "16px" }}
           />
-        </div>
 
-        {/* SEO Information */}
-        <Typography variant="h6" gutterBottom>SEO Information</Typography>
-        <Input
-          placeholder="Meta Title"
-          value={formData?.metaTitle || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'metaTitle', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Meta Description"
-          value={formData?.metaDescription || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'metaDescription', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Meta Keywords"
-          value={formData?.metaKeywords || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'metaKeywords', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        {/* Dates */}
-        <Typography variant="h6" gutterBottom>Dates</Typography>
-        
-        <div style={{ marginBottom: "16px" }}>
-          <Typography variant="body2" gutterBottom>Published Date</Typography>
-          <DatePicker
-            value={formData?.publishedAt ? dayjs(formData?.publishedAt) : null}
-            onChange={(date) => {
-              onChange({
-                name: 'publishedAt',
-                value: date ? date.toISOString() : null,
-              });
-            }}
-            format="YYYY-MM-DD HH:mm:ss"
-            showTime
-            disabled={isView}
-            style={{ width: "100%" }}
-            getPopupContainer={(trigger) => trigger.parentElement!}
+          <Input
+            placeholder="Slug"
+            value={formData?.slug || ""}
+            disabled={isView || isLoading}
+            onChange={(e) => handleInputChange('slug', e.target.value)}
+            style={{ marginBottom: "16px" }}
           />
-        </div>
-        
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-          <div style={{ width: "50%" }}>
-            <Typography variant="body2" gutterBottom>Created At</Typography>
-            <DatePicker
-              value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'createdAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
-              disabled={true}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
+
+          {/* <Input
+            placeholder="Description"
+            value={formData?.description || ""}
+            disabled={isView || isLoading}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            style={{ marginBottom: "16px" }}
+          /> */}
+
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Input
+              placeholder="Avatar URL"
+              value={formData?.avatarUrl || ""}
+              disabled={isView || isLoading}
+              onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
+              style={{ flex: 1 }}
             />
+            <Button
+              variant="outlined"
+              onClick={() => setIsMediaPopupOpen(true)}
+              disabled={isView || isLoading}
+            >
+              Select Image
+            </Button>
+          </Box>
+
+          {formData?.avatarUrl && (
+            <Box sx={{ mb: 2, textAlign: 'center' }}>
+              <img 
+                src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
+                alt="Avatar Preview" 
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: 200, 
+                  objectFit: 'contain',
+                  border: '1px solid #eee',
+                  borderRadius: 4,
+                  padding: 4
+                }} 
+              />
+            </Box>
+          )}
+
+          <Input
+            placeholder="Parent Category ID"
+            type="number"
+            value={formData?.parentId || ""}
+            disabled={isView || isLoading}
+            onChange={(e) => handleInputChange('parentId', Number(e.target.value) || null)}
+            style={{ marginBottom: "16px" }}
+          />
+
+          {/* Dates */}
+          <Typography variant="h6" gutterBottom>Dates</Typography>
+          
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ width: "50%" }}>
+              <Typography variant="body2" gutterBottom>Created At</Typography>
+              <DatePicker
+                value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
+                onChange={(date) => {
+                  handleInputChange('createdAt', date ? date.toISOString() : null);
+                }}
+                format="YYYY-MM-DD HH:mm:ss"
+                showTime
+                disabled={true}
+                style={{ width: "100%" }}
+                getPopupContainer={(trigger) => trigger.parentElement!}
+              />
+            </div>
+            
+            <div style={{ width: "50%" }}>
+              <Typography variant="body2" gutterBottom>Updated At</Typography>
+              <DatePicker
+                value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
+                onChange={(date) => {
+                  handleInputChange('updatedAt', date ? date.toISOString() : null);
+                }}
+                format="YYYY-MM-DD HH:mm:ss"
+                showTime
+                disabled={true}
+                style={{ width: "100%" }}
+                getPopupContainer={(trigger) => trigger.parentElement!}
+              />
+            </div>
           </div>
           
-          <div style={{ width: "50%" }}>
-            <Typography variant="body2" gutterBottom>Updated At</Typography>
-            <DatePicker
-              value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'updatedAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
-              disabled={true}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
-            />
-          </div>
-        </div>
-        
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          {onCancel && (
-            <Button onClick={onCancel} sx={{ mr: 1 }}>
-              Cancel
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+            <Box>
+              {currentAction.type === ActionType.EDIT && !isView && (
+                <Button 
+                  onClick={() => setIsDeleteConfirmOpen(true)}
+                  variant="contained" 
+                  color="error"
+                  disabled={isLoading}
+                >
+                  Delete
+                </Button>
+              )}
+            </Box>
+            <Box>
+              {onCancel && (
+                <Button 
+                  onClick={onCancel} 
+                  sx={{ mr: 1 }}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+              )}
+              {!isView && (
+                <Button 
+                  onClick={handleSubmit} 
+                  variant="contained" 
+                  color="primary"
+                  disabled={isLoading}
+                  startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                  {isLoading ? 'Saving...' : 'Submit'}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Media Popup */}
+      <MediaPopup
+        open={isMediaPopupOpen}
+        onClose={() => setIsMediaPopupOpen(false)}
+        onSelect={handleMediaSelect}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the category "{formData?.name}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
           <Button 
-            disabled={isView} 
-            onClick={onSubmit} 
-            variant="contained" 
-            color="primary"
+            onClick={() => setIsDeleteConfirmOpen(false)} 
+            disabled={isLoading}
           >
-            Submit
+            Cancel
           </Button>
-        </Box>
-      </CardContent>
-    </Card>
+          <Button 
+            onClick={handleDelete} 
+            color="error" 
+            variant="contained"
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {isLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <ConfirmPopup
+        open={confirmingPopup}
+        onClose={() => setConfirmingPopup(false)}
+        onSubmit={handleConfirm}
+        Content={currentAction.type === ActionType.EDIT 
+          ? "Xác nhận cập nhật danh mục này?"
+          : "Xác nhận tạo danh mục mới?"
+        }
+      />
+    </>
   );
 };
 

@@ -1,15 +1,34 @@
 import ApiService from './ApiService';
 import { ProductCategory } from '@/data/ProductCategory';
 
-const PRODUCT_CATEGORIES_URL = '/api/product-categories';
+const PRODUCT_CATEGORIES_URL = '/api/product-category';
 
 const ProductCategoryService = {
   /**
    * Lấy danh sách tất cả danh mục sản phẩm
    */
-  async getAllCategories() {
+  async getAllCategories(params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    parentId?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) {
     try {
-      const response = await ApiService.get(PRODUCT_CATEGORIES_URL + "/get-list" +'?page=1&limit=10&sortBy=createdAt&sortOrder=DESC');
+      const queryParams = new URLSearchParams();
+      
+      if (params) {
+        if (params.page) queryParams.append('page', params.page.toString());
+        if (params.limit) queryParams.append('limit', params.limit.toString());
+        if (params.name) queryParams.append('name', params.name);
+        if (params.parentId) queryParams.append('parentId', params.parentId.toString());
+        if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+        if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+      }
+
+      const url = `${PRODUCT_CATEGORIES_URL}/get-list${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const response = await ApiService.get(url);
       return ApiService.handleResponse<ProductCategory[]>(response);
     } catch (error) {
       return ApiService.handleError(error);

@@ -9,9 +9,8 @@
 
 .main-container {
 	font-family: 'Lato';
-	width: fit-content;
-	margin-left: auto;
-	margin-right: auto;
+	width: 100%;
+	margin: 0 auto;
 }
 
 .ck-content {
@@ -21,8 +20,25 @@
 }
 
 .editor-container_classic-editor .editor-container__editor {
-	min-width: 795px;
-	max-width: 795px;
+	width: 100%;
+	min-width: 100%;
+	max-width: 100%;
+}
+
+.ck-editor__editable {
+	border-radius: 8px !important;
+}
+
+.ck-editor__main {
+	border-radius: 8px !important;
+}
+
+.ck-editor__top {
+	border-radius: 8px 8px 0 0 !important;
+}
+
+.ck-editor__editable {
+	border-radius: 0 0 8px 8px !important;
 }
 
 .ck-content h3.category {

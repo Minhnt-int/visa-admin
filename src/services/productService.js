@@ -15,6 +15,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
  * @param {string} params.sortOrder - Hướng sắp xếp (asc/desc)
  * @param {number} params.page - Số trang
  * @param {number} params.limit - Số mục mỗi trang
+ * @param {string} params.status - Trạng thái sản phẩm
  * @returns {Promise<Object>} - Promise trả về dữ liệu sản phẩm
  */
 export const fetchProductList = async ({
@@ -23,7 +24,7 @@ export const fetchProductList = async ({
   sortBy = '',
   sortOrder = '',
   page = 1,
-  limit = 12
+  limit = 12,
 } = {}) => {
   try {
     const params = {
@@ -32,7 +33,7 @@ export const fetchProductList = async ({
       sortBy,
       sortOrder,
       page,
-      limit
+      limit,
     };
     
     // Lọc bỏ các tham số trống
@@ -172,7 +173,7 @@ export const updateProduct = async (productData) => {
  */
 export const deleteProduct = async (productId) => {
   try {
-    const response = await axioss.delete(`/api/product/delete/${productId}`);
+    const response = await axioss.delete(`/api/product/permanently-delete?id=${productId}`);
     return response.data;
   } catch (error) {
     console.error('Lỗi khi xóa sản phẩm:', error);

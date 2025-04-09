@@ -3,11 +3,11 @@ import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
 import { useState, useEffect } from 'react';
 import { BlogCategory } from '@/data/blogCategory';
-import { Button, Space, message, Form, Input, Upload, Card, Spin } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { message } from 'antd';
 import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ConfirmPopup from '../../components/popup/ConfirmPopup';
+import BlogCategoryForm from '../../components/forms/BlogCategoryForm';
 
 const initialFormData: BlogCategory = {
   id: 0,
@@ -30,18 +30,11 @@ const BlogCategoryAction = () => {
   const [formData, setFormData] = useState<BlogCategory>(initialFormData);
   
   const {
-    // BlogCategory State
     selectedBlogCategory,
-    
-    // Shared State
     loading,
-    
-    // BlogCategory Actions
-    fetchBlogCategoryById,
+    fetchBlogCategories,
     createBlogCategory,
     updateBlogCategory,
-    
-    // Shared Actions
     setLoadingState,
     setCurrentAction,
   } = useAppContext();
@@ -51,7 +44,7 @@ const BlogCategoryAction = () => {
       try {
         if (id) {
           setLoadingState(true);
-          await fetchBlogCategoryById(id);
+          await fetchBlogCategories();
           setLoadingState(false);
         } else {
           setCurrentAction(ActionType.CREATE, 'blogCategory');
@@ -63,7 +56,7 @@ const BlogCategoryAction = () => {
     };
     
     loadData();
-  }, [id, fetchBlogCategoryById, setLoadingState, setCurrentAction]);
+  }, [id, fetchBlogCategories, setLoadingState, setCurrentAction]);
 
   useEffect(() => {
     if (selectedBlogCategory && (isEdit || isView)) {
@@ -76,12 +69,13 @@ const BlogCategoryAction = () => {
     }
   }, [selectedBlogCategory, isEdit, isView, id, setCurrentAction]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (data: { name: string; value: any }) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [data.name]: data.value,
     }));
+    console.log(data, formData);
+
   };
 
   const handleSubmit = () => {
@@ -91,7 +85,7 @@ const BlogCategoryAction = () => {
   const handleConfirm = async () => {
     try {
       if (isEdit && id) {
-        await updateBlogCategory(id, formData);
+        await updateBlogCategory(formData);
         message.success('Đã cập nhật danh mục thành công!');
       } else {
         await createBlogCategory(formData);
@@ -111,92 +105,11 @@ const BlogCategoryAction = () => {
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Card>
-              <Form layout="vertical" style={{ maxWidth: 800, margin: '0 auto' }}>
-                <Form.Item label="Tên danh mục" required>
-                  <Input
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    disabled={isView}
-                    placeholder="Nhập tên danh mục"
-                  />
-                </Form.Item>
-                <Form.Item label="Slug" required>
-                  <Input
-                    name="slug"
-                    value={formData.slug}
-                    onChange={handleChange}
-                    disabled={isView}
-                    placeholder="Nhập slug"
-                  />
-                </Form.Item>
-                <Form.Item label="Hình ảnh">
-                  {isView ? (
-                    formData.avatarUrl ? (
-                      <img 
-                        src={formData.avatarUrl} 
-                        alt={formData.name} 
-                        style={{ maxWidth: '100%', maxHeight: 200 }}
-                      />
-                    ) : (
-                      <div>Không có hình ảnh</div>
-                    )
-                  ) : (
-                    <Upload
-                      name="avatar"
-                      listType="picture"
-                      maxCount={1}
-                      beforeUpload={() => false}
-                      onChange={({ file }) => {
-                        if (file && file.originFileObj) {
-                          const reader = new FileReader();
-                          reader.onload = (e) => {
-                            setFormData(prev => ({
-                              ...prev,
-                              avatarUrl: e.target?.result as string
-                            }));
-                          };
-                          reader.readAsDataURL(file.originFileObj);
-                        }
-                      }}
-                    >
-                      <Button icon={<UploadOutlined />}>Tải lên hình ảnh</Button>
-                    </Upload>
-                  )}
-                </Form.Item>
-                <Form.Item>
-                  <Space>
-                    {isView ? (
-                      <Button type="primary" onClick={() => router.push('/danh-muc-bai-viet')}>
-                        Quay lại
-                      </Button>
-                    ) : (
-                      <>
-                        <Button onClick={() => router.push('/danh-muc-bai-viet')}>
-                          Hủy
-                        </Button>
-                        <Button type="primary" onClick={handleSubmit}>
-                          {isEdit ? 'Cập nhật' : 'Thêm mới'}
-                        </Button>
-                      </>
-                    )}
-                  </Space>
-                </Form.Item>
-              </Form>
-            </Card>
+            <BlogCategoryForm
+            />
           </Grid>
         </Grid>
       </Box>
-      <ConfirmPopup
-        open={confirmingPopup}
-        onClose={() => setConfirmingPopup(false)}
-        onSubmit={handleConfirm}
-        Content={isEdit 
-          ? "Xác nhận cập nhật danh mục này?"
-          : "Xác nhận tạo danh mục mới?"
-        }
-      />
     </PageContainer>
   )
 }

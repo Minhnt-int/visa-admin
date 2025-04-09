@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, message, Input, Select, Row, Col } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { Pagination } from "antd";
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
 import { BlogCategory, initBlogCategory } from '@/data/blogCategory';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/AppContext';
+import AddBlogCategoryFormPopup from '../popup/AddBlogCategoryFormPopup';
 
 const BlogCategoryTable: React.FC = () => {
   const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<BlogCategory | null>(null);
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [limit, setLimit] = useState(10);
   const [Currentpagination, setCurrentpagination] = useState(1);
 
@@ -24,7 +25,9 @@ const BlogCategoryTable: React.FC = () => {
   const {
     // BlogCategory State
     blogCategories,
-    selectedBlogCategory,
+    
+    setSelectedBlogCategory,
+
     
     // Shared State
     loading,
@@ -32,7 +35,6 @@ const BlogCategoryTable: React.FC = () => {
     
     // BlogCategory Actions
     fetchBlogCategories,
-    fetchBlogCategoryById,
     deleteBlogCategory,
     
     // Shared Actions
@@ -45,19 +47,18 @@ const BlogCategoryTable: React.FC = () => {
     setSelectedRowKeys(selectedKeys);
   };
 
-  const handleLogSelected = () => {
-    message.info(`Selected Categories: ${selectedRowKeys.join(', ')}`);
-  };
-
   const handleView = async (record: BlogCategory) => {
-    router.push(`/danh-muc-bai-viet/view/${record.id}`);
+    setIsModalOpen(true);
+    setFormData(record);
   };
   
   const handleEdit = async (record: BlogCategory) => {
+    setSelectedBlogCategory(record);
     router.push(`/danh-muc-bai-viet/action?id=${record.id}&mode=edit`);
   };
 
   const handleAdd = () => {
+    setSelectedBlogCategory(null);
     router.push(`/danh-muc-bai-viet/action?mode=create`);
   };
 
@@ -91,7 +92,7 @@ const BlogCategoryTable: React.FC = () => {
       dataIndex: 'avatarUrl',
       key: 'avatarUrl',
       width: 150,
-      render: (url) => url ? <img src={url} alt="Avatar" style={{ width: 50, height: 50, objectFit: 'cover' }} /> : 'Không có hình',
+      // render: (url) => url ? <img src={url} alt="Avatar" style={{ width: 50, height: 50, objectFit: 'cover' }} /> : 'Không có hình',
     },
     {
       title: 'Ngày tạo',
@@ -164,6 +165,7 @@ const BlogCategoryTable: React.FC = () => {
   };
 
   const handleModalClose = () => {
+    setIsModalOpen(false);
     setConfirmingPopup(false);
     setFormData(null);
   };
@@ -171,27 +173,28 @@ const BlogCategoryTable: React.FC = () => {
   useEffect(() => {
     fetchData(1, limit, searchText, sortField, sortOrder);
   }, []);
-
-  console.log("blogCategoriesTable", blogCategories);
-
+  const tableProps: TableProps<BlogCategory> = {
+    columns,
+    dataSource: blogCategories,
+    rowKey: 'id',
+    pagination: false,
+    loading,
+  };
   return (
     <>
-      <Card title="Danh mục bài viết" style={{ width: '100%', margin: '0 auto' }}>
+      <Card title="Blog Categories Management" style={{ width: '100%', margin: '0 auto' }}>
         <Row style={{ marginBottom: 16 }}>
           <Col span={12}>
             <Space>
-              <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
-                Đã chọn
-              </Button>
               <Button type="primary" onClick={handleAdd}>
-                Thêm danh mục
+                Add New Category
               </Button>
             </Space>
           </Col>
           <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Space>
               <Input
-                placeholder="Tìm kiếm..."
+                placeholder="Search..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 style={{ width: 200 }}
@@ -202,8 +205,8 @@ const BlogCategoryTable: React.FC = () => {
                 onChange={(value) => setSortField(value)}
                 options={[
                   { value: 'id', label: 'ID' },
-                  { value: 'name', label: 'Tên' },
-                  { value: 'createdAt', label: 'Ngày tạo' },
+                  { value: 'name', label: 'Name' },
+                  { value: 'createdAt', label: 'Created Date' },
                 ]}
               />
               <Select
@@ -211,15 +214,16 @@ const BlogCategoryTable: React.FC = () => {
                 style={{ width: 120 }}
                 onChange={(value) => setSortOrder(value)}
                 options={[
-                  { value: 'ASC', label: 'Tăng dần' },
-                  { value: 'DESC', label: 'Giảm dần' },
+                  { value: 'ASC', label: 'Ascending' },
+                  { value: 'DESC', label: 'Descending' },
                 ]}
               />
-              <Button type="primary" onClick={handleSearch}>Tìm kiếm</Button>
+              <Button type="primary" onClick={handleSearch}>Search</Button>
             </Space>
           </Col>
         </Row>
-        <Table
+        <Table<BlogCategory>
+          style={{ width: '100%' }}
           columns={columns}
           dataSource={blogCategories}
           rowKey="id"
@@ -239,10 +243,17 @@ const BlogCategoryTable: React.FC = () => {
             pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
-              fetchData(page, limit, searchText, sortField, sortOrder);
             }}
           />
         )}
+        <AddBlogCategoryFormPopup
+          open={isModalOpen}
+          onClose={handleModalClose}
+          onSubmit={() => {}}
+          formData={formData!}
+          isView={true}
+          onChange={() => {}}
+          />
         <ConfirmPopup
           open={ConfirmingPopup}
           onClose={() => setConfirmingPopup(false)}

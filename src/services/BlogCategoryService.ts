@@ -2,6 +2,7 @@ import ApiService from './ApiService';
 import { BlogCategory } from '@/data/blogCategory';
 
 const BLOG_CATEGORIES_URL = '/api/blog-categories';
+const BLOG_CATEGORY_URL = '/api/blog/category';
 
 const BlogCategoryService = {
   /**
@@ -43,9 +44,9 @@ const BlogCategoryService = {
   /**
    * Cập nhật danh mục blog
    */
-  async updateCategory(id: number, category: BlogCategory) {
+  async updateCategory(category: BlogCategory) {
     try {
-      const response = await ApiService.put(`${BLOG_CATEGORIES_URL}/${id}`, category);
+      const response = await ApiService.put(`${BLOG_CATEGORIES_URL}`, category);
       return ApiService.handleResponse<BlogCategory>(response);
     } catch (error) {
       return ApiService.handleError(error);

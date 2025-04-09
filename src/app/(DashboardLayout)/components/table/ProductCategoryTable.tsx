@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space, message, Card, Input, Select, Row, Col } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { Pagination } from "antd";
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { ProductCategory } from '@/data/ProductCategory';
@@ -45,6 +45,8 @@ const ProductCategoryTable: React.FC = () => {
     setLoadingState,
     setErrorState,
   } = useAppContext();
+
+  
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
@@ -155,19 +157,32 @@ const ProductCategoryTable: React.FC = () => {
     },
   ];
 
-  const fetchData = async () => {
+  const handleSearch = () => {
+    fetchData({
+      page: Currentpagination,
+      limit: limit,
+      name: searchText,
+      sortBy: sortField,
+      sortOrder: sortOrder as 'ASC' | 'DESC'
+    });
+  };
+
+  const fetchData = async (params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    parentId?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => {
     try {
       setLoadingState(true);
-      await fetchProductCategories();
+      await fetchProductCategories(params);
       setLoadingState(false);
     } catch (error) {
       console.error("Error fetching data:", error);
       setErrorState(error instanceof Error ? error.message : 'Đã xảy ra lỗi');
     }
-  };
-
-  const handleSearch = () => {
-    fetchData();
   };
 
   const handleDeleteCategory = async () => {
@@ -186,9 +201,20 @@ const ProductCategoryTable: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData({
+      page: 1,
+      limit: 10,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC'
+    });
   }, []);
-
+  const tableProps: TableProps<ProductCategory> = {
+    columns,
+    dataSource: productCategories,
+    rowKey: 'id',
+    pagination: false,
+    loading,
+  };
   return (
     <>
       <Card title="Danh mục sản phẩm" style={{ width: '100%', margin: '0 auto' }}>

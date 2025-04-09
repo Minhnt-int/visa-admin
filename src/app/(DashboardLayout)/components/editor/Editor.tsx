@@ -450,10 +450,9 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 	}, [cloud, isLayoutReady, value]);
 
 	return (
-		<div className="main-container" style={{margin: '20px auto' }}>
+		<div className="main-container">
 			<div className="editor-container editor-container_classic-editor editor-container_include-style" 
-				 ref={editorContainerRef}
-				 style={{ borderRadius: '8px', padding: '10px' }}>
+				 ref={editorContainerRef}>
 				<div className="editor-container__editor">
 					<div ref={editorRef}>
 						{ClassicEditor && editorConfig && (
@@ -466,7 +465,6 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 								}}
 								onChange={(event, editor) => {
 									const data = editor.getData();
-									// Gọi hàm onChange được truyền vào từ props
 									if (onChange) {
 										onChange(data);
 									}

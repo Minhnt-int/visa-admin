@@ -93,6 +93,26 @@ export const fetchBlogCategories = async (
   }
 };
 
+export const updateBlogCategory = async (blogCategoryData) => {
+  try {
+    // Sử dụng URL tương đối thay vì URL tuyệt đối
+    const response = await axioss.put('/api/blog-categories', blogCategoryData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      validateStatus: function (status) {
+        // Chấp nhận mã trạng thái 200 và 201 là thành công
+        return status >= 200 && status < 300;
+      }
+
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Lỗi khi cập nhật sản phẩm:', error);
+    throw error;
+  }
+};
 /**
  * Lấy thông tin chi tiết bài viết blog theo slug
  * @param {string} slug - Slug của bài viết

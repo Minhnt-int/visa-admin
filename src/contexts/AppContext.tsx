@@ -5,6 +5,7 @@ import { ProductAttributes } from '@/data/ProductAttributes';
 import { BlogCategory } from '@/data/blogCategory';
 import { ProductCategory } from '@/data/ProductCategory';
 import { OrderAttributes } from '@/data/Order';
+import { message } from 'antd';
 import BlogCategoryService from '@/services/BlogCategoryService';
 import ProductCategoryService from '@/services/ProductCategoryService';
 
@@ -63,12 +64,22 @@ interface AppContextProps {
   fetchBlogCategories: () => Promise<void>;
   fetchBlogCategoryById: (id: number) => Promise<void>;
   createBlogCategory: (category: BlogCategory) => Promise<boolean>;
-  updateBlogCategory: (id: number, category: BlogCategory) => Promise<boolean>;
+  updateBlogCategory: (category: BlogCategory) => Promise<boolean>;
   deleteBlogCategory: (id: number) => Promise<boolean>;
   clearSelectedBlogCategory: () => void;
+  setSelectedBlogCategory: (category: BlogCategory | null) => void;
   
   // Product Actions
-  fetchProducts: () => Promise<void>;
+  fetchProducts: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    minPrice?: number;
+    maxPrice?: number;
+    categoryId?: number;
+  }) => Promise<void>;
   fetchProductById: (id: number) => Promise<void>;
   createProduct: (product: ProductAttributes) => Promise<boolean>;
   updateProduct: (id: number, product: ProductAttributes) => Promise<boolean>;
@@ -76,7 +87,14 @@ interface AppContextProps {
   clearSelectedProduct: () => void;
   
   // ProductCategory Actions
-  fetchProductCategories: () => Promise<void>;
+  fetchProductCategories: (params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    parentId?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => Promise<void>;
   fetchProductCategoryById: (id: number) => Promise<void>;
   createProductCategory: (category: ProductCategory) => Promise<boolean>;
   updateProductCategory: (id: number, category: ProductCategory) => Promise<boolean>;
@@ -100,6 +118,10 @@ interface AppContextProps {
     id?: number, 
     slug?: string
   ) => void;
+  
+  // Product Status
+  productStatus: 'active' | 'deleted';
+  toggleProductStatus: () => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -133,6 +155,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     entityType: null,
     timestamp: new Date()
   });
+
+  // Product Status State
+  const [productStatus, setProductStatus] = useState<'active' | 'deleted'>('active');
 
   // ====================== SHARED METHODS ======================
   
@@ -263,12 +288,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [fetchBlogCategories, setCurrentAction]);
 
   // Cập nhật danh mục blog
-  const updateBlogCategory = useCallback(async (id: number, category: BlogCategory) => {
+  const updateBlogCategory = useCallback(async (category: BlogCategory) => {
     try {
       setLoading(true);
-      setCurrentAction(ActionType.EDIT, 'blogCategory', id);
+      setCurrentAction(ActionType.EDIT, 'blogCategory');
       
-      const result = await BlogCategoryService.updateCategory(id, category);
+      const result = await BlogCategoryService.updateCategory(category);
       
       if (result.success) {
         await fetchBlogCategories();
@@ -320,25 +345,76 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ====================== PRODUCT METHODS ======================
   
   // Lấy tất cả sản phẩm
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    minPrice?: number;
+    maxPrice?: number;
+    categoryId?: number;
+  }) => {
     try {
       setLoading(true);
-      // TODO: Sử dụng ProductService
-      setError(null);
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+      if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+      if (params?.minPrice) queryParams.append('minPrice', params.minPrice.toString());
+      if (params?.maxPrice) queryParams.append('maxPrice', params.maxPrice.toString());
+      if (params?.categoryId) queryParams.append('categoryId', params.categoryId.toString());
+      queryParams.append('status', productStatus);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/products/get-list?${queryParams.toString()}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setProducts(result.data.products);
+        setError(null);
+      } else {
+        setError(result.message);
+        setProducts([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [productStatus]);
 
   // Lấy sản phẩm theo ID
   const fetchProductById = useCallback(async (id: number) => {
     try {
       setLoading(true);
-      // TODO: Sử dụng ProductService
-      setCurrentAction(ActionType.VIEW, 'product', id);
-      setError(null);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch product');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSelectedProduct(result.data);
+        setCurrentAction(ActionType.VIEW, 'product', id);
+        setError(null);
+      } else {
+        setError(result.message);
+        setSelectedProduct(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
     } finally {
@@ -385,13 +461,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.DELETE, 'product', id);
-      // TODO: Sử dụng ProductService
-      await fetchProducts();
-      setCurrentAction(ActionType.NONE, null);
-      setError(null);
-      return true;
+      
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/delete', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete product');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        message.success('Product deleted successfully');
+        await fetchProducts();
+        setCurrentAction(ActionType.NONE, null);
+        setError(null);
+        return true;
+      } else {
+        setError(result.message);
+        message.error(result.message || 'Failed to delete product');
+        return false;
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      message.error(errorMessage);
       return false;
     } finally {
       setLoading(false);
@@ -407,10 +506,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ====================== PRODUCT CATEGORY METHODS ======================
   
   // Lấy tất cả danh mục sản phẩm
-  const fetchProductCategories = useCallback(async () => {
+  const fetchProductCategories = useCallback(async (params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    parentId?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => {
     try {
       setLoading(true);
-      const result = await ProductCategoryService.getAllCategories();
+      const result = await ProductCategoryService.getAllCategories(params);
       
       if (result.success) {
         // Đảm bảo result.data là một mảng
@@ -616,6 +722,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentAction(ActionType.NONE, null);
   }, [setCurrentAction]);
 
+  // Toggle Product Status
+  const toggleProductStatus = useCallback(() => {
+    setProductStatus(prev => prev === 'active' ? 'deleted' : 'active');
+  }, []);
+
   // Cập nhật object value
   const value = {
     // Blog State
@@ -656,6 +767,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateBlogCategory,
     deleteBlogCategory,
     clearSelectedBlogCategory,
+    setSelectedBlogCategory,
     
     // Product Actions
     fetchProducts,
@@ -685,6 +797,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setLoadingState,
     setErrorState,
     setCurrentAction,
+    
+    // Product Status
+    productStatus,
+    toggleProductStatus,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -3,6 +3,7 @@ export class BlogCategory {
     public name!: string;
     public slug!: string;
     public avatarUrl!: string;
+    public parentId?: number;
     public createdAt!: Date;
     public updatedAt!: Date;
   }
@@ -11,6 +12,7 @@ export class BlogCategory {
     name: '',
     slug: '',
     avatarUrl: '',
+    parentId: undefined,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

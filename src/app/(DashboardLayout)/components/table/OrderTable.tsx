@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message, Tag, Tooltip, Input, Select, Row, Col } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Table, Button, Space, message, Tag, Tooltip, Input, Select, Row, Col, DatePicker } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { Pagination } from "antd";
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
@@ -20,9 +20,11 @@ const OrderTable: React.FC = () => {
   const [Currentpagination, setCurrentpagination] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const [searchText, setSearchText] = useState('');
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>('');
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
@@ -147,16 +149,13 @@ const OrderTable: React.FC = () => {
       const response = await fetchOrderList({
         page: page,
         limit: limit,
-        startDate: null, 
-        endDate: null,
-        userId: null, 
-        status: null,
+        startDate: startDate,
+        userId: userId || null,
+        status: selectedStatus,
         search: search || '',
         sortBy: sortBy || 'createdAt',
         sortOrder: sortOrder || 'DESC',
       }) as any;
-      console.log("Response:", response);
-      
       setLoading(false);
       setTotal(response.pagination.total);
       setData(response.data);
@@ -171,7 +170,7 @@ const OrderTable: React.FC = () => {
     try {
       if (record.id) {
         await deleteOrder(record.id);
-        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+        fetchData(Currentpagination, limit, sortField, sortOrder);
         message.success(`Deleted Order #${record.id}`);
       }
     } catch (error) {
@@ -186,45 +185,85 @@ const OrderTable: React.FC = () => {
   };
 
   const handleSearch = () => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData(1, limit, sortField, sortOrder);
   };
 
   const handleSortChange = (field: string, order: string) => {
     setSortField(field);
     setSortOrder(order);
-    fetchData(1, limit, searchText, field, order);
+    fetchData(1, limit, field, order);
+  };
+
+  const handleStatusChange = (value: string | null) => {
+    setSelectedStatus(value);
+    fetchData(1, limit, sortField, sortOrder);
+  };
+
+  const handleDateChange = (date: any, dateString: string) => {
+    setStartDate(dateString);
+    fetchData(1, limit, sortField, sortOrder);
+  };
+
+  const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserId(e.target.value);
+  };
+
+  const handleAdd = () => {
+    // Implement the logic to open the add new order form
   };
 
   useEffect(() => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData(1, limit, sortField, sortOrder);
   }, []);
-
+  const tableProps: TableProps<OrderAttributes> = {
+    columns,
+    dataSource: data,
+    rowKey: 'id',
+    pagination: false,
+    loading,
+  };
   return (
     <>
-      <Card title="Orders Management" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
+      <Card title="Orders Management" style={{ width: '100%', margin: '0 auto' }}>
         <Row style={{ marginBottom: 16 }}>
           <Col span={24} style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Space>
-              <Input.Search
-                placeholder="Tìm kiếm đơn hàng..."
+              <Input
+                placeholder="User ID"
+                value={userId}
+                onChange={handleUserIdChange}
+                style={{ width: 120 }}
+              />
+              <DatePicker
+                placeholder="Start Date"
+                onChange={(date, dateString) => setStartDate(dateString as string)}
+                style={{ width: 150 }}
+              />
+              <Select
+                placeholder="Status"
+                style={{ width: 150 }}
+                value={selectedStatus}
+                onChange={handleStatusChange}
                 allowClear
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onSearch={handleSearch}
-                style={{ width: 250 }}
+                options={[
+                  { value: 'PENDING', label: 'Pending' },
+                  { value: 'PROCESSING', label: 'Processing' },
+                  { value: 'DELIVERED', label: 'Delivered' },
+                  { value: 'CANCELLED', label: 'Cancelled' },
+                ]}
               />
               <Select
                 defaultValue="createdAt"
-                style={{ width: 140 }}
+                style={{ width: 120 }}
                 value={sortField}
                 onChange={(value) => handleSortChange(value, sortOrder)}
                 options={[
                   { value: 'id', label: 'ID' },
-                  { value: 'recipientName', label: 'Tên khách hàng' },
-                  { value: 'recipientPhone', label: 'Số điện thoại' },
-                  { value: 'status', label: 'Trạng thái' },
-                  { value: 'createdAt', label: 'Ngày tạo' },
-                  { value: 'updatedAt', label: 'Ngày cập nhật' },
+                  { value: 'recipientName', label: 'Customer Name' },
+                  { value: 'recipientPhone', label: 'Phone' },
+                  { value: 'status', label: 'Status' },
+                  { value: 'createdAt', label: 'Created Date' },
+                  { value: 'updatedAt', label: 'Updated Date' },
                 ]}
               />
               <Select
@@ -233,15 +272,16 @@ const OrderTable: React.FC = () => {
                 value={sortOrder}
                 onChange={(value) => handleSortChange(sortField, value)}
                 options={[
-                  { value: 'ASC', label: 'Tăng dần' },
-                  { value: 'DESC', label: 'Giảm dần' },
+                  { value: 'ASC', label: 'Ascending' },
+                  { value: 'DESC', label: 'Descending' },
                 ]}
               />
+              <Button type="primary" onClick={handleSearch}>Search</Button>
             </Space>
           </Col>
         </Row>
         <Table
-          style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
+          style={{ width: '100%' }}
           loading={loading}
           rowSelection={{
             selectedRowKeys,
@@ -254,13 +294,13 @@ const OrderTable: React.FC = () => {
         />
         {!loading && (
           <Pagination
-            align="center"
+            style={{ marginTop: 16, textAlign: 'center' }}
             current={Currentpagination}
             total={total}
             pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
-              fetchData(page, limit, searchText, sortField, sortOrder);
+              fetchData(page, limit, sortField, sortOrder);
             }}
           />
         )}

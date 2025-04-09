@@ -39,7 +39,7 @@ const ApiService = {
     if (response && response.data) {
       return {
         data: response.data.data || [],
-        success: response.data.success || false,
+        success: response.status >= 200 && response.status < 300 || false,
         message: response.data.message || '',
       };
     }

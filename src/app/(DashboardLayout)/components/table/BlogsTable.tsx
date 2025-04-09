@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Button, Space, message, Input, Select } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Table, Button, Space, message, Input, Select, Row, Col } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
 import { Pagination } from "antd";
@@ -212,80 +212,88 @@ const ProductsTable: React.FC = () => {
   useEffect(() => {
     fetchData(Currentpage, limit, searchText, sortField, sortOrder);
   }, [pathname, searchParams, fetchData, Currentpage, limit, sortField, sortOrder]);
-
+  const tableProps: TableProps<BlogPostAttributes> = {
+    columns,
+    dataSource: data,
+    rowKey: 'id',
+    pagination: false,
+    loading,
+  };
   return (
     <>
-      <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Space>
-            <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
-              Log Selected
-            </Button>
-          </Space>
-          
-          <Space>
-            <Input.Search
-              placeholder="Tìm kiếm bài viết..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onSearch={handleSearch}
-              style={{ width: 250 }}
-            />
-            <Select
-              defaultValue="createdAt"
-              style={{ width: 140 }}
-              onChange={(value) => handleSortChange(value, sortOrder)}
-              options={[
-                { value: 'title', label: 'Tiêu đề' },
-                { value: 'author', label: 'Tác giả' },
-                { value: 'createdAt', label: 'Ngày tạo' },
-                { value: 'updatedAt', label: 'Ngày cập nhật' },
-                { value: 'publishedAt', label: 'Ngày xuất bản' },
-              ]}
-            />
-            <Select
-              defaultValue="DESC"
-              style={{ width: 120 }}
-              onChange={(value) => handleSortChange(sortField, value)}
-              options={[
-                { value: 'ASC', label: 'Tăng dần' },
-                { value: 'DESC', label: 'Giảm dần' },
-              ]}
-            />
-            <Button type="primary" onClick={() => {
-              setIsView(false);
-              setFormData(initialFormData);
-              setAction("create");
-              handleAdd();
-            }}>
-              Add Blog
-            </Button>
-          </Space>
-        </div>
-        
+      <Card title="Blogs Management" style={{ width: '100%', margin: '0 auto' }}>
+        <Row style={{ marginBottom: 16 }}>
+          <Col span={12}>
+            <Space>
+              <Button type="primary" onClick={handleAdd}>
+                Add New Blog
+              </Button>
+            </Space>
+          </Col>
+          <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Space>
+              <Input
+                placeholder="Search blogs..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: 200 }}
+              />
+              <Select
+                defaultValue="createdAt"
+                style={{ width: 120 }}
+                onChange={(value) => setSortField(value)}
+                options={[
+                  { value: 'id', label: 'ID' },
+                  { value: 'title', label: 'Title' },
+                  { value: 'createdAt', label: 'Created Date' },
+                ]}
+              />
+              <Select
+                defaultValue="DESC"
+                style={{ width: 120 }}
+                onChange={(value) => setSortOrder(value)}
+                options={[
+                  { value: 'ASC', label: 'Ascending' },
+                  { value: 'DESC', label: 'Descending' },
+                ]}
+              />
+              <Button type="primary" onClick={handleSearch}>Search</Button>
+            </Space>
+          </Col>
+        </Row>
         <Table
-          style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
+          style={{ width: '100%' }}
           loading={loading}
           rowSelection={{
             selectedRowKeys,
             onChange: handleSelectChange,
           }}
           columns={columns}
-          dataSource={data.map((blogCategory) => ({ ...blogCategory, key: blogCategory.id }))}
+          dataSource={data.map((blog) => ({ ...blog, key: blog.id }))}
           pagination={false}
           scroll={{ x: 800 }}
         />
         {!loading && (
           <Pagination
-            align="center"
+            style={{ marginTop: 16, textAlign: 'center' }}
             current={Currentpage}
             total={pagination * 10}
+            pageSize={limit}
             onChange={(page) => {
               setCurrentpage(page);
               fetchData(page, limit, searchText, sortField, sortOrder);
             }}
           />
         )}
+
+        <AddBlogFormPopup
+          open={isModalOpen}
+          onClose={handleModalClose}
+          onSubmit={() => {}}
+          formData={formData!}
+          isView={true}
+          onChange={() => {}}
+        />
         <ConfirmPopup
           open={ConfirmingPopup}
           onClose={() => setConfirmingPopup(false)}

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input, DatePicker } from 'antd';
-import { Button, Card, CardContent, Typography, Box } from '@mui/material';
+import { Button, Card, CardContent, Typography, Box, Divider, Paper, CircularProgress, Tooltip } from '@mui/material';
 import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes } from '@/data/BlogPost';
@@ -20,7 +20,83 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   onCancel,
   formData,
 }) => {
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const formTitle = formData && formData?.id ? "Edit Blog Post" : "Add Blog Post";
+
+  // Check if required fields are filled
+  const isFormValid = () => {
+    return Boolean(
+      formData?.title &&
+      formData?.content &&
+      formData?.slug &&
+      formData?.author &&
+      formData?.blogCategoryId &&
+      formData?.metaTitle &&
+      formData?.metaDescription &&
+      formData?.metaKeywords
+    );
+  };
+
+  const handleGetSuggestions = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/ai/suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData?.title || '',
+          content: formData?.content || '',
+          type: 'blog'
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get AI suggestions');
+      }
+      
+      const suggestions = await response.json();
+      setAiSuggestions(suggestions);
+      setShowAiSuggestions(true);
+    } catch (error) {
+      console.error('Error getting AI suggestions:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + formData?.title
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get AI content');
+      }
+      
+      const result = await response.json();
+      if (result.data) {
+        setAiSuggestions(result.data);
+        setShowAiSuggestions(true);
+        onChange({ name: 'content', value: result.data });
+      }
+    } catch (error) {
+      console.error('Error getting AI content:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Card>
@@ -28,19 +104,30 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         <Typography variant="h5" component="h2" gutterBottom>
           {formTitle}
         </Typography>
-        
+
         {/* Basic Information */}
         <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
           Blog Post Information
         </Typography>
-        
-        <Input
-          placeholder="Title"
-          value={formData?.title || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'title', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
+
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Input
+            placeholder="Title"
+            value={formData?.title || ""}
+            disabled={isView}
+            onChange={(e) => onChange({ name: 'title', value: e.target.value })}
+            style={{ flex: 1 }}
+          />
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleGenerateContent}
+            disabled={isView || !formData?.title || isLoading}
+            startIcon={isLoading ? <CircularProgress size={20} /> : null}
+          >
+            Viết bài (AI)
+          </Button>
+        </Box>
 
         <Input
           placeholder="Slug"
@@ -69,8 +156,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
 
         <div style={{ marginBottom: "16px" }}>
           <Typography variant="body2" gutterBottom>Content</Typography>
-          <Editor 
-            disabled={isView} 
+          <Editor
+            disabled={isView}
             value={formData?.content || ""}
             onChange={(content) => onChange({ name: 'content', value: content })}
             placeholder="Content"
@@ -105,7 +192,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
 
         {/* Dates */}
         <Typography variant="h6" gutterBottom>Dates</Typography>
-        
+
         <div style={{ marginBottom: "16px" }}>
           <Typography variant="body2" gutterBottom>Published Date</Typography>
           <DatePicker
@@ -123,7 +210,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             getPopupContainer={(trigger) => trigger.parentElement!}
           />
         </div>
-        
+
         <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
           <div style={{ width: "50%" }}>
             <Typography variant="body2" gutterBottom>Created At</Typography>
@@ -142,7 +229,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
               getPopupContainer={(trigger) => trigger.parentElement!}
             />
           </div>
-          
+
           <div style={{ width: "50%" }}>
             <Typography variant="body2" gutterBottom>Updated At</Typography>
             <DatePicker
@@ -161,22 +248,50 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             />
           </div>
         </div>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
           {onCancel && (
             <Button onClick={onCancel} sx={{ mr: 1 }}>
               Cancel
             </Button>
           )}
-          <Button 
-            disabled={isView} 
-            onClick={onSubmit} 
-            variant="contained" 
+          <Button
+            disabled={isView}
+            onClick={onSubmit}
+            variant="contained"
             color="primary"
+            sx={{ mr: 1 }}
           >
             Submit
           </Button>
+          <Tooltip title={!isFormValid() && !isLoading ? "Vui lòng điền đầy đủ các trường thông tin trước khi sử dụng gợi ý AI" : ""}>
+            <span>
+              <Button
+                disabled={isView || !isFormValid() || isLoading}
+                onClick={handleGetSuggestions}
+                variant="outlined"
+                color="primary"
+                startIcon={isLoading ? <CircularProgress size={20} /> : null}
+              >
+                {"Gợi ý (AI)"}
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
+
+        {showAiSuggestions && aiSuggestions && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="h6" gutterBottom>
+              Gợi ý AI
+            </Typography>
+            <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                {aiSuggestions.result}
+              </Typography>
+            </Paper>
+          </>
+        )}
       </CardContent>
     </Card>
   );

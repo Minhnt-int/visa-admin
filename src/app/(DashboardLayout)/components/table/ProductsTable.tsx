@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message, Input, Select, Row, Col } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Table, Button, Space, message, Input, Select, Card } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import AddFormPopup from '../popup/AddFormPopup';
 import axios from 'axios';
 import axioss from '../../../../../axiosConfig';
@@ -8,10 +8,15 @@ import { Pagination } from "antd";
 import { set } from 'lodash';
 import { Modal } from 'antd';
 import ConfirmPopup from '../popup/ConfirmPopup';
-import { Card } from "antd";
 import { ProductAttributes } from '@/data/ProductAttributes';
 import AddProductFormPopup from '../popup/AddProductFormPopup';
 import { fetchProductList, createProduct, updateProduct, deleteProduct, fetchProductBySlug } from "@/services/productService";
+import { useAppContext } from '@/contexts/AppContext';
+import { IconButton } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Box } from '@mui/material';
+import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 
 const initialFormData: ProductAttributes = {
   id: 0,
@@ -52,25 +57,23 @@ const initialFormData: ProductAttributes = {
 
 
 const ProductsTable: React.FC = () => {
-
+  const { deleteProduct: deleteProductContext, productStatus, toggleProductStatus } = useAppContext();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isView, setIsView] = useState(true);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
-  const [action, setAction] = useState("");
+  const [action, setAction] = useState<'create' | 'update' | 'delete'>('create');
   const [formData, setFormData] = useState<ProductAttributes | null>(null);
-
-
-  const [data, setData] = useState<ProductAttributes[]>([]);
-  const [pagination, setPagination] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [total, setTotal] = useState(1);
-  const [Currentpagination, setCurrentpagination] = useState(1);
-  const [loading, setLoading] = useState(true);
-
+  const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
+  const [products, setProducts] = useState<ProductAttributes[]>([]);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
@@ -89,7 +92,7 @@ const ProductsTable: React.FC = () => {
   const handleEdit = async (record: ProductAttributes) => {
     setIsView(false);
     setFormData(record);
-    setAction("edit");
+    setAction('update');
     setIsModalOpen(true);
   };
 
@@ -99,10 +102,15 @@ const ProductsTable: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (record: ProductAttributes) => {
-    setFormData(record);
-    setConfirmingPopup(true);
-    setAction("delete");
+  const handleDelete = async (id: number) => {
+    try {
+      const result = await deleteProductContext(id);
+      if (result) {
+        fetchData(pagination.current, pagination.pageSize, searchText, sortField, sortOrder);
+      }
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
   };
 
   const columns: ColumnsType<ProductAttributes> = [
@@ -182,7 +190,7 @@ const ProductsTable: React.FC = () => {
           <Button type="link" onClick={() => handleEdit(record)}>
             Edit
           </Button>
-          <Button type="link" danger onClick={() => handleDelete(record)}>
+          <Button type="link" danger onClick={() => handleDelete(record.id)}>
             Delete
           </Button>
         </Space>
@@ -190,48 +198,45 @@ const ProductsTable: React.FC = () => {
     },
   ];
 
-  const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
+  const fetchData = async (page: number, limit: number, search: string, sortField: string, sortOrder: string) => {
     try {
-      const response = await fetchProductList({
-        page: page,
-        limit: limit,
-        categoryId: '',
-        search: search || '',
-        sortBy: sortBy || 'createdAt',
-        sortOrder: sortOrder || 'DESC',
-      }) as any;
-      console.log("Response:", response);
+      setLoading(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/products?page=${page}&limit=${limit}&search=${search}&sortField=${sortField}&sortOrder=${sortOrder}&status=${productStatus}`
+      );
       
-      setLoading(false);
-      setTotal(response.pagination.total);
-      setData(response.data);
-      setPagination(response.pagination.totalPages);
-      setCurrentpagination(response.pagination.currentPage);
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setProducts(result.data.products);
+        setPagination({
+          current: result.data.pagination.currentPage,
+          pageSize: result.data.pagination.limit,
+          total: result.data.pagination.total,
+        });
+      } else {
+        message.error(result.message || 'Failed to fetch products');
+      }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Error fetching products:', error);
+      message.error('Failed to fetch products');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSearch = () => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData(1, pagination.pageSize, searchText, sortField, sortOrder);
   };
 
   const handleSortChange = (field: string, order: string) => {
     setSortField(field);
     setSortOrder(order);
-    fetchData(1, limit, searchText, field, order);
-  };
-
-  const deleteAPI = async (record: ProductAttributes) => {
-    try {
-      await deleteProduct(record.id);
-      fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
-      message.success(`Deleted Product: ${record.name}`);
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      message.error(`Failed to delete product: ${record.name}`);
-    }
-    handleModalClose();
+    fetchData(1, pagination.pageSize, searchText, field, order);
   };
 
   const handleModalClose = () => {
@@ -245,7 +250,7 @@ const ProductsTable: React.FC = () => {
     if (formData) {
       try {
         const response = await createProduct(formData);
-        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+        fetchData(pagination.current, pagination.pageSize, searchText, sortField, sortOrder);
         message.success('Product created successfully!');
       } catch (error) {
         console.error('Error submitting product:', error);
@@ -259,7 +264,7 @@ const ProductsTable: React.FC = () => {
     if (formData) {
       try {
         const response = await updateProduct(formData);
-        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+        fetchData(pagination.current, pagination.pageSize, searchText, sortField, sortOrder);
         message.success('Product updated successfully!');
       } catch (error) {
         console.error('Error updating product:', error);
@@ -271,115 +276,100 @@ const ProductsTable: React.FC = () => {
 
   const handleModalSubmit = (action: string) => {
     setConfirmingPopup(true);
-    setAction(action === 'create' ? "create" : "update");
+    setAction(action as 'create' | 'update' | 'delete');
   };
 
   useEffect(() => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData(1, pagination.pageSize, searchText, sortField, sortOrder);
   }, []);
 
   useEffect(() => {
   }, [pagination]);
 
   return (
-    <>
-      <Card title="Products Table" style={{ width: '100%', margin: '0 auto', maxWidth: '100%' }}>
-        <Row style={{ marginBottom: 16 }}>
-          <Col span={12}>
-            <Space>
-              <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
-                Log Selected
-              </Button>
-              <Button type="primary" onClick={() => {
-                setIsView(false);
-                setFormData(initialFormData);
-                setAction("create");
-                handleAdd();
-              }}>
-                Add Product
-              </Button>
-            </Space>
-          </Col>
-          <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Space>
-              <Input.Search
-                placeholder="Tìm kiếm sản phẩm..."
-                allowClear
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onSearch={handleSearch}
-                style={{ width: 250 }}
-              />
-              <Select
-                defaultValue="createdAt"
-                style={{ width: 140 }}
-                value={sortField}
-                onChange={(value) => handleSortChange(value, sortOrder)}
-                options={[
-                  { value: 'name', label: 'Tên sản phẩm' },
-                  { value: 'categoryId', label: 'Danh mục' },
-                  { value: 'createdAt', label: 'Ngày tạo' },
-                  { value: 'updatedAt', label: 'Ngày cập nhật' },
-                ]}
-              />
-              <Select
-                defaultValue="DESC"
-                style={{ width: 120 }}
-                value={sortOrder}
-                onChange={(value) => handleSortChange(sortField, value)}
-                options={[
-                  { value: 'ASC', label: 'Tăng dần' },
-                  { value: 'DESC', label: 'Giảm dần' },
-                ]}
-              />
-            </Space>
-          </Col>
-        </Row>
-        <Table
-          style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
-          loading={loading}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: handleSelectChange,
-          }}
-          columns={columns}
-          dataSource={data.map((product) => ({ ...product, key: product.id }))}
-          pagination={false}
-          scroll={{ x: 700 }}
-        />
-        {!loading && (
-          <Pagination
-            align="center"
-            current={Currentpagination}
-            total={total}
-            onChange={(page) => {
-              setCurrentpagination(page);
-              fetchData(page, limit, searchText, sortField, sortOrder);
+    <Card title="Products Management">
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => {
+              setFormData(initialFormData);
+              setAction("create");
+              setIsModalOpen(true);
             }}
+          >
+            Add New Product
+          </Button>
+          <Button
+            type={productStatus === 'active' ? 'default' : 'primary'}
+            icon={productStatus === 'active' ? <EyeOutlined /> : <DeleteOutlined />}
+            onClick={toggleProductStatus}
+          >
+            {productStatus === 'active' ? 'View Deleted Products' : 'View Active Products'}
+          </Button>
+        </Space>
+        <Space>
+          <Input
+            placeholder="Search products..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 200 }}
           />
-        )}
-        <AddProductFormPopup
-          open={isModalOpen}
-          isView={isView}
-          onClose={handleModalClose}
-          onSubmit={() => handleModalSubmit(action)}
-          formData={formData || initialFormData}
-          onChange={({ name, value }) =>
-            setFormData((prev) => ({
-              ...prev!,
-              [name]: value,
-            }))
-          }
-        />
-        <ConfirmPopup
-          open={ConfirmingPopup}
-          onClose={setConfirmingPopup.bind(this, false)}
-          onSubmit={action === "delete" ? () => deleteAPI(formData!) : (action === "update" ? updateAPI : createAPI)}
-          Content={""}
-        />
-      </Card>
-    </>
-
+          <Select
+            value={sortField}
+            onChange={(value) => setSortField(value)}
+            style={{ width: 120 }}
+          >
+            <Select.Option value="name">Name</Select.Option>
+            <Select.Option value="price">Price</Select.Option>
+            <Select.Option value="createdAt">Created At</Select.Option>
+          </Select>
+          <Select
+            value={sortOrder}
+            onChange={(value) => setSortOrder(value)}
+            style={{ width: 120 }}
+          >
+            <Select.Option value="ASC">Ascending</Select.Option>
+            <Select.Option value="DESC">Descending</Select.Option>
+          </Select>
+        </Space>
+      </div>
+      <Table
+        columns={columns}
+        dataSource={products}
+        rowKey="id"
+        pagination={pagination}
+        loading={loading}
+        onChange={(pagination) => {
+          fetchData(
+            pagination.current || 1,
+            pagination.pageSize || 10,
+            searchText,
+            sortField,
+            sortOrder
+          );
+        }}
+      />
+      <AddProductFormPopup
+        open={isModalOpen}
+        isView={isView}
+        onClose={handleModalClose}
+        onSubmit={() => handleModalSubmit(action)}
+        formData={formData || initialFormData}
+        onChange={({ name, value }) =>
+          setFormData((prev) => ({
+            ...prev!,
+            [name]: value,
+          }))
+        }
+      />
+      <ConfirmPopup
+        open={ConfirmingPopup}
+        onClose={setConfirmingPopup.bind(this, false)}
+        onSubmit={action === "delete" ? () => handleDelete(formData!.id) : (action === "update" ? updateAPI : createAPI)}
+        Content={""}
+      />
+    </Card>
   );
 };
 export default ProductsTable;
