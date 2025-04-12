@@ -3,7 +3,8 @@ import { styled, Container, Box } from "@mui/material";
 import React, { useState } from "react";
 import Header from "@/app/(DashboardLayout)/layout/header/Header";
 import Sidebar from "@/app/(DashboardLayout)/layout/sidebar/Sidebar";
-import { AppProvider } from "@/contexts/AppContext";
+import { AppProvider, useAppContext } from "@/contexts/AppContext";
+import Loading from "../loading";
 
 const MainWrapper = styled("div")(() => ({
   display: "flex",
@@ -24,6 +25,18 @@ interface Props {
   children: React.ReactNode;
 }
 
+// Tạo một component LoadingWrapper để sử dụng useAppContext
+const LoadingWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { loading } = useAppContext();
+  
+  return (
+    <>
+      {loading && <Loading />}
+      {children}
+    </>
+  );
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -31,46 +44,49 @@ export default function RootLayout({
 }) {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  
   return (
-    <MainWrapper className="mainwrapper">
-      {/* ------------------------------------------- */}
-      {/* Sidebar */}
-      {/* ------------------------------------------- */}
-      <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        isMobileSidebarOpen={isMobileSidebarOpen}
-        onSidebarClose={() => setMobileSidebarOpen(false)}
-      />
-      {/* ------------------------------------------- */}
-      {/* Main Wrapper */}
-      {/* ------------------------------------------- */}
-      <PageWrapper className="page-wrapper">
+    <AppProvider>
+      <MainWrapper className="mainwrapper">
         {/* ------------------------------------------- */}
-        {/* Header */}
+        {/* Sidebar */}
         {/* ------------------------------------------- */}
-        <Header toggleMobileSidebar={() => setMobileSidebarOpen(true)} />
+        <Sidebar
+          isSidebarOpen={isSidebarOpen}
+          isMobileSidebarOpen={isMobileSidebarOpen}
+          onSidebarClose={() => setMobileSidebarOpen(false)}
+        />
         {/* ------------------------------------------- */}
-        {/* PageContent */}
+        {/* Main Wrapper */}
         {/* ------------------------------------------- */}
-        <Container
-          sx={{
-            paddingTop: "20px",
-            maxWidth: "1200px",
-          }}
-        >
+        <PageWrapper className="page-wrapper">
           {/* ------------------------------------------- */}
-          {/* Page Route */}
+          {/* Header */}
           {/* ------------------------------------------- */}
-          <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
-              <AppProvider>
+          <Header toggleMobileSidebar={() => setMobileSidebarOpen(true)} />
+          {/* ------------------------------------------- */}
+          {/* PageContent */}
+          {/* ------------------------------------------- */}
+          <Container
+            sx={{
+              paddingTop: "20px",
+              maxWidth: "1200px",
+            }}
+          >
+            {/* ------------------------------------------- */}
+            {/* Page Route */}
+            {/* ------------------------------------------- */}
+            <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
+              <LoadingWrapper>
                 {children}
-              </AppProvider>
-          </Box>
-          {/* ------------------------------------------- */}
-          {/* End Page */}
-          {/* ------------------------------------------- */}
-        </Container>
-      </PageWrapper>
-    </MainWrapper>
+              </LoadingWrapper>
+            </Box>
+            {/* ------------------------------------------- */}
+            {/* End Page */}
+            {/* ------------------------------------------- */}
+          </Container>
+        </PageWrapper>
+      </MainWrapper>
+    </AppProvider>
   );
 }

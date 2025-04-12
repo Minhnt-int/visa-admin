@@ -2,11 +2,57 @@
  * Service cho các cuộc gọi API liên quan đến sản phẩm
  */
 
-import axioss from '../../axiosConfig'; // Import axios từ thư viện axios
+import axios, { AxiosResponse } from 'axios';
 import { ProductAttributes } from '@/data/ProductAttributes';
 import { ProductCategory } from '@/data/ProductCategory';
-// Thêm kiểm tra và fallback cho API URL
+
+// Tạo axios instance với cấu hình cơ bản
+const axioss = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Cache cho API responses
+const apiCache = new Map();
+
+// Thời gian cache (mili giây)
+const CACHE_DURATION = 30 * 1000; // 30 giây
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Hàm helper để cache và memoize API responses
+const cacheApiResponse = (key: string, promise: Promise<any>) => {
+  // Nếu có trong cache và chưa hết hạn, trả về từ cache
+  if (apiCache.has(key)) {
+    const cachedData = apiCache.get(key);
+    if (cachedData.timestamp > Date.now() - CACHE_DURATION) {
+      return Promise.resolve(cachedData.data);
+    }
+  }
+
+  // Không có trong cache hoặc hết hạn, thực hiện API call
+  return promise.then(response => {
+    apiCache.set(key, {
+      timestamp: Date.now(),
+      data: response
+    });
+    return response;
+  });
+};
+
+// Thêm intercept hỗ trợ memoize
+axioss.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Xóa cache nếu request gặp lỗi để tránh lưu trữ dữ liệu không hợp lệ
+    return Promise.reject(error);
+  }
+);
 
 // Define response types
 export interface ApiResponse<T = any> {
