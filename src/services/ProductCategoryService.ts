@@ -38,21 +38,13 @@ const ProductCategoryService = {
   /**
    * Lấy danh mục sản phẩm theo ID
    */
-  async getCategoryById(id: number) {
-    try {
-      const response = await ApiService.get(`${PRODUCT_CATEGORIES_URL}/${id}`);
-      return ApiService.handleResponse<ProductCategory>(response);
-    } catch (error) {
-      return ApiService.handleError(error);
-    }
-  },
 
   /**
    * Tạo danh mục sản phẩm mới
    */
   async createCategory(category: ProductCategory) {
     try {
-      const response = await ApiService.post(PRODUCT_CATEGORIES_URL, category);
+      const response = await ApiService.post(`${PRODUCT_CATEGORIES_URL}/create-category`, category);
       return ApiService.handleResponse<ProductCategory>(response);
     } catch (error) {
       return ApiService.handleError(error);
@@ -64,7 +56,7 @@ const ProductCategoryService = {
    */
   async updateCategory(id: number, category: ProductCategory) {
     try {
-      const response = await ApiService.put(`${PRODUCT_CATEGORIES_URL}/${id}`, category);
+      const response = await ApiService.put(`${PRODUCT_CATEGORIES_URL}/update-category`, category);
       return ApiService.handleResponse<ProductCategory>(response);
     } catch (error) {
       return ApiService.handleError(error);

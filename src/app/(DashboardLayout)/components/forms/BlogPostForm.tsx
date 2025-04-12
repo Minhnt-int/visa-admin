@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Input, DatePicker } from 'antd';
+import { Input, DatePicker, Select } from 'antd';
 import { Button, Card, CardContent, Typography, Box, Divider, Paper, CircularProgress, Tooltip } from '@mui/material';
 import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes } from '@/data/BlogPost';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface BlogPostFormProps {
   isView?: boolean;
@@ -25,6 +26,12 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [editorContent, setEditorContent] = useState('');
   const formTitle = formData && formData?.id ? "Edit Blog Post" : "Add Blog Post";
+  
+  const { blogCategories, fetchBlogCategories } = useAppContext();
+  
+  useEffect(() => {
+    fetchBlogCategories();
+  }, [fetchBlogCategories]);
 
   useEffect(() => {
     if (formData) {
@@ -157,14 +164,20 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           style={{ marginBottom: "16px" }}
         />
 
-        <Input
-          placeholder="Blog Category ID"
-          type="number"
-          value={formData?.blogCategoryId || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'blogCategoryId', value: Number(e.target.value) || 0 })}
-          style={{ marginBottom: "16px" }}
-        />
+        <div style={{ marginBottom: "16px" }}>
+          <Typography variant="body2" gutterBottom>Blog Category</Typography>
+          <Select
+            placeholder="Select category"
+            value={formData?.blogCategoryId}
+            disabled={isView}
+            onChange={(value) => onChange({ name: 'blogCategoryId', value })}
+            style={{ width: "100%" }}
+            options={blogCategories.map(category => ({
+              value: category.id,
+              label: category.name
+            }))}
+          />
+        </div>
 
         <div style={{ marginBottom: "16px" }}>
           <Typography variant="body2" gutterBottom>Content</Typography>

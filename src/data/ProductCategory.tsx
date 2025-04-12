@@ -4,6 +4,7 @@ export interface ProductCategory {
   slug: string;
   description: string;
   parentId: number | null;
+  avatarUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

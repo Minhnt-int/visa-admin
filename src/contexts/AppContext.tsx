@@ -10,6 +10,17 @@ import BlogCategoryService from '@/services/BlogCategoryService';
 import ProductCategoryService from '@/services/ProductCategoryService';
 import instance from '../../axiosConfig';
 import { fetchBlogList, fetchBlogBySlug, createBlog, updateBlog, deleteBlog } from '@/services/blogService';
+import { 
+  fetchProductList, 
+  fetchProductBySlug as fetchProductBySlugService, 
+  createProduct as createProductService, 
+  updateProduct as updateProductService, 
+  deleteProduct as deleteProductService,
+  permanentlyDeleteProduct as permanentlyDeleteProductService,
+  activateProduct as activateProductService,
+  restoreProduct as restoreProductService,
+  ApiResponse
+} from '@/services/productService';
 
 // Enum cho các loại hành động
 export enum ActionType {
@@ -113,7 +124,6 @@ interface AppContextProps {
     status?: string;
     search?: string;
   }) => Promise<void>;
-  fetchProductCategoryById: (id: number) => Promise<void>;
   createProductCategory: (category: ProductCategory) => Promise<boolean>;
   updateProductCategory: (id: number, category: ProductCategory) => Promise<boolean>;
   deleteProductCategory: (id: number) => Promise<boolean>;
@@ -387,15 +397,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }) => {
     try {
       setLoading(true);
-      const response = await instance.get('/api/product/get-list', { params });
-      console.log("response", response);
+      const result = await fetchProductList(params || {});
       
-      if (response.status >= 200 && response.status < 300) {
-        setProducts(response.data.data);
-        setProductsPagination(response.data.pagination);
+      if (result.success && result.data) {
+        setProducts(result.data);
+        setProductsPagination(result.pagination || { total: 0, totalPages: 0 });
         setError(null);
       } else {
-        setError(response.data.message);
+        setError(result.message);
         setProducts([]);
         setProductsPagination({
           total: 0,
@@ -412,7 +421,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } finally {
       setLoading(false);
     }
-    
   }, []);
 
   // Fetch product categories
@@ -454,15 +462,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const fetchProductBySlug = useCallback(async (slug: string) => {
     try {
       setLoading(true);
-      const response = await instance.get(`/api/product/get-product-by-slug?slug=${slug}`);
-      console.log("fetchProductBySlug", response.data.data);
+      const response = await fetchProductBySlugService(slug) as any;
       
-      if (response.status >= 200 && response.status < 300) {
+      if (response && response.data && response.data.success) {
         setSelectedProduct(response.data.data);
         setCurrentAction(ActionType.VIEW, 'product', response.data.data.id);
         setError(null);
       } else {
-        setError(response.data.message);
+        setError(response.data ? response.data.message : 'Failed to fetch product');
         setSelectedProduct(null);
       }
     } catch (err) {
@@ -478,13 +485,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.CREATE, 'product');
-      const response = await instance.post('/api/product/create', product);
-      if (response.data.success) {
+      const result = await createProductService(product) as ApiResponse;
+      if (result.success) {
         await fetchProducts();
         setError(null);
         return true;
       } else {
-        setError(response.data.message);
+        setError(result.message);
         return false;
       }
     } catch (err) {
@@ -500,13 +507,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.EDIT, 'product', id);
-      const response = await instance.put(`/api/product/update`, product);
-      if (response.data.success) {
+      const result = await updateProductService(product) as ApiResponse;
+      if (result.success) {
         await fetchProducts();
         setError(null);
         return true;
       } else {
-        setError(response.data.message);
+        setError(result.message);
         return false;
       }
     } catch (err) {
@@ -522,16 +529,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.DELETE, 'product', id);
-      const response = await instance.put(`/api/product/delete`, {
-        id: id
-      });
-      if (response.data.success) {
+      // Note: This is a soft delete using the existing deleteProduct API
+      const result = await deleteProductService(id) as ApiResponse;
+      if (result.success) {
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
         setError(null);
         return true;
       } else {
-        setError(response.data.message);
+        setError(result.message);
         return false;
       }
     } catch (err) {
@@ -547,29 +553,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLoading(true);
       setCurrentAction(ActionType.EDIT, 'product', id);
       
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/activate', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to activate product');
-      }
-
-      const result = await response.json();
+      const result = await activateProductService(id) as ApiResponse;
       
-      if (response.status >= 200 && response.status < 300) {
-        message.success('Product deleted successfully');
+      if (result.success) {
+        message.success('Product activated successfully');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
         setError(null);
         return true;
       } else {
         setError(result.message);
-        message.error(result.message || 'Failed to delete product');
+        message.error(result.message || 'Failed to activate product');
         return false;
       }
     } catch (err) {
@@ -587,21 +581,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLoading(true);
       setCurrentAction(ActionType.EDIT, 'product', id);
       
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/restore', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to restore product');
-      }
-
-      const result = await response.json();
+      const result = await restoreProductService(id) as ApiResponse;
       
-      if (response.status >= 200 && response.status < 300) {
+      if (result.success) {
         message.success('Product restored successfully');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
@@ -627,28 +609,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLoading(true);
       setCurrentAction(ActionType.DELETE, 'product', id);
       
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/permanently-delete?id=' + id, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete product');
-      }
-
-      const result = await response.json();
+      const result = await permanentlyDeleteProductService(id) as ApiResponse;
       
-      if (response.status >= 200 && response.status < 300) {
-        message.success('Product deleted successfully');
+      if (result.success) {
+        message.success('Product permanently deleted successfully');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
         setError(null);
         return true;
       } else {
         setError(result.message);
-        message.error(result.message || 'Failed to delete product');
+        message.error(result.message || 'Failed to permanently delete product');
         return false;
       }
     } catch (err) {
@@ -670,25 +641,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ====================== PRODUCT CATEGORY METHODS ======================
   
   // Lấy danh mục sản phẩm theo ID
-  const fetchProductCategoryById = useCallback(async (id: number) => {
-    try {
-      setLoading(true);
-      const result = await ProductCategoryService.getCategoryById(id);
-      
-      if (result.success) {
-        setSelectedProductCategory(result.data);
-        setCurrentAction(ActionType.VIEW, 'productCategory', id);
-        setError(null);
-      } else {
-        setError(result.message);
-        setSelectedProductCategory(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-    } finally {
-      setLoading(false);
-    }
-  }, [setCurrentAction]);
 
   // Tạo danh mục sản phẩm mới
   const createProductCategory = useCallback(async (category: ProductCategory) => {
@@ -919,7 +871,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // ProductCategory Actions
     fetchProductCategories,
-    fetchProductCategoryById,
     createProductCategory,
     updateProductCategory,
     deleteProductCategory,

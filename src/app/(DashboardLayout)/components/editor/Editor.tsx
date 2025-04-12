@@ -326,16 +326,6 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 						}
 					]
 				},
-				htmlSupport: {
-					allow: [
-						{
-							name: /^.*$/,
-							styles: true,
-							attributes: true,
-							classes: true
-						}
-					]
-				},
 				image: {
 					toolbar: [
 						'toggleImageCaption',
@@ -354,16 +344,7 @@ export default function Editor({ disabled = false, onChange, value, placeholder}
 				disableCheck: true,
 				link: {
 					addTargetToExternalLinks: true,
-					defaultProtocol: 'https://',
-					decorators: {
-						toggleDownloadable: {
-							mode: 'manual',
-							label: 'Downloadable',
-							attributes: {
-								download: 'file'
-							}
-						}
-					}
+					defaultProtocol: 'https://'
 				},
 				list: {
 					properties: {
