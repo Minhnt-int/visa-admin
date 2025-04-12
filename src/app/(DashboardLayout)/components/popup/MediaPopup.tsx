@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Card, CardMedia, CardContent, Typography, Box, CircularProgress, IconButton, DialogContentText } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Card, CardMedia, CardContent, Typography, Box, CircularProgress, IconButton, DialogContentText, TextField } from '@mui/material';
 import { Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { message } from 'antd';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { ProductMedia } from '@/data/ProductAttributes';
 
-interface MediaItem {
-  id: number;
-  name: string;
-  path: string;
-  type: string;
-  altText: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface MediaResponse {
   success: boolean;
   data: {
-    media: MediaItem[];
+    media: ProductMedia[];
     pagination: {
       total: number;
       totalPages: number;
@@ -31,17 +23,19 @@ interface MediaResponse {
 interface MediaPopupProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (path: string) => void;
+  onSelect: (media : ProductMedia) => void;
+  listMedia: ProductMedia[];
 }
 
-const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
-  const [media, setMedia] = useState<MediaItem[]>([]);
+const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMedia }) => {
+  const [media, setMedia] = useState<ProductMedia[]>(listMedia);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [altText, setAltText] = useState('');
 
   const fetchMedia = async () => {
     try {
@@ -63,12 +57,12 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
     }
   };
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = async (file: File, altText: string) => {
     try {
       setUploading(true);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('alt', file.name);
+      formData.append('altText', altText);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media`, {
         method: 'POST',
@@ -94,7 +88,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
   const handleDelete = async (id: number) => {
     try {
       setDeletingId(id);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/delete?id=${id}`, {
         method: 'DELETE',
       });
 
@@ -125,26 +119,43 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
     setCurrentPage(newPage);
   };
 
+  // Check if media item already exists in listMedia
+  const isMediaAlreadySelected = (id: number) => {
+    return listMedia.some(item => item.id === id);
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Media Library</DialogTitle>
       <DialogContent>
-        <Box sx={{ mb: 2 }}>
-          <Upload
-            beforeUpload={(file) => {
-              handleUpload(file);
-              return false;
-            }}
-            showUploadList={false}
-          >
-            <Button
-              variant="outlined"
-              startIcon={<UploadOutlined />}
-              disabled={uploading}
+        <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+          <Box sx={{ flex: '8 1 0' }}>
+            <TextField
+              placeholder="Alt Text"
+              value={altText}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAltText(e.target.value)}
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <Box sx={{ flex: '4 1 0' }}>
+            <Upload
+              beforeUpload={(file) => {
+                handleUpload(file, altText);
+                return false;
+              }}
+              showUploadList={false}
             >
-              {uploading ? <CircularProgress size={20} /> : 'Upload Media'}
-            </Button>
-          </Upload>
+              <Button
+                variant="outlined"
+                startIcon={<UploadOutlined />}
+                disabled={uploading || altText === ''}
+                fullWidth
+              >
+                {uploading ? <CircularProgress size={20} /> : 'Upload Media'}
+              </Button>
+            </Upload>
+          </Box>
         </Box>
 
         {loading ? (
@@ -154,26 +165,55 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
         ) : (
           <>
             <Grid container spacing={2}>
-              {media.map((item) => (
+              {media.map((item) => {
+                const isAlreadySelected = isMediaAlreadySelected(item.id);
+                return (
                 <Grid item xs={12} sm={6} md={4} key={item.id}>
                   <Card 
                     sx={{ 
-                      cursor: 'pointer',
+                      cursor: isAlreadySelected ? 'not-allowed' : 'pointer',
                       position: 'relative',
                       '&:hover': {
-                        boxShadow: 6,
-                      }
+                        boxShadow: isAlreadySelected ? 1 : 6,
+                      },
+                      opacity: isAlreadySelected ? 0.6 : 1,
                     }}
                   >
+                    {isAlreadySelected && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                          zIndex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', padding: '4px 8px', borderRadius: '4px' }}>
+                          Already Selected
+                        </Typography>
+                      </Box>
+                    )}
                     <IconButton
                       sx={{
                         position: 'absolute',
                         top: 8,
                         right: 8,
-                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        backgroundColor: 'rgba(255, 0, 0, 0.7)',
+                        color: 'white',
                         '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        }
+                          backgroundColor: 'rgba(255, 0, 0, 0.9)',
+                        },
+                        zIndex: 2,
+                        width: '36px',
+                        height: '36px',
+                        boxShadow: '0px 2px 4px rgba(0,0,0,0.3)',
+                        border: '2px solid white',
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -183,19 +223,21 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
                       disabled={deletingId !== null}
                     >
                       {deletingId === item.id ? (
-                        <CircularProgress size={20} />
+                        <CircularProgress size={20} color="inherit" />
                       ) : (
-                        <DeleteIcon color="error" />
+                        <DeleteIcon />
                       )}
                     </IconButton>
                     <CardMedia
                       component="img"
                       height="140"
-                      image={`${process.env.NEXT_PUBLIC_API_URL}${item.path}`}
+                      image={`${process.env.NEXT_PUBLIC_API_URL}${item.url}`}
                       alt={item.altText}
                       onClick={() => {
-                        onSelect(item.path);
-                        onClose();
+                        if (!isAlreadySelected) {
+                          onSelect(item);
+                          onClose();
+                        }
                       }}
                     />
                     <CardContent>
@@ -205,7 +247,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect }) => {
                     </CardContent>
                   </Card>
                 </Grid>
-              ))}
+              )})}
             </Grid>
 
             {totalPages > 1 && (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input, DatePicker } from 'antd';
 import { Button, Card, CardContent, Typography, Box, Divider, Paper, CircularProgress, Tooltip } from '@mui/material';
 import dayjs from 'dayjs';
@@ -23,7 +23,19 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
+  const [editorContent, setEditorContent] = useState('');
   const formTitle = formData && formData?.id ? "Edit Blog Post" : "Add Blog Post";
+
+  useEffect(() => {
+    if (formData) {
+      setEditorContent(formData.content || '');
+    }
+  }, [formData]);
+
+  const handleEditorChange = (content: string) => {
+    setEditorContent(content);
+    onChange({ name: 'content', value: content });
+  };
 
   // Check if required fields are filled
   const isFormValid = () => {
@@ -158,8 +170,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           <Typography variant="body2" gutterBottom>Content</Typography>
           <Editor
             disabled={isView}
-            value={formData?.content || ""}
-            onChange={(content) => onChange({ name: 'content', value: content })}
+            value={editorContent}
+            onChange={handleEditorChange}
             placeholder="Content"
           />
         </div>

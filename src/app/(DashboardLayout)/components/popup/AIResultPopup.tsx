@@ -19,6 +19,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/ai';
 
 // Convert HTML to plain text while preserving line breaks
 const stripHtml = (html: string) => {
+  if (typeof window === 'undefined') {
+    return html.replace(/<[^>]*>?/gm, '');
+  }
+  
   const temp = document.createElement('div');
   temp.innerHTML = html;
   return temp.textContent || '';

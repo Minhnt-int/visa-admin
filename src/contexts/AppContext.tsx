@@ -8,6 +8,8 @@ import { OrderAttributes } from '@/data/Order';
 import { message } from 'antd';
 import BlogCategoryService from '@/services/BlogCategoryService';
 import ProductCategoryService from '@/services/ProductCategoryService';
+import instance from '../../axiosConfig';
+import { fetchBlogList, fetchBlogBySlug, createBlog, updateBlog, deleteBlog } from '@/services/blogService';
 
 // Enum cho các loại hành động
 export enum ActionType {
@@ -39,6 +41,10 @@ interface AppContextProps {
   
   // Product State
   products: ProductAttributes[];
+  productsPagination: {
+    total: number;
+    totalPages: number;
+  };
   selectedProduct: ProductAttributes | null;
   
   // ProductCategory State
@@ -61,14 +67,23 @@ interface AppContextProps {
   clearSelectedBlog: () => void;
   
   // BlogCategory Actions
-  fetchBlogCategories: () => Promise<void>;
-  fetchBlogCategoryById: (id: number) => Promise<void>;
+  fetchBlogCategories: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    name?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => Promise<void>;
+  fetchBlogCategoryBySlug: (slug: string) => Promise<void>;
   createBlogCategory: (category: BlogCategory) => Promise<boolean>;
   updateBlogCategory: (category: BlogCategory) => Promise<boolean>;
   deleteBlogCategory: (id: number) => Promise<boolean>;
   clearSelectedBlogCategory: () => void;
   setSelectedBlogCategory: (category: BlogCategory | null) => void;
-  
+  permanentlyDeleteProduct: (id: number) => Promise<boolean>;
+  activateProduct: (id: number) => Promise<boolean>;
+  restoreProduct: (id: number) => Promise<boolean>;
   // Product Actions
   fetchProducts: (params?: {
     page?: number;
@@ -79,8 +94,9 @@ interface AppContextProps {
     minPrice?: number;
     maxPrice?: number;
     categoryId?: number;
+    status?: 'draft' | 'active' | 'deleted';
   }) => Promise<void>;
-  fetchProductById: (id: number) => Promise<void>;
+  fetchProductBySlug: (slug: string) => Promise<void>;
   createProduct: (product: ProductAttributes) => Promise<boolean>;
   updateProduct: (id: number, product: ProductAttributes) => Promise<boolean>;
   deleteProduct: (id: number) => Promise<boolean>;
@@ -94,12 +110,15 @@ interface AppContextProps {
     parentId?: number;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    status?: string;
+    search?: string;
   }) => Promise<void>;
   fetchProductCategoryById: (id: number) => Promise<void>;
   createProductCategory: (category: ProductCategory) => Promise<boolean>;
   updateProductCategory: (id: number, category: ProductCategory) => Promise<boolean>;
   deleteProductCategory: (id: number) => Promise<boolean>;
   clearSelectedProductCategory: () => void;
+  setSelectedProductCategory: (category: ProductCategory | null) => void;
   
   // Order Actions
   fetchOrders: () => Promise<void>;
@@ -120,8 +139,9 @@ interface AppContextProps {
   ) => void;
   
   // Product Status
-  productStatus: 'active' | 'deleted';
-  toggleProductStatus: () => void;
+  productStatus: 'draft' | 'active' | 'deleted';
+  toggleProductStatus: (status: 'draft' | 'active' | 'deleted') => void;
+  setSelectedProduct: (product: ProductAttributes | null) => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -137,6 +157,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Product State
   const [products, setProducts] = useState<ProductAttributes[]>([]);
+  const [productsPagination, setProductsPagination] = useState({
+    total: 0,
+    totalPages: 0
+  });
   const [selectedProduct, setSelectedProduct] = useState<ProductAttributes | null>(null);
   
   // ProductCategory State
@@ -157,7 +181,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   // Product Status State
-  const [productStatus, setProductStatus] = useState<'active' | 'deleted'>('active');
+  const [productStatus, setProductStatus] = useState<'draft' | 'active' | 'deleted'>('active');
 
   // ====================== SHARED METHODS ======================
   
@@ -197,11 +221,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const selectBlog = useCallback((blog: BlogPostAttributes | null, actionType?: ActionType) => {
-    if (blog?.id !== selectedBlog?.id) {
-      setSelectedBlog(blog);
-      if (blog) {
-        setCurrentAction(actionType || ActionType.VIEW, 'blog', blog.id, blog.slug);
-      }
+    setSelectedBlog(blog);
+    if (blog) {
+      setCurrentAction(actionType || ActionType.VIEW, 'blog', blog.id, blog.slug);
     }
   }, [selectedBlog, setCurrentAction]);
 
@@ -213,16 +235,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ====================== BLOG CATEGORY METHODS ======================
   
   // Lấy tất cả danh mục blog
-  const fetchBlogCategories = useCallback(async () => {
+  const fetchBlogCategories = useCallback(async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    name?: string;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => {
     try {
       setLoading(true);
-      const result = await BlogCategoryService.getAllCategories();
-      console.log("API Response:", result); // Debug log
+      const result = await BlogCategoryService.getAllCategories(params);
+      console.log("Blog Categories API Response:", result); // Debug log
       
       if (result.success) {
         // Đảm bảo result.data là một mảng
         const categories = result.data ? result.data : [];
-        console.log("Processed Categories:", categories); // Debug log
+        console.log("Processed Blog Categories:", categories); // Debug log
         setBlogCategories(categories.categories);
         setError(null);
       } else {
@@ -240,15 +269,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Lấy danh mục blog theo ID
-  const fetchBlogCategoryById = useCallback(async (id: number) => {
+  const fetchBlogCategoryBySlug = useCallback(async (slug: string) => {
     try {
       setLoading(true);
-      const result = await BlogCategoryService.getCategoryById(id);
+      const result = await BlogCategoryService.getCategoryBySlug(slug);
       console.log("API Response by ID:", result); // Debug log
       
       if (result.success) {
         setSelectedBlogCategory(result.data);
-        setCurrentAction(ActionType.VIEW, 'blogCategory', id);
+        setCurrentAction(ActionType.VIEW, 'blogCategory', result.data.id);
         setError(null);
       } else {
         console.error("API Error by ID:", result.message); // Debug log
@@ -354,69 +383,91 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     minPrice?: number;
     maxPrice?: number;
     categoryId?: number;
+    status?: 'draft' | 'active' | 'deleted';
   }) => {
     try {
       setLoading(true);
+      const response = await instance.get('/api/product/get-list', { params });
+      console.log("response", response);
       
-      // Build query parameters
-      const queryParams = new URLSearchParams();
-      if (params?.page) queryParams.append('page', params.page.toString());
-      if (params?.limit) queryParams.append('limit', params.limit.toString());
-      if (params?.search) queryParams.append('search', params.search);
-      if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
-      if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-      if (params?.minPrice) queryParams.append('minPrice', params.minPrice.toString());
-      if (params?.maxPrice) queryParams.append('maxPrice', params.maxPrice.toString());
-      if (params?.categoryId) queryParams.append('categoryId', params.categoryId.toString());
-      queryParams.append('status', productStatus);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/products/get-list?${queryParams.toString()}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setProducts(result.data.products);
+      if (response.status >= 200 && response.status < 300) {
+        setProducts(response.data.data);
+        setProductsPagination(response.data.pagination);
         setError(null);
       } else {
-        setError(result.message);
+        setError(response.data.message);
         setProducts([]);
+        setProductsPagination({
+          total: 0,
+          totalPages: 0
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
       setProducts([]);
+      setProductsPagination({
+        total: 0,
+        totalPages: 0
+      });
     } finally {
       setLoading(false);
     }
-  }, [productStatus]);
+    
+  }, []);
 
-  // Lấy sản phẩm theo ID
-  const fetchProductById = useCallback(async (id: number) => {
+  // Fetch product categories
+  const fetchProductCategories = useCallback(async (params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    parentId?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    status?: string;
+    search?: string;
+  }) => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${id}`);
+      const response = await instance.get(`${process.env.NEXT_PUBLIC_API_URL}/api/product-category/get-list`, { params });
+      console.log("Product Categories API Response:", response);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch product');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setSelectedProduct(result.data);
-        setCurrentAction(ActionType.VIEW, 'product', id);
+      if (response.status >= 200 && response.status < 300) {
+        const categories = response.data.data || [];
+        console.log("Processed Product Categories:", categories);
+        setProductCategories(categories);
         setError(null);
       } else {
-        setError(result.message);
+        console.error("API Error:", response.data.message);
+        setError(response.data.message);
+        setProductCategories([]);
+      }
+    } catch (err) {
+      console.error("Fetch Error:", err);
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      setProductCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Lấy sản phẩm theo slug
+  const fetchProductBySlug = useCallback(async (slug: string) => {
+    try {
+      setLoading(true);
+      const response = await instance.get(`/api/product/get-product-by-slug?slug=${slug}`);
+      console.log("fetchProductBySlug", response.data.data);
+      
+      if (response.status >= 200 && response.status < 300) {
+        setSelectedProduct(response.data.data);
+        setCurrentAction(ActionType.VIEW, 'product', response.data.data.id);
+        setError(null);
+      } else {
+        setError(response.data.message);
         setSelectedProduct(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      setSelectedProduct(null);
     } finally {
       setLoading(false);
     }
@@ -427,10 +478,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.CREATE, 'product');
-      // TODO: Sử dụng ProductService
-      await fetchProducts();
-      setError(null);
-      return true;
+      const response = await instance.post('/api/product/create', product);
+      if (response.data.success) {
+        await fetchProducts();
+        setError(null);
+        return true;
+      } else {
+        setError(response.data.message);
+        return false;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
       return false;
@@ -444,10 +500,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.EDIT, 'product', id);
-      // TODO: Sử dụng ProductService
-      await fetchProducts();
-      setError(null);
-      return true;
+      const response = await instance.put(`/api/product/update`, product);
+      if (response.data.success) {
+        await fetchProducts();
+        setError(null);
+        return true;
+      } else {
+        setError(response.data.message);
+        return false;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
       return false;
@@ -461,8 +522,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       setCurrentAction(ActionType.DELETE, 'product', id);
+      const response = await instance.put(`/api/product/delete`, {
+        id: id
+      });
+      if (response.data.success) {
+        await fetchProducts();
+        setCurrentAction(ActionType.NONE, null);
+        setError(null);
+        return true;
+      } else {
+        setError(response.data.message);
+        return false;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProducts, setCurrentAction]);
+
+  const activateProduct = useCallback(async (id: number) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.EDIT, 'product', id);
       
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/delete', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/activate', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -471,12 +556,91 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
 
       if (!response.ok) {
+        throw new Error('Failed to activate product');
+      }
+
+      const result = await response.json();
+      
+      if (response.status >= 200 && response.status < 300) {
+        message.success('Product deleted successfully');
+        await fetchProducts();
+        setCurrentAction(ActionType.NONE, null);
+        setError(null);
+        return true;
+      } else {
+        setError(result.message);
+        message.error(result.message || 'Failed to delete product');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      message.error(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProducts, setCurrentAction]);
+
+  const restoreProduct = useCallback(async (id: number) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.EDIT, 'product', id);
+      
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/restore', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to restore product');
+      }
+
+      const result = await response.json();
+      
+      if (response.status >= 200 && response.status < 300) {
+        message.success('Product restored successfully');
+        await fetchProducts();
+        setCurrentAction(ActionType.NONE, null);
+        setError(null);
+        return true;
+      } else {
+        setError(result.message);
+        message.error(result.message || 'Failed to restore product');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      message.error(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProducts, setCurrentAction]);
+
+  const permanentlyDeleteProduct = useCallback(async (id: number) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.DELETE, 'product', id);
+      
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/product/permanently-delete?id=' + id, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
         throw new Error('Failed to delete product');
       }
 
       const result = await response.json();
       
-      if (result.success) {
+      if (response.status >= 200 && response.status < 300) {
         message.success('Product deleted successfully');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
@@ -505,36 +669,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // ====================== PRODUCT CATEGORY METHODS ======================
   
-  // Lấy tất cả danh mục sản phẩm
-  const fetchProductCategories = useCallback(async (params?: {
-    page?: number;
-    limit?: number;
-    name?: string;
-    parentId?: number;
-    sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-  }) => {
-    try {
-      setLoading(true);
-      const result = await ProductCategoryService.getAllCategories(params);
-      
-      if (result.success) {
-        // Đảm bảo result.data là một mảng
-        const categories = Array.isArray(result.data) ? result.data : [];
-        setProductCategories(categories);
-        setError(null);
-      } else {
-        setError(result.message);
-        setProductCategories([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      setProductCategories([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   // Lấy danh mục sản phẩm theo ID
   const fetchProductCategoryById = useCallback(async (id: number) => {
     try {
@@ -723,9 +857,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [setCurrentAction]);
 
   // Toggle Product Status
-  const toggleProductStatus = useCallback(() => {
-    setProductStatus(prev => prev === 'active' ? 'deleted' : 'active');
-  }, []);
+  const toggleProductStatus = useCallback((status: 'draft' | 'active' | 'deleted') => {
+    setProductStatus(status);
+    fetchProducts({ status });
+  }, [fetchProducts]);
 
   // Cập nhật object value
   const value = {
@@ -739,7 +874,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     // Product State
     products,
+    productsPagination,
     selectedProduct,
+    setSelectedProduct,
     
     // ProductCategory State
     productCategories,
@@ -762,7 +899,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     // BlogCategory Actions
     fetchBlogCategories,
-    fetchBlogCategoryById,
+    fetchBlogCategoryBySlug,
     createBlogCategory,
     updateBlogCategory,
     deleteBlogCategory,
@@ -771,12 +908,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     // Product Actions
     fetchProducts,
-    fetchProductById,
+    fetchProductBySlug,
     createProduct,
     updateProduct,
     deleteProduct,
     clearSelectedProduct,
-    
+    permanentlyDeleteProduct,
+    activateProduct,
+    restoreProduct,
+
     // ProductCategory Actions
     fetchProductCategories,
     fetchProductCategoryById,
@@ -784,7 +924,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateProductCategory,
     deleteProductCategory,
     clearSelectedProductCategory,
-    
+    setSelectedProductCategory,
     // Order Actions
     fetchOrders,
     fetchOrderById,

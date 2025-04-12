@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input, DatePicker } from 'antd';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes } from '@/data/BlogPost';
 import AIResultPopup from './AIResultPopup';
+import { useAppContext } from '@/contexts/AppContext';
+import { fetchBlogList } from '@/services/blogService';
 
 interface AddFormPopupProps {
   open: boolean;
@@ -13,6 +15,7 @@ interface AddFormPopupProps {
   onChange: (data: { name: string; value: any }) => void;
   onSubmit: () => void;
   formData: BlogPostAttributes;
+  slug?: string;
 }
 
 const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
@@ -22,14 +25,60 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
   onChange,
   onSubmit,
   formData,
+  slug
 }) => {
   const [isAIResultOpen, setIsAIResultOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [localFormData, setLocalFormData] = useState<BlogPostAttributes | null>(null);
+  
+  const { blogs } = useAppContext();
+
+  useEffect(() => {
+    if (open && slug) {
+      setLoading(true);
+      fetchBlogList({
+        search: slug,
+        limit: 1,
+        categoryId: '',
+        sortBy: '',
+        sortOrder: '',
+        page: 1
+      })
+        .then((response: any) => {
+          if (response && response.data && response.data.length > 0) {
+            setLocalFormData(response.data[0]);
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [open, slug]);
+
+  useEffect(() => {
+    if (formData) {
+      setLocalFormData(formData);
+    }
+  }, [formData]);
 
   const handleAISuggestion = () => {
     setIsAIResultOpen(true);
   };
 
   const title = isView ? "View Blog Post" : "Edit Blog Post";
+  
+  const blogToDisplay = localFormData || formData;
+
+  if (loading) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>Loading...</DialogTitle>
+        <DialogContent style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+          <div>Loading blog data...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>
@@ -41,7 +90,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
           
           <Input
             placeholder="Title"
-            value={formData?.title || ""}
+            value={blogToDisplay?.title || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'title', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -49,7 +98,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Slug"
-            value={formData?.slug || ""}
+            value={blogToDisplay?.slug || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -57,7 +106,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Author"
-            value={formData?.author || ""}
+            value={blogToDisplay?.author || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'author', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -66,7 +115,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
           <Input
             placeholder="Blog Category ID"
             type="number"
-            value={formData?.blogCategoryId || ""}
+            value={blogToDisplay?.blogCategoryId || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'blogCategoryId', value: Number(e.target.value) || 0 })}
             style={{ marginBottom: "16px" }}
@@ -76,7 +125,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
             <p style={{ marginBottom: "8px" }}>Content</p>
             <Editor 
               disabled={isView} 
-              value={formData?.content || ""}
+              value={blogToDisplay?.content || ""}
               onChange={(content) => onChange({ name: 'content', value: content })}
               placeholder="Content"
             />
@@ -86,7 +135,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
           <h4>SEO Information</h4>
           <Input
             placeholder="Meta Title"
-            value={formData?.metaTitle || ""}
+            value={blogToDisplay?.metaTitle || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'metaTitle', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -94,7 +143,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Meta Description"
-            value={formData?.metaDescription || ""}
+            value={blogToDisplay?.metaDescription || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'metaDescription', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -102,7 +151,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Meta Keywords"
-            value={formData?.metaKeywords || ""}
+            value={blogToDisplay?.metaKeywords || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'metaKeywords', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -114,7 +163,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
           <div style={{ marginBottom: "16px" }}>
             <p style={{ marginBottom: "8px" }}>Published Date</p>
             <DatePicker
-              value={formData?.publishedAt ? dayjs(formData?.publishedAt) : null}
+              value={blogToDisplay?.publishedAt ? dayjs(blogToDisplay?.publishedAt) : null}
               onChange={(date) => {
                 onChange({
                   name: 'publishedAt',
@@ -133,7 +182,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
             <div style={{ width: "50%" }}>
               <p style={{ marginBottom: "8px" }}>Created At</p>
               <DatePicker
-                value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
+                value={blogToDisplay?.createdAt ? dayjs(blogToDisplay?.createdAt) : null}
                 onChange={(date) => {
                   onChange({
                     name: 'createdAt',
@@ -151,7 +200,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
             <div style={{ width: "50%" }}>
               <p style={{ marginBottom: "8px" }}>Updated At</p>
               <DatePicker
-                value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
+                value={blogToDisplay?.updatedAt ? dayjs(blogToDisplay?.updatedAt) : null}
                 onChange={(date) => {
                   onChange({
                     name: 'updatedAt',

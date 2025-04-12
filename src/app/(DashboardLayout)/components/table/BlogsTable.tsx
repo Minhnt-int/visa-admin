@@ -11,8 +11,14 @@ import AddBlogFormPopup from '../popup/AddBlogFormPopup';
 import { BlogPostAttributes } from '@/data/BlogPost';
 import { createBlog, deleteBlog, fetchBlogList, updateBlog } from "@/services/blogService";
 import { ActionType, useAppContext } from '@/contexts/AppContext';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'; // Add usePathname, useSearchParams
-
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { 
+  DeleteOutlined, 
+  EyeOutlined, 
+  EditOutlined, 
+  CheckCircleOutlined,
+  RollbackOutlined
+} from '@ant-design/icons';
 const ProductsTable: React.FC = () => {
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -21,6 +27,7 @@ const ProductsTable: React.FC = () => {
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [action, setAction] = useState("");
   const [formData, setFormData] = useState<BlogPostAttributes | null>(null);
+  const [currentSlug, setCurrentSlug] = useState<string>('');
 
   const [data, setData] = useState<BlogPostAttributes[]>([]);
   const [pagination, setPagination] = useState(1);
@@ -38,8 +45,8 @@ const ProductsTable: React.FC = () => {
   } = useAppContext();
 
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
-  const searchParams = useSearchParams(); // Get search params
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const initialFormData : BlogPostAttributes = {
     id: 0,
@@ -67,20 +74,15 @@ const ProductsTable: React.FC = () => {
   const handleView = (record: BlogPostAttributes) => {
     setIsView(true);
     setFormData(record);
+    setCurrentSlug(record.slug);
     setIsModalOpen(true);
   };
-
-  // const handleEditPopup = (record: BlogPostAttributes) => {
-  //   setIsView(false);
-  //   setFormData(record);
-  //   setAction("edit");
-  //   setIsModalOpen(true);
-  // };
 
   const handleEdit = (record: BlogPostAttributes) => {
     selectBlog(record, ActionType.EDIT);
     router.push(`/bai-viet/action`);
   }
+  
   const handleAdd = () => {
     setCurrentAction(ActionType.CREATE);
     router.push(`/bai-viet/action`);
@@ -157,13 +159,13 @@ const ProductsTable: React.FC = () => {
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
-            Xem
+            <EyeOutlined />
           </Button>
           <Button type="link" danger onClick={() => handleEdit(record)}>
-            Sửa chi tiết
+            <EditOutlined />
           </Button>
           <Button type="link" danger onClick={() => handleDelete(record)}>
-            Xóa
+            <DeleteOutlined />
           </Button>
         </Space>
       ),
@@ -207,6 +209,7 @@ const ProductsTable: React.FC = () => {
     setIsModalOpen(false);
     setConfirmingPopup(false);
     setFormData(null);
+    setCurrentSlug('');
   };
 
   useEffect(() => {
@@ -290,9 +293,10 @@ const ProductsTable: React.FC = () => {
           open={isModalOpen}
           onClose={handleModalClose}
           onSubmit={() => {}}
-          formData={formData!}
+          formData={formData || initialFormData}
           isView={true}
           onChange={() => {}}
+          slug={currentSlug}
         />
         <ConfirmPopup
           open={ConfirmingPopup}

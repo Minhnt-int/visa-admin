@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input, DatePicker, Button as AntButton, Space, Divider } from 'antd';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, IconButton } from '@mui/material';
 import dayjs from 'dayjs';
@@ -8,6 +8,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import Editor from "../editor/Editor"
 import AIResultPopup from './AIResultPopup';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface AddFormPopupProps {
   open: boolean;
@@ -16,6 +17,7 @@ interface AddFormPopupProps {
   onChange: (data: { name: string; value: any }) => void;
   onSubmit: () => void;
   formData: ProductAttributes;
+  slug?: string;
 }
 
 const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
@@ -25,8 +27,34 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
   onChange,
   onSubmit,
   formData,
+  slug
 }) => {
   const [isAIResultOpen, setIsAIResultOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [localFormData, setLocalFormData] = useState<ProductAttributes | null>(null);
+
+  const {
+    selectedProduct,
+    fetchProductBySlug
+  } = useAppContext();
+
+  useEffect(() => {
+    if (open && slug) {
+      setLoading(true);
+      fetchProductBySlug(slug)
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [open, slug, fetchProductBySlug]);
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setLocalFormData(selectedProduct);
+    } else if (formData) {
+      setLocalFormData(formData);
+    }
+  }, [selectedProduct, formData]);
 
   // Hàm để xử lý thay đổi trong mảng items
   const handleItemChange = (index: number, field: string, value: any) => {
@@ -54,7 +82,8 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
       color: '',
       price: 0,
       originalPrice: 0,
-      status: 'available'
+      status: 'available',
+      id: 0
     };
 
     onChange({
@@ -98,8 +127,13 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
     const newMedia: ProductMedia = {
       type: 'image',
       url: '',
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      id: 0,
+      productId: 0,
+      mediaId: 0,
+      altText: '',
+      name: ''
     };
 
     onChange({
@@ -123,12 +157,25 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
   const handleEditorChange = (content: string) => {
     onChange({ name: 'description', value: content });
   };
-  
-  const title = formData && formData.id ? "Edit Product" : "Add Product";
+
+  const title = isView ? "View Product" : selectedProduct?.id ? "Edit Product" : "Add Product";
 
   const handleAISuggestion = () => {
     setIsAIResultOpen(true);
   };
+
+  const productToDisplay = localFormData || formData;
+
+  if (loading) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>Loading...</DialogTitle>
+        <DialogContent style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+          <div>Loading product data...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>
@@ -136,33 +183,23 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
         <DialogTitle>{title}</DialogTitle>
         <DialogContent>
           {/* Basic Information */}
-          <h4>Basic Information</h4>
           <Input
             placeholder="Name"
-            value={formData.name || ""}
+            value={productToDisplay?.name || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'name', value: e.target.value })}
           />
-{/* 
-          <Input
-            placeholder="Description"
-            value={formData.description || ""}
+
+          <Editor
             disabled={isView}
-            onChange={(e) => onChange({ name: 'description', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          /> */}
-
-<Editor 
-  disabled={isView} 
-  value={formData.description || ""}
-  onChange={(content) => onChange({ name: 'description', value: content })}
-  placeholder="Description"
-/>
-
+            value={productToDisplay?.description || ""}
+            onChange={(content) => onChange({ name: 'description', value: content })}
+            placeholder="Description"
+          />
 
           <Input
             placeholder="shortDescription"
-            value={formData.shortDescription || ""}
+            value={productToDisplay?.shortDescription || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'shortDescription', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -170,7 +207,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
           <Input
             placeholder="Category ID"
             type="number"
-            value={formData.categoryId || ""}
+            value={productToDisplay?.categoryId || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'categoryId', value: Number(e.target.value) || 0 })}
             style={{ marginBottom: "16px" }}
@@ -178,7 +215,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Slug"
-            value={formData.slug || ""}
+            value={productToDisplay?.slug || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -188,7 +225,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
           <h4>Meta Information</h4>
           <Input
             placeholder="Meta Title"
-            value={formData.metaTitle || ""}
+            value={productToDisplay?.metaTitle || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'metaTitle', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -196,7 +233,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Meta Description"
-            value={formData.metaDescription || ""}
+            value={productToDisplay?.metaDescription || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'metaDescription', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -204,7 +241,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Meta Keywords"
-            value={formData.metaKeywords || ""}
+            value={productToDisplay?.metaKeywords || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'metaKeywords', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -214,7 +251,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
           <h4>Dates</h4>
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
             <DatePicker
-              value={formData.createdAt ? dayjs(formData.createdAt) : null}
+              value={productToDisplay?.createdAt ? dayjs(productToDisplay.createdAt) : null}
               onChange={(date) => {
                 onChange({
                   name: 'createdAt',
@@ -228,7 +265,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
             />
 
             <DatePicker
-              value={formData.updatedAt ? dayjs(formData.updatedAt) : null}
+              value={productToDisplay?.updatedAt ? dayjs(productToDisplay.updatedAt) : null}
               onChange={(date) => {
                 onChange({
                   name: 'updatedAt',
@@ -256,7 +293,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
               )}
             </div>
 
-            {formData.media && formData.media.map((media, index) => (
+            {productToDisplay?.media && productToDisplay.media.map((media, index) => (
               <div key={index} style={{ border: '1px dashed #ccc', padding: '10px', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                   <h5>Media {index + 1}</h5>
@@ -286,6 +323,22 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
                   onChange={(e) => handleMediaChange(index, 'url', e.target.value)}
                   style={{ marginBottom: "8px" }}
                 />
+                {media.url && (
+                  <div style={{ margin: "8px 0", textAlign: "center" }}>
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_API_URL}${media.url}`}
+                      alt="Avatar Preview"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "200px",
+                        objectFit: "contain",
+                        border: "1px solid #eee",
+                        borderRadius: "4px",
+                        padding: "4px"
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <DatePicker
@@ -313,7 +366,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
               </div>
             ))}
 
-            {(!formData.media || formData.media.length === 0) && (
+            {(!productToDisplay?.media || productToDisplay.media.length === 0) && (
               <div style={{ textAlign: 'center', color: '#999', padding: '10px' }}>
                 No media. Click + to add.
               </div>
@@ -334,7 +387,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
               )}
             </div>
 
-            {formData.items && formData.items.map((item, index) => (
+            {productToDisplay?.items && productToDisplay.items.map((item, index) => (
               <div key={index} style={{ border: '1px dashed #ccc', padding: '10px', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                   <h5>Variant {index + 1}</h5>
@@ -393,7 +446,7 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
               </div>
             ))}
 
-            {(!formData.items || formData.items.length === 0) && (
+            {(!productToDisplay?.items || productToDisplay.items.length === 0) && (
               <div style={{ textAlign: 'center', color: '#999', padding: '10px' }}>
                 No variants. Click + to add.
               </div>
@@ -402,19 +455,23 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleAISuggestion} variant="outlined">
-            Gợi Ý (AI)
-          </Button>
-          <Button onClick={onSubmit} variant="contained" color="primary">
-            Submit
-          </Button>
+          {!isView && (
+            <>
+              <Button onClick={handleAISuggestion} variant="outlined">
+                Gợi Ý (AI)
+              </Button>
+              <Button onClick={onSubmit} variant="contained" color="primary">
+                Submit
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
 
       <AIResultPopup
         open={isAIResultOpen}
         onClose={() => setIsAIResultOpen(false)}
-        formData={formData}
+        formData={productToDisplay}
         type="product"
       />
     </>

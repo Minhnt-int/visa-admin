@@ -60,12 +60,12 @@ export const fetchBlogList = async ({
 export const fetchBlogCategories = async (
   page = 1,
   limit = 12,
-  search = '',
+  name = '',
   sortBy = '',
   sortOrder = '') => {
   try {
     const params = {
-      search,
+      name,
       sortBy,
       sortOrder,
       page,

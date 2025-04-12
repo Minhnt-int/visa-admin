@@ -7,6 +7,7 @@ import { ActionType, useAppContext } from '@/contexts/AppContext';
 import MediaPopup from '../popup/MediaPopup';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { useRouter } from 'next/navigation';
+import { ProductMedia } from '@/data/ProductAttributes';
 
 interface BlogCategoryFormProps {
   isView?: boolean;
@@ -38,18 +39,19 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     setLoadingState,
     setCurrentAction,
     deleteBlogCategory,
+    fetchBlogCategoryBySlug,
   } = useAppContext();
 
   // Update form data when initialData or selectedBlogCategory changes
+
   useEffect(() => {
-    if (initialData) {
-      setFormData(initialData);
-    } else if (selectedBlogCategory && currentAction.type === ActionType.EDIT) {
-      setFormData(selectedBlogCategory);
-    } else {
-      setFormData(initBlogCategory);
+    if (currentAction.type === ActionType.EDIT && selectedBlogCategory?.slug) {
+      fetchBlogCategoryBySlug(selectedBlogCategory?.slug).then(() => {
+        console.log("selectedBlogCategory after fetch", selectedBlogCategory);
+        setFormData(selectedBlogCategory);
+      });
     }
-  }, [initialData, selectedBlogCategory, currentAction]);
+  }, [currentAction.type, selectedBlogCategory?.slug]);
 
   const formTitle = currentAction.type === ActionType.EDIT ? "Edit Blog Category" : "Add Blog Category";
   
@@ -68,8 +70,8 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     }
   };
   
-  const handleMediaSelect = (path: string) => {
-    handleInputChange('avatarUrl', path);
+  const handleMediaSelect = (item : ProductMedia) => {
+    handleInputChange('avatarUrl', item.url);
     setIsMediaPopupOpen(false);
   };
 
@@ -315,6 +317,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         open={isMediaPopupOpen}
         onClose={() => setIsMediaPopupOpen(false)}
         onSelect={handleMediaSelect}
+        listMedia={[]}
       />
 
       {/* Delete Confirmation Dialog */}

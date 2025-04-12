@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input, DatePicker, Select } from 'antd';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress } from '@mui/material';
 import dayjs from 'dayjs';
@@ -13,6 +13,7 @@ interface AddFormPopupProps {
   onChange: (data: { name: string; value: any }) => void;
   onSubmit: () => void;
   formData: BlogCategory;
+  categoryId?: number | null;
 }
 
 const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
@@ -22,13 +23,47 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
   onChange,
   onSubmit,
   formData,
+  categoryId
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAIResultOpen, setIsAIResultOpen] = useState(false);
+  const [localFormData, setLocalFormData] = useState<BlogCategory | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
 
   const {
     blogCategories,
+    fetchBlogCategories
   } = useAppContext();
+
+  useEffect(() => {
+    if (open && categoryId) {
+      setDataLoading(true);
+      // Kiểm tra xem đã có dữ liệu trong blogCategories chưa
+      const existingCategory = blogCategories.find(cat => cat.id === categoryId);
+      if (existingCategory) {
+        setLocalFormData(existingCategory);
+        setDataLoading(false);
+      } else {
+        // Nếu không, fetch lại danh sách để đảm bảo có dữ liệu mới nhất
+        fetchBlogCategories()
+          .then(() => {
+            const category = blogCategories.find(cat => cat.id === categoryId);
+            if (category) {
+              setLocalFormData(category);
+            }
+          })
+          .finally(() => {
+            setDataLoading(false);
+          });
+      } 
+    }
+  }, [open, categoryId, fetchBlogCategories, blogCategories]);
+
+  useEffect(() => {
+    if (formData) {
+      setLocalFormData(formData);
+    }
+  }, [formData]);
 
   const handleGenerateContent = async () => {
     try {
@@ -39,7 +74,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + formData?.name
+          content: "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + (localFormData?.name || formData?.name)
         }),
       });
       
@@ -58,15 +93,29 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
     }
   };
 
+  const categoryData = localFormData || formData;
+  const title = isView ? 'View Category' : 'Add New Category';
+
+  if (dataLoading) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>Loading...</DialogTitle>
+        <DialogContent style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+          <CircularProgress />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>{isView ? 'View Category' : 'Add New Category'}</DialogTitle>
+        <DialogTitle>{title}</DialogTitle>
         <DialogContent>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
             <Input
               placeholder="Name"
-              value={formData?.name || ""}
+              value={categoryData?.name || ""}
               disabled={isView}
               onChange={(e) => onChange({ name: 'name', value: e.target.value })}
               style={{ flex: 1 }}
@@ -75,7 +124,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
               variant="outlined"
               color="primary"
               onClick={handleGenerateContent}
-              disabled={isView || !formData?.name || isLoading}
+              disabled={isView || !categoryData?.name || isLoading}
               startIcon={isLoading ? <CircularProgress size={20} /> : null}
             >
               Viết bài (AI)
@@ -84,7 +133,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
 
           <Input
             placeholder="Slug"
-            value={formData?.slug || ""}
+            value={categoryData?.slug || ""}
             disabled={isView}
             onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
             style={{ marginBottom: "16px" }}
@@ -95,7 +144,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
             <Select
               style={{ width: '100%' }}
               placeholder="Select parent category"
-              value={formData?.parentId || undefined}
+              value={categoryData?.parentId || undefined}
               onChange={(value) => onChange({ name: 'parentId', value })}
               disabled={isView}
               options={blogCategories.map(category => ({
@@ -109,15 +158,15 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
             <p style={{ marginBottom: "8px" }}>Avatar URL</p>
             <Input
               placeholder="Avatar URL"
-              value={formData?.avatarUrl || ""}
+              value={categoryData?.avatarUrl || ""}
               disabled={isView}
               onChange={(e) => onChange({ name: 'avatarUrl', value: e.target.value })}
               style={{ marginBottom: "8px" }}
             />
-            {formData?.avatarUrl && (
+            {categoryData?.avatarUrl && (
               <div style={{ marginTop: "8px", textAlign: "center" }}>
                 <img 
-                  src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
+                  src={`${process.env.NEXT_PUBLIC_API_URL}${categoryData.avatarUrl}`} 
                   alt="Avatar Preview" 
                   style={{ 
                     maxWidth: "100%", 
@@ -136,7 +185,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
             <div style={{ width: "50%" }}>
               <p style={{ marginBottom: "8px" }}>Created At</p>
               <DatePicker
-                value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
+                value={categoryData?.createdAt ? dayjs(categoryData?.createdAt) : null}
                 onChange={(date) => {
                   onChange({
                     name: 'createdAt',
@@ -154,7 +203,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
             <div style={{ width: "50%" }}>
               <p style={{ marginBottom: "8px" }}>Updated At</p>
               <DatePicker
-                value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
+                value={categoryData?.updatedAt ? dayjs(categoryData?.updatedAt) : null}
                 onChange={(date) => {
                   onChange({
                     name: 'updatedAt',
@@ -172,16 +221,18 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={onSubmit} variant="contained" color="primary">
-            Submit
-          </Button>
+          {!isView && (
+            <Button onClick={onSubmit} variant="contained" color="primary">
+              Submit
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
       <AIResultPopup
         open={isAIResultOpen}
         onClose={() => setIsAIResultOpen(false)}
-        formData={formData}
+        formData={categoryData}
         type="blog"
       />
     </>

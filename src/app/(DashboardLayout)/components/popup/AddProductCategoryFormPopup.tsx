@@ -1,17 +1,12 @@
-import React, { useState } from 'react';
-import { Input, DatePicker, Button as AntButton, Space, Divider } from 'antd';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, IconButton } from '@mui/material';
+import React from 'react';
+import { Input, DatePicker } from 'antd';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import dayjs from 'dayjs';
-import _ from 'lodash';
-import { ProductAttributes, ProductItemAttributes, ProductMedia } from '@/data/ProductAttributes';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import Editor from "../editor/Editor";
 import { ProductCategory } from '@/data/ProductCategory';
 
 interface AddFormPopupProps {
   open: boolean;
-  isView: boolean;
+  isView?: boolean;
   onClose: () => void;
   onChange: (data: { name: string; value: any }) => void;
   onSubmit: () => void;
@@ -20,23 +15,23 @@ interface AddFormPopupProps {
 
 const AddProductCategoryFormPopup: React.FC<AddFormPopupProps> = ({
   open,
-  isView,
+  isView = false,
   onClose,
   onChange,
   onSubmit,
   formData,
 }) => {
-  const title = formData && formData.id ? "Edit Product Category" : "Add Product Category";
+  const title = isView ? "Chi tiết danh mục" : (formData && formData.id ? "Sửa danh mục" : "Thêm danh mục");
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         {/* Basic Information */}
-        <h4>Basic Information</h4>
+        <h4>Thông tin cơ bản</h4>
         <Input
-          placeholder="Name"
-          value={formData.name || ""}
+          placeholder="Tên danh mục"
+          value={formData?.name || ""}
           disabled={isView}
           onChange={(e) => onChange({ name: 'name', value: e.target.value })}
           style={{ marginBottom: "16px" }}
@@ -44,73 +39,66 @@ const AddProductCategoryFormPopup: React.FC<AddFormPopupProps> = ({
 
         <Input
           placeholder="Slug"
-          value={formData.slug || ""}
+          value={formData?.slug || ""}
           disabled={isView}
           onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
           style={{ marginBottom: "16px" }}
         />
 
-
-        <Input
-          placeholder="Description"
-          value={formData.description || ""}
+        <Input.TextArea
+          placeholder="Mô tả"
+          value={formData?.description || ""}
           disabled={isView}
           onChange={(e) => onChange({ name: 'description', value: e.target.value })}
           style={{ marginBottom: "16px" }}
-        />
-
-
-        <Input
-          placeholder="Parent Category ID (Để trống nếu là danh mục gốc)"
-          type="number"
-          value={formData.parentId || ""}
-          disabled={isView}
-          onChange={(e) => {
-            const value = e.target.value.trim() === "" ? null : Number(e.target.value);
-            onChange({ name: 'parentId', value: value });
-          }}
-          style={{ marginBottom: "16px" }}
+          rows={4}
         />
 
         {/* Dates */}
-        <h4>Dates</h4>
+        <h4>Ngày tháng</h4>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-          <DatePicker
-            value={formData.createdAt ? dayjs(formData.createdAt) : null}
-            onChange={(date) => {
-              onChange({
-                name: 'createdAt',
-                value: date ? date.toISOString() : null,
-              });
-            }}
-            format="YYYY-MM-DD"
-            disabled={true}
-            style={{ width: "100%" }}
-            getPopupContainer={(trigger) => trigger.parentElement!}
-            placeholder="Created Date"
-          />
+          <div style={{ width: '50%' }}>
+            <p style={{ margin: '0 0 8px 0' }}>Ngày tạo:</p>
+            <DatePicker
+              value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
+              onChange={(date) => {
+                onChange({
+                  name: 'createdAt',
+                  value: date ? date.toDate() : null,
+                });
+              }}
+              format="DD/MM/YYYY HH:mm:ss"
+              disabled={true}
+              style={{ width: "100%" }}
+              showTime
+            />
+          </div>
 
-          <DatePicker
-            value={formData.updatedAt ? dayjs(formData.updatedAt) : null}
-            onChange={(date) => {
-              onChange({
-                name: 'updatedAt',
-                value: date ? date.toISOString() : null,
-              });
-            }}
-            format="YYYY-MM-DD"
-            disabled={true}
-            style={{ width: "100%" }}
-            getPopupContainer={(trigger) => trigger.parentElement!}
-            placeholder="Updated Date"
-          />
+          <div style={{ width: '50%' }}>
+            <p style={{ margin: '0 0 8px 0' }}>Ngày cập nhật:</p>
+            <DatePicker
+              value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
+              onChange={(date) => {
+                onChange({
+                  name: 'updatedAt',
+                  value: date ? date.toDate() : null,
+                });
+              }}
+              format="DD/MM/YYYY HH:mm:ss"
+              disabled={true}
+              style={{ width: "100%" }}
+              showTime
+            />
+          </div>
         </div>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button disabled={isView} onClick={onSubmit}>
-          Submit
-        </Button>
+        <Button onClick={onClose}>Đóng</Button>
+        {!isView && (
+          <Button onClick={onSubmit} variant="contained" color="primary">
+            Lưu
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

@@ -8,6 +8,15 @@ import { BlogCategory, initBlogCategory } from '@/data/blogCategory';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/AppContext';
 import AddBlogCategoryFormPopup from '../popup/AddBlogCategoryFormPopup';
+import { ActionType } from '@/contexts/AppContext';
+import { 
+  DeleteOutlined, 
+  EyeOutlined, 
+  EditOutlined, 
+  CheckCircleOutlined,
+  RollbackOutlined
+} from '@ant-design/icons';
+
 
 const BlogCategoryTable: React.FC = () => {
   const router = useRouter();
@@ -17,6 +26,7 @@ const BlogCategoryTable: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [limit, setLimit] = useState(10);
   const [Currentpagination, setCurrentpagination] = useState(1);
+  const [currentId, setCurrentId] = useState<number | null>(null);
 
   const [searchText, setSearchText] = useState('');
   const [sortField, setSortField] = useState('createdAt');
@@ -50,21 +60,37 @@ const BlogCategoryTable: React.FC = () => {
   const handleView = async (record: BlogCategory) => {
     setIsModalOpen(true);
     setFormData(record);
+    setCurrentId(record.id || null);
   };
   
   const handleEdit = async (record: BlogCategory) => {
     setSelectedBlogCategory(record);
+    setCurrentAction(ActionType.EDIT, 'blogCategory', record.id);
     router.push(`/danh-muc-bai-viet/action?id=${record.id}&mode=edit`);
   };
 
   const handleAdd = () => {
-    setSelectedBlogCategory(null);
     router.push(`/danh-muc-bai-viet/action?mode=create`);
   };
 
   const handleDelete = async (record: BlogCategory) => {
-    setFormData(record);
-    setConfirmingPopup(true);
+    try {
+      setFormData(record);
+      setConfirmingPopup(true);
+    } catch (error) {
+      console.error("Error deleting blog category:", error);
+      message.error("Failed to delete blog category");
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setFormData(null);
+    setCurrentId(null);
+  };
+
+  const handleChange = (data: { name: string; value: any }) => {
+    // This function is only needed for the interface props but not actually used in view mode
   };
 
   const columns: ColumnsType<BlogCategory> = [
@@ -76,10 +102,10 @@ const BlogCategoryTable: React.FC = () => {
       fixed: 'left',
     },
     {
-      title: 'Tên danh mục',
+      title: 'Name',
       dataIndex: 'name',
       key: 'name',
-      width: 150,
+      width: 200,
     },
     {
       title: 'Slug',
@@ -88,91 +114,99 @@ const BlogCategoryTable: React.FC = () => {
       width: 150,
     },
     {
-      title: 'Hình ảnh',
-      dataIndex: 'avatarUrl',
-      key: 'avatarUrl',
-      width: 150,
-      // render: (url) => url ? <img src={url} alt="Avatar" style={{ width: 50, height: 50, objectFit: 'cover' }} /> : 'Không có hình',
+      title: 'Parent ID',
+      dataIndex: 'parentId',
+      key: 'parentId',
+      width: 120,
+      render: (value) => value ? value : 'None',
     },
     {
-      title: 'Ngày tạo',
+      title: 'Created At',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 150,
-      render: (value) => (value ? new Date(value).toLocaleString() : ''),
+      width: 170,
+      render: (date) => date ? new Date(date).toLocaleString() : '',
     },
     {
-      title: 'Ngày cập nhật',
+      title: 'Updated At',
       dataIndex: 'updatedAt',
       key: 'updatedAt',
-      width: 150,
-      render: (value) => (value ? new Date(value).toLocaleString() : ''),
+      width: 170,
+      render: (date) => date ? new Date(date).toLocaleString() : '',
     },
     {
-      title: 'Thao tác',
+      title: 'Actions',
       key: 'actions',
-      width: 250,
       fixed: 'right',
+      width: 180,
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
-            Xem
+            <EyeOutlined />
           </Button>
           <Button type="link" onClick={() => handleEdit(record)}>
-            Sửa
+            <EditOutlined />
           </Button>
           <Button type="link" danger onClick={() => handleDelete(record)}>
-            Xóa
+            <DeleteOutlined />
           </Button>
         </Space>
       ),
     },
   ];
 
-  const fetchData = async (page: number, pageLimit: number, search?: string, sortBy?: string, order?: string) => {
-    try {
-      setLoadingState(true);
-      await fetchBlogCategories();
-      setLoadingState(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setErrorState(error instanceof Error ? error.message : 'Đã xảy ra lỗi');
-    }
-  };
-
   const handleSearch = () => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
-  };
-
-  const handleSortChange = (field: string, order: string) => {
-    setSortField(field);
-    setSortOrder(order);
-    fetchData(1, limit, searchText, field, order);
+    fetchData({
+      page: Currentpagination,
+      limit: limit,
+      name: searchText,
+      sortBy: sortField,
+      sortOrder: sortOrder as 'ASC' | 'DESC'
+    });
   };
 
   const handleDeleteCategory = async () => {
-    if (formData) {
+    if (formData && formData.id) {
       try {
         await deleteBlogCategory(formData.id);
-        message.success(`Đã xóa danh mục: ${formData.name}`);
-        fetchData(Currentpagination, limit, searchText, sortField, sortOrder);
+        message.success(`Deleted blog category: ${formData.name}`);
+        fetchData();
       } catch (error) {
-        console.error('Error deleting category:', error);
-        message.error(`Không thể xóa danh mục: ${formData.name}`);
+        console.error('Error deleting blog category:', error);
+        message.error(`Failed to delete blog category: ${formData.name}`);
       }
-      handleModalClose();
+      setConfirmingPopup(false);
+      setFormData(null);
     }
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setConfirmingPopup(false);
-    setFormData(null);
+  const fetchData = async (params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    parentId?: number | null;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => {
+    try {
+      setLoadingState(true);
+      await fetchBlogCategories(params);
+      setLoadingState(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setErrorState(error instanceof Error ? error.message : 'An error occurred');
+    }
   };
 
   useEffect(() => {
-    fetchData(1, limit, searchText, sortField, sortOrder);
+    fetchData({
+      page: 1,
+      limit: 10,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC'
+    });
   }, []);
+  
   const tableProps: TableProps<BlogCategory> = {
     columns,
     dataSource: blogCategories,
@@ -222,18 +256,17 @@ const BlogCategoryTable: React.FC = () => {
             </Space>
           </Col>
         </Row>
-        <Table<BlogCategory>
+        <Table
           style={{ width: '100%' }}
-          columns={columns}
-          dataSource={blogCategories}
-          rowKey="id"
-          pagination={false}
           loading={loading}
-          scroll={{ x: 1100 }}
           rowSelection={{
             selectedRowKeys,
             onChange: handleSelectChange,
           }}
+          columns={columns}
+          dataSource={blogCategories}
+          pagination={false}
+          scroll={{ x: 1100 }}
         />
         {blogCategories.length > 0 && (
           <Pagination
@@ -243,22 +276,34 @@ const BlogCategoryTable: React.FC = () => {
             pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
+              fetchData({
+                page,
+                limit,
+                name: searchText,
+                sortBy: sortField,
+                sortOrder: sortOrder as 'ASC' | 'DESC'
+              });
             }}
           />
         )}
-        <AddBlogCategoryFormPopup
-          open={isModalOpen}
-          onClose={handleModalClose}
-          onSubmit={() => {}}
-          formData={formData!}
-          isView={true}
-          onChange={() => {}}
+        
+        {formData && (
+          <AddBlogCategoryFormPopup
+            open={isModalOpen}
+            onClose={handleModalClose}
+            onSubmit={() => {}}
+            formData={formData}
+            onChange={handleChange}
+            isView={true}
+            categoryId={currentId}
           />
+        )}
+        
         <ConfirmPopup
           open={ConfirmingPopup}
           onClose={() => setConfirmingPopup(false)}
           onSubmit={handleDeleteCategory}
-          Content={`Bạn có chắc chắn muốn xóa danh mục "${formData?.name}"?`}
+          Content={`Are you sure you want to delete the category "${formData?.name}"?`}
         />
       </Card>
     </>

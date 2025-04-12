@@ -1,21 +1,23 @@
-
-
 // ProductCategory Model
 export interface ProductItemAttributes {
+  id: number;
   name: string;
   color: string;
   price: number;
   originalPrice: number;
-  status: string;
-
+  status: 'available' | 'out_of_stock';
 }
 
-
 export interface ProductMedia {
-  type: string;
+  id: number;
+  productId: number;
+  name: string;
   url: string;
-  createdAt: Date;
-  updatedAt: Date;
+  type: string;
+  createdAt: string;
+  updatedAt: string;
+  mediaId: number;
+  altText: string;
 }
 
 // ProductCategory Model
@@ -25,12 +27,14 @@ export interface ProductAttributes {
   description?: string;
   shortDescription?: string;
   categoryId: number;
+  avatarUrl?: string;
   slug: string;
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  status: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
   items: ProductItemAttributes[];
   media: ProductMedia[];
 }

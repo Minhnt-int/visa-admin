@@ -4,9 +4,16 @@ import type { ColumnsType, TableProps } from 'antd/es/table';
 import { Pagination } from "antd";
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { ProductCategory } from '@/data/ProductCategory';
-import { useAppContext } from '@/contexts/AppContext';
+import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter } from 'next/navigation';
-
+import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
+import { 
+  DeleteOutlined, 
+  EyeOutlined, 
+  EditOutlined, 
+  CheckCircleOutlined,
+  RollbackOutlined
+} from '@ant-design/icons';
 const initialFormData: ProductCategory = {
   id: 0,
   name: "",
@@ -29,6 +36,7 @@ const ProductCategoryTable: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const {
     // ProductCategory State
@@ -44,6 +52,9 @@ const ProductCategoryTable: React.FC = () => {
     // Shared Actions
     setLoadingState,
     setErrorState,
+    setCurrentAction,
+    selectedProductCategory,
+    setSelectedProductCategory,
   } = useAppContext();
 
   
@@ -57,20 +68,39 @@ const ProductCategoryTable: React.FC = () => {
   };
 
   const handleView = (record: ProductCategory) => {
-    router.push(`/danh-muc-san-pham/view/${record.id}`);
+    setFormData(record);
+    setIsModalOpen(true);
   };
 
   const handleEdit = (record: ProductCategory) => {
+    setCurrentAction(ActionType.EDIT, 'productCategory', record.id);
+    setSelectedProductCategory(record);
     router.push(`/danh-muc-san-pham/action?id=${record.id}&mode=edit`);
   };
 
   const handleAdd = () => {
+    setCurrentAction(ActionType.CREATE, 'productCategory');
+    setSelectedProductCategory(null);
     router.push(`/danh-muc-san-pham/action?mode=create`);
   };
 
   const handleDelete = (record: ProductCategory) => {
     setFormData(record);
     setConfirmingPopup(true);
+  };
+
+  const handleChange = (data: { name: string; value: any }) => {
+    if (formData) {
+      setFormData({
+        ...formData,
+        [data.name]: data.value
+      });
+    }
+  };
+  
+  const handleSubmit = () => {
+    message.info('Chức năng xem chi tiết danh mục');
+    setIsModalOpen(false);
   };
 
   const columns: ColumnsType<ProductCategory> = [
@@ -86,7 +116,6 @@ const ProductCategoryTable: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Slug',
@@ -98,24 +127,13 @@ const ProductCategoryTable: React.FC = () => {
       title: 'Mô tả',
       dataIndex: 'description',
       key: 'description',
-      width: 300,
-      render: (text) => (
-        <div
-          style={{
-            maxHeight: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}
-          dangerouslySetInnerHTML={{ __html: text }}
-        />
-      ),
+      width: 120,
     },
     {
-      title: 'Danh mục cha',
-      dataIndex: 'parentId',
-      key: 'parentId',
+      title: 'Ảnh đại diện',
+      dataIndex: 'avatarUrl',
+      key: 'avatarUrl',
       width: 120,
-      render: (parentId) => parentId === null ? <span style={{ color: 'gray' }}>Danh mục gốc</span> : parentId,
     },
     {
       title: 'Ngày tạo',
@@ -144,13 +162,13 @@ const ProductCategoryTable: React.FC = () => {
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => handleView(record)}>
-            Xem
+            <EyeOutlined />
           </Button>
           <Button type="link" onClick={() => handleEdit(record)}>
-            Sửa
+            <EditOutlined />
           </Button>
           <Button type="link" danger onClick={() => handleDelete(record)}>
-            Xóa
+            <DeleteOutlined />
           </Button>
         </Space>
       ),
@@ -215,6 +233,7 @@ const ProductCategoryTable: React.FC = () => {
     pagination: false,
     loading,
   };
+
   return (
     <>
       <Card title="Danh mục sản phẩm" style={{ width: '100%', margin: '0 auto' }}>
@@ -281,6 +300,16 @@ const ProductCategoryTable: React.FC = () => {
             onChange={(page) => {
               setCurrentpagination(page);
             }}
+          />
+        )}
+        {formData && (
+          <AddProductCategoryFormPopup
+            open={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSubmit={handleSubmit}
+            formData={formData}
+            onChange={handleChange}
+            isView={true}
           />
         )}
         <ConfirmPopup

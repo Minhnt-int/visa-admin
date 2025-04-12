@@ -6,7 +6,13 @@ import ConfirmPopup from '../popup/ConfirmPopup';
 import { Card } from "antd";
 import { fetchOrderList, createOrder, updateOrder, deleteOrder, fetchOrderById } from "@/services/orderService";
 import { OrderAttributes } from '@/data/Order';
-
+import { 
+  DeleteOutlined, 
+  EyeOutlined, 
+  EditOutlined, 
+  CheckCircleOutlined,
+  RollbackOutlined
+} from '@ant-design/icons';
 const OrderTable: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
@@ -24,6 +30,7 @@ const OrderTable: React.FC = () => {
   const [sortOrder, setSortOrder] = useState('DESC');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
@@ -137,7 +144,7 @@ const OrderTable: React.FC = () => {
       render: (_, record) => (
         <Space>
           <Button type="link" danger onClick={() => handleDelete(record)}>
-            Delete
+            <DeleteOutlined />
           </Button>
         </Space>
       ),
@@ -146,16 +153,21 @@ const OrderTable: React.FC = () => {
 
   const fetchData = async (page: number, limit: number, search?: string, sortBy?: string, sortOrder?: string) => {
     try {
-      const response = await fetchOrderList({
-        page: page,
-        limit: limit,
-        startDate: startDate,
+      const params = {
         userId: userId || null,
         status: selectedStatus,
-        search: search || '',
+        page: page || 1,
+        limit: limit || 10,
+        startDate: startDate,
+        endDate: endDate,
         sortBy: sortBy || 'createdAt',
         sortOrder: sortOrder || 'DESC',
-      }) as any;
+        search: search || ''
+      };
+
+      console.log("Fetching orders with params:", params);
+      
+      const response = await fetchOrderList(params) as any;
       setLoading(false);
       setTotal(response.pagination.total);
       setData(response.data);
@@ -170,7 +182,7 @@ const OrderTable: React.FC = () => {
     try {
       if (record.id) {
         await deleteOrder(record.id);
-        fetchData(Currentpagination, limit, sortField, sortOrder);
+        fetchData(Currentpagination, limit, '', sortField, sortOrder);
         message.success(`Deleted Order #${record.id}`);
       }
     } catch (error) {
@@ -185,23 +197,93 @@ const OrderTable: React.FC = () => {
   };
 
   const handleSearch = () => {
-    fetchData(1, limit, sortField, sortOrder);
+    const params = {
+      userId: userId || null,
+      status: selectedStatus,
+      page: 1,
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+      sortBy: sortField || 'createdAt',
+      sortOrder: sortOrder || 'DESC',
+      search: ''
+    };
+    
+    console.log("Search with params:", params);
+    
+    fetchOrderList(params).then((response: any) => {
+      setLoading(false);
+      setTotal(response.pagination.total);
+      setData(response.data);
+      setPagination(response.pagination.totalPages);
+      setCurrentpagination(response.pagination.currentPage);
+    }).catch((error) => {
+      console.error("Error fetching data on search:", error);
+    });
   };
 
   const handleSortChange = (field: string, order: string) => {
     setSortField(field);
     setSortOrder(order);
-    fetchData(1, limit, field, order);
+    fetchData(1, limit, '', field, order);
   };
 
   const handleStatusChange = (value: string | null) => {
-    setSelectedStatus(value);
-    fetchData(1, limit, sortField, sortOrder);
+    const newStatus = value;
+    setSelectedStatus(newStatus);
+    
+    const params = {
+      userId: userId || null,
+      status: newStatus,
+      page: 1,
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+      sortBy: sortField || 'createdAt',
+      sortOrder: sortOrder || 'DESC',
+      search: ''
+    };
+    
+    console.log("Status changed to:", newStatus, "Fetching with params:", params);
+    
+    fetchOrderList(params).then((response: any) => {
+      setLoading(false);
+      setTotal(response.pagination.total);
+      setData(response.data);
+      setPagination(response.pagination.totalPages);
+      setCurrentpagination(response.pagination.currentPage);
+    }).catch((error) => {
+      console.error("Error fetching data after status change:", error);
+    });
   };
 
   const handleDateChange = (date: any, dateString: string) => {
-    setStartDate(dateString);
-    fetchData(1, limit, sortField, sortOrder);
+    const newStartDate = dateString;
+    setStartDate(newStartDate);
+    
+    const params = {
+      userId: userId || null,
+      status: selectedStatus,
+      page: 1,
+      limit: limit,
+      startDate: newStartDate,
+      endDate: endDate,
+      sortBy: sortField || 'createdAt',
+      sortOrder: sortOrder || 'DESC',
+      search: ''
+    };
+    
+    console.log("Date changed to:", newStartDate, "Fetching with params:", params);
+    
+    fetchOrderList(params).then((response: any) => {
+      setLoading(false);
+      setTotal(response.pagination.total);
+      setData(response.data);
+      setPagination(response.pagination.totalPages);
+      setCurrentpagination(response.pagination.currentPage);
+    }).catch((error) => {
+      console.error("Error fetching data after date change:", error);
+    });
   };
 
   const handleUserIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,7 +295,7 @@ const OrderTable: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData(1, limit, sortField, sortOrder);
+    fetchData(1, limit, '', sortField, sortOrder);
   }, []);
   const tableProps: TableProps<OrderAttributes> = {
     columns,
@@ -239,6 +321,11 @@ const OrderTable: React.FC = () => {
                 onChange={(date, dateString) => setStartDate(dateString as string)}
                 style={{ width: 150 }}
               />
+              <DatePicker
+                placeholder="End Date"
+                onChange={(date, dateString) => setEndDate(dateString as string)}
+                style={{ width: 150 }}
+              />
               <Select
                 placeholder="Status"
                 style={{ width: 150 }}
@@ -246,15 +333,16 @@ const OrderTable: React.FC = () => {
                 onChange={handleStatusChange}
                 allowClear
                 options={[
-                  { value: 'PENDING', label: 'Pending' },
-                  { value: 'PROCESSING', label: 'Processing' },
-                  { value: 'DELIVERED', label: 'Delivered' },
-                  { value: 'CANCELLED', label: 'Cancelled' },
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'processing', label: 'Processing' },
+                  { value: 'delivered', label: 'Delivered' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                  { value: 'shipped', label: 'Shipped' },
                 ]}
               />
               <Select
                 defaultValue="createdAt"
-                style={{ width: 120 }}
+                style={{ width: 120 }}  
                 value={sortField}
                 onChange={(value) => handleSortChange(value, sortOrder)}
                 options={[
@@ -300,7 +388,7 @@ const OrderTable: React.FC = () => {
             pageSize={limit}
             onChange={(page) => {
               setCurrentpagination(page);
-              fetchData(page, limit, sortField, sortOrder);
+              fetchData(page, limit, '', sortField, sortOrder);
             }}
           />
         )}
