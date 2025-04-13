@@ -33,7 +33,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
-    "src/services/productService.js",
+    "src/services/productService.ts",
   ],
   "exclude": ["node_modules"]
 }
