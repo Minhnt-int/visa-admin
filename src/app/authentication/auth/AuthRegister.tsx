@@ -83,7 +83,7 @@ const AuthRegister = ({ title, subtitle, subtext }: registerType) => {
                     />
 
                     <Typography variant="subtitle1"
-                        fontWeight={600} component="label" htmlFor='email' mb="5px" mt="25px">name</Typography>
+                        fontWeight={600} component="label" htmlFor='email' mb="5px" mt="25px">Email</Typography>
                     <CustomTextField 
                         id="email" 
                         variant="outlined" 
