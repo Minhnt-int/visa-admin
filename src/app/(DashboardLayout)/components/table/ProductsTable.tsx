@@ -72,7 +72,8 @@ const ProductsTable: React.FC = () => {
     restoreProduct,
     selectedProduct,
     setSelectedProduct,
-    fetchProductBySlug
+    fetchProductBySlug,
+    changeProductStatus
   } = useAppContext();
   const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -436,7 +437,7 @@ const ProductsTable: React.FC = () => {
           if (action === "delete") {
             executeDelete(formData!.id);
           } else if (action === "restore") {
-            executeRestore(formData!.id);
+            changeProductStatus(formData!.id, "draft");
           } else if (action === "activate") {
             executeActive(formData!.id);
           } else if (action === "update") {

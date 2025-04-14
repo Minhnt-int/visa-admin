@@ -19,6 +19,7 @@ import {
   permanentlyDeleteProduct as permanentlyDeleteProductService,
   activateProduct as activateProductService,
   restoreProduct as restoreProductService,
+  changeProductStatus as changeProductStatusService,
   ApiResponse
 } from '@/services/productService';
 
@@ -112,6 +113,7 @@ interface AppContextProps {
   updateProduct: (id: number, product: ProductAttributes) => Promise<boolean>;
   deleteProduct: (id: number) => Promise<boolean>;
   clearSelectedProduct: () => void;
+  changeProductStatus: (productId: number, status: string) => Promise<boolean>;
   
   // ProductCategory Actions
   fetchProductCategories: (params?: {
@@ -632,6 +634,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [fetchProducts, setCurrentAction]);
 
+  const changeProductStatus = useCallback(async (productId: number, status: string) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.EDIT, 'product', productId);
+      
+      const result = await changeProductStatusService(productId, status) as ApiResponse;
+      
+      if (result.success) {
+        message.success(`Product status changed to ${status} successfully`);
+        await fetchProducts();
+        setCurrentAction(ActionType.NONE, null);
+        setError(null);
+        return true;
+      } else {
+        setError(result.message);
+        message.error(result.message || 'Failed to change product status');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      message.error(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProducts, setCurrentAction]);
+
   // Clear selected product
   const clearSelectedProduct = useCallback(() => {
     setSelectedProduct(null);
@@ -864,6 +894,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     createProduct,
     updateProduct,
     deleteProduct,
+    changeProductStatus,
     clearSelectedProduct,
     permanentlyDeleteProduct,
     activateProduct,

@@ -275,6 +275,44 @@ export const updateProduct = async (productData: ProductAttributes ) => {
 };
 
 /**
+* Thay đổi trạng thái sản phẩm
+* @param {number} productId - ID của sản phẩm cần thay đổi trạng thái
+* @param {string} status - Trạng thái mới ('draft', 'active', 'deleted', etc.)
+* @returns {Promise<Object>} - Promise trả về kết quả thay đổi trạng thái sản phẩm
+*/
+export const changeProductStatus = async (productId: number, status: string) => {
+ try {
+   const response = await axioss.put(`${API_BASE_URL}/api/product/change-status`, 
+     { 
+       id: productId,
+       status: status 
+     },
+     {
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       validateStatus: function (status) {
+         return status >= 200 && status < 300;
+       }
+     }
+   );
+   
+   return {
+     success: response.status >= 200 && response.status < 300,
+     data: response.data?.data || null,
+     message: response.data?.message || `Product status changed to ${status} successfully`
+   };
+ } catch (error: any) {
+   console.error(`Lỗi khi thay đổi trạng thái sản phẩm:`, error);
+   return {
+     success: false,
+     data: null,
+     message: error.message || 'Failed to change product status'
+   };
+ }
+};
+
+/**
  * Xóa sản phẩm theo ID
  * @param {number} productId - ID của sản phẩm cần xóa
  * @returns {Promise<Object>} - Promise trả về kết quả xóa sản phẩm
