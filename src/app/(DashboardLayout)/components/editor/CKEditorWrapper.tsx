@@ -106,7 +106,7 @@ export default function CKEditorWrapper({ disabled = false, onChange, value, pla
 						{ClassicEditor && editorConfig && (
 							<CKEditor 
 								editor={ClassicEditor as any} 
-								config={editorConfig}
+								config={editorConfig as any}
 								disabled={disabled}
 								onReady={(editor: any) => {
 									setEditorInstance(editor);

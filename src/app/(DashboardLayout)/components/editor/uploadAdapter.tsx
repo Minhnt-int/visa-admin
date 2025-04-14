@@ -73,7 +73,7 @@ export class CustomUploadAdapter {
             if (xhr.status === 200 || xhr.status === 201) {
               // Trả về URL của ảnh đã upload và alt text
               resolve({
-                default: process.env.NEXT_PUBLIC_API_URL + xhr.response.data.pop().path,
+                default: process.env.NEXT_PUBLIC_API_URL + xhr.response.data.pop().url,
                 alt: xhr.response.data.pop().altText || '' // Thêm thuộc tính alt
               });
             } else {

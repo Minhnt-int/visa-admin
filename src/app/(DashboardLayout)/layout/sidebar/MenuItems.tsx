@@ -32,12 +32,12 @@ const Menuitems = [
     icon: IconTablePlus,
     href: "/san-pham",
   },
-  {
-    id: uniqueId(),
-    title: "Lượt Xem Sản Phẩm",
-    icon: IconEye,
-    href: "/san-pham",
-  },
+  // {
+  //   id: uniqueId(),
+  //   title: "Lượt Xem Sản Phẩm",
+  //   icon: IconEye,
+  //   href: "/san-pham",
+  // },
   {
     id: uniqueId(),
     title: "Quản lý mẫu mã",
