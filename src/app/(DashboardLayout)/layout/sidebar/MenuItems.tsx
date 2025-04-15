@@ -40,7 +40,7 @@ const Menuitems = [
   // },
   {
     id: uniqueId(),
-    title: "Quản lý mẫu mã",
+    title: "Quản lý danh mục",
     icon: IconCategory,
     href: "/danh-muc-san-pham",
   },

@@ -270,7 +270,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleGetSuggestions = async () => {
     try {
       setIsLoadingAi(true);
-      const response = await fetch('/api/ai/suggestions', {
+      const response = await fetch('/api/ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
