@@ -50,8 +50,8 @@ const ApiService = {
     axiosInstance.defaults.headers.common = {};
   },
 
-  get(resource: string) {
-    return axiosInstance.get(resource);
+  get(resource: string, params?: any) {
+    return axiosInstance.get(resource, { params });
   },
 
   post(resource: string, data: any) {

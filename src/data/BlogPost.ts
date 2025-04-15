@@ -2,6 +2,7 @@
 export interface BlogPostAttributes {
   id: number;
   title: string;
+  avatarUrl: string;
   content: string;
   slug: string;
   metaTitle: string;
@@ -17,6 +18,7 @@ export interface BlogPostAttributes {
 export const initBlog = {
   id: 0,
   title: '',
+  avatarUrl: '',
   content: '',
   slug: '',
   metaTitle: '',

@@ -167,14 +167,15 @@ export const createBlog = async (blogData) => {
 };
 
 /**
- * Cập nhật thông tin sản phẩm
- * @param {BlogAttributes} blogData - Dữ liệu sản phẩm cần cập nhật
- * @returns {Promise<Object>} - Promise trả về kết quả cập nhật sản phẩm
+ * Cập nhật thông tin bài viết blog
+ * @param {Object} blogData - Dữ liệu bài viết cần cập nhật
+ * @returns {Promise<Object>} - Promise trả về kết quả cập nhật bài viết
  */
 export const updateBlog = async (blogData) => {
   try {
-    // Sử dụng URL tương đối thay vì URL tuyệt đối
-    const response = await axioss.put('/api/blog/update-blog', blogData, {
+    console.log('Updating blog with data:', blogData); // Debug log
+    
+    const response = await axioss.put(`${API_BASE_URL}/api/blog/update-blog`, blogData, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -182,12 +183,16 @@ export const updateBlog = async (blogData) => {
         // Chấp nhận mã trạng thái 200 và 201 là thành công
         return status >= 200 && status < 300;
       }
-
     });
     
+    console.log('Update response:', response.data); // Debug log
     return response.data;
   } catch (error) {
-    console.error('Lỗi khi cập nhật sản phẩm:', error);
+    console.error('Lỗi khi cập nhật bài viết:', error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+    }
     throw error;
   }
 };

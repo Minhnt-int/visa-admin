@@ -22,6 +22,7 @@ import {
   changeProductStatus as changeProductStatusService,
   ApiResponse
 } from '@/services/productService';
+import { useRouter } from 'next/navigation';
 
 // Enum cho các loại hành động
 export enum ActionType {
@@ -46,6 +47,7 @@ interface AppContextProps {
   // Blog State
   blogs: BlogPostAttributes[];
   selectedBlog: BlogPostAttributes | null;
+  selectedBlogPost: BlogPostAttributes | null;
   
   // BlogCategory State
   blogCategories: BlogCategory[];
@@ -77,6 +79,10 @@ interface AppContextProps {
   setSelectedBlogData: (blog: BlogPostAttributes | null) => void;
   selectBlog: (blog: BlogPostAttributes | null, actionType?: ActionType) => void;
   clearSelectedBlog: () => void;
+  setSelectedBlogPost: (blog: BlogPostAttributes | null) => void;
+  clearSelectedBlogPost: () => void;
+  updateBlogPost: (blog: BlogPostAttributes) => Promise<boolean>;
+  createBlogPost: (blog: BlogPostAttributes) => Promise<boolean>;
   
   // BlogCategory Actions
   fetchBlogCategories: (params?: {
@@ -159,9 +165,12 @@ interface AppContextProps {
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const router = useRouter();
+  
   // Blog State
   const [blogs, setBlogs] = useState<BlogPostAttributes[]>([]);
   const [selectedBlog, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
+  const [selectedBlogPost, setSelectedBlogPostState] = useState<BlogPostAttributes | null>(null);
 
   // BlogCategory State
   const [blogCategories, setBlogCategories] = useState<BlogCategory[]>([]);
@@ -243,6 +252,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setSelectedBlog(null);
     setCurrentAction(ActionType.NONE, null);
   }, [setCurrentAction]);
+
+  const setSelectedBlogPost = useCallback((blog: BlogPostAttributes | null) => {
+    setSelectedBlogPostState(blog);
+  }, []);
+
+  const clearSelectedBlogPost = useCallback(() => {
+    setSelectedBlogPostState(null);
+  }, []);
 
   // ====================== BLOG CATEGORY METHODS ======================
   
@@ -844,11 +861,60 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     fetchProducts({ status });
   }, [fetchProducts]);
 
+  // Blog Actions
+  const updateBlogPost = useCallback(async (blog: BlogPostAttributes) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.EDIT, 'blog');
+      
+      const result = await updateBlog(blog) as { data: BlogPostAttributes; message: string };
+      
+      if (result && result.message) {
+        await fetchBlogList();
+        setError(null);
+        return true;
+      } else {
+        setError('Đã xảy ra lỗi khi cập nhật bài viết');
+        return false;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchBlogList, setCurrentAction]);
+
+  // Blog Actions
+  const createBlogPost = useCallback(async (blog: BlogPostAttributes) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.CREATE, 'blog');
+      
+      const result = await createBlog(blog) as { success: boolean; message?: string };
+      
+      if (result.success) {
+        await fetchBlogList();
+        setError(null);
+        return true;
+      } else {
+        setError(result.message ?? 'Đã xảy ra lỗi');
+        return false;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchBlogList, setCurrentAction]);
+
   // Cập nhật object value
   const value = {
     // Blog State
     blogs,
     selectedBlog,
+    selectedBlogPost,
     
     // BlogCategory State
     blogCategories,
@@ -878,6 +944,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setSelectedBlogData,
     selectBlog,
     clearSelectedBlog,
+    setSelectedBlogPost,
+    clearSelectedBlogPost,
+    updateBlogPost,
+    createBlogPost,
     
     // BlogCategory Actions
     fetchBlogCategories,

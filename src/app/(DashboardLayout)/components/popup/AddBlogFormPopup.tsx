@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Input, DatePicker } from 'antd';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from '@mui/material';
 import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes } from '@/data/BlogPost';
@@ -103,6 +103,30 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
             onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
             style={{ marginBottom: "16px" }}
           />
+                    <Input
+            placeholder="avatarUrl"
+            value={blogToDisplay?.avatarUrl || ""}
+            disabled={isView}
+            onChange={(e) => onChange({ name: 'avatarUrl', value: e.target.value })}
+            style={{ marginBottom: "16px" }}
+          />
+
+{blogToDisplay?.avatarUrl && (
+          <Box sx={{ mb: 2, textAlign: 'center' }}>
+            <img
+              src={`${process.env.NEXT_PUBLIC_API_URL}${blogToDisplay?.avatarUrl}`}
+              alt="Avatar Preview"
+              style={{
+                maxWidth: '100%',
+                maxHeight: 200,
+                objectFit: 'contain',
+                border: '1px solid #eee',
+                borderRadius: 4,
+                padding: 4
+              }}
+            />
+          </Box>
+        )}
 
           <Input
             placeholder="Author"

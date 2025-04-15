@@ -25,10 +25,6 @@ const Dashboard = () => {
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<BlogPostAttributes | null>(selectedBlog || null);
 
-    const handleModalSubmit = () => {
-      setConfirmingPopup(true);
-    };
-
   return (
     <PageContainer title="Dashboard" description="this is Dashboard">
       <Box>
@@ -39,9 +35,8 @@ const Dashboard = () => {
               ...prev!,
               [name]: value,
             }))
-          } onSubmit={
-              () => handleModalSubmit()
-            } formData={formData!} />
+          } 
+           formData={formData!} />
           <ConfirmPopup
             open={ConfirmingPopup}
             onClose={() => setConfirmingPopup(false)}

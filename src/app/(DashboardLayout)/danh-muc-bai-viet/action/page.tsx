@@ -108,6 +108,19 @@ const BlogCategoryAction = () => {
             <BlogCategoryForm
             />
           </Grid>
+          {formData.avatarUrl && (
+            <div className="mb-4">
+              <img 
+                src={`${process.env.NEXT_PUBLIC_API_URL || ''}${formData.avatarUrl}`} 
+                alt="Category Avatar" 
+                className="w-32 h-32 object-cover rounded"
+                onError={(e) => {
+                  console.error('Error loading image:', e);
+                  e.currentTarget.src = '/placeholder.png'; // Fallback image
+                }}
+              />
+            </div>
+          )}
         </Grid>
       </Box>
     </PageContainer>
