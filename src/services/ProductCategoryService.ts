@@ -1,7 +1,8 @@
 import ApiService from './ApiService';
 import { ProductCategory } from '@/data/ProductCategory';
 
-const PRODUCT_CATEGORIES_URL = '/api/product-category';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const PRODUCT_CATEGORIES_URL = `${API_BASE_URL}/api/product-category`;
 
 const ProductCategoryService = {
   /**
@@ -56,7 +57,14 @@ const ProductCategoryService = {
    */
   async updateCategory(id: number, category: ProductCategory) {
     try {
-      const response = await ApiService.put(`${PRODUCT_CATEGORIES_URL}/update-category`, category);
+      const response = await fetch(`${PRODUCT_CATEGORIES_URL}/update-category`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify(category),
+      });
       return ApiService.handleResponse<ProductCategory>(response);
     } catch (error) {
       return ApiService.handleError(error);

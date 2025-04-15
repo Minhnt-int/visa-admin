@@ -12,6 +12,7 @@ import MediaPopup from '../popup/MediaPopup';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { convertToFormData } from '@/utils/productUtils';
 import ConfirmPopup from '../popup/ConfirmPopup';
+import { productMediaDelete } from '@/services/productService';
 
 interface ProductFormProps {
   action?: string;
@@ -162,15 +163,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
     console.log("handleMediaSelect được gọi với:", media);
     
     const newProductMedia: any = {
-      id: media.id,
-      name: media.name || '',
       url: media.url,
       type: mediaType,
-      createdAt: media.createdAt,
-      updatedAt: media.updatedAt,
       altText: media.altText,
-      productId: 0,
-      mediaId: media.id
     };
     
     const newMedia = [...formData.media, newProductMedia];
@@ -183,10 +178,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
     console.log("Đã cập nhật media trong formData:", newMedia);
   };
 
-  const handleRemoveMedia = (index: number) => {
-    console.log("handleRemoveMedia được gọi với index:", index);
-    console.log("formData.media trước khi xóa:", formData.media);
-    
+  const handleRemoveMedia = async (index: number) => {
+    await productMediaDelete(formData.media[index].id).then(() => {
+      console.log("Media đã được xóa thành công");
+    }).catch((error) => {
+      console.error("Lỗi khi xóa media:", error);
+    });
     const newMedia = [...formData.media];
     newMedia.splice(index, 1);
     

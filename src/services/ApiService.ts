@@ -2,34 +2,68 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-const ApiService = {
-  setHeader() {
-    axios.defaults.headers.common["Content-Type"] = "application/json";
-    // Thêm authorization header nếu cần
+// Tạo instance của axios với cấu hình mặc định
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 10000, // 10 giây
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Thêm interceptor cho request
+axiosInstance.interceptors.request.use(
+  (config) => {
     const token = localStorage.getItem("token");
     if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Thêm interceptor cho response
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Xử lý khi token hết hạn
+      localStorage.removeItem("token");
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+const ApiService = {
+  setHeader() {
+    const token = localStorage.getItem("token");
+    if (token) {
+      axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
   },
 
   removeHeader() {
-    axios.defaults.headers.common = {};
+    axiosInstance.defaults.headers.common = {};
   },
 
   get(resource: string) {
-    return axios.get(`${API_URL}${resource}`);
+    return axiosInstance.get(resource);
   },
 
   post(resource: string, data: any) {
-    return axios.post(`${API_URL}${resource}`, data);
+    return axiosInstance.post(resource, data);
   },
 
   put(resource: string, data: any) {
-    return axios.put(`${API_URL}${resource}`, data);
+    return axiosInstance.put(resource, data);
   },
 
   delete(resource: string) {
-    return axios.delete(`${API_URL}${resource}`);
+    return axiosInstance.delete(resource);
   },
 
   /**

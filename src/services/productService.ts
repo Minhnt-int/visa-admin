@@ -248,6 +248,7 @@ export const createProduct = async (productData: ProductAttributes) => {
  * @returns {Promise<Object>} - Promise trả về kết quả cập nhật sản phẩm
  */
 export const updateProduct = async (productData: ProductAttributes ) => {
+  productData.avatarUrl = productData.media[0] ? productData.media[0].url : productData.avatarUrl;
   try {
     const response = await axioss.put(`${API_BASE_URL}/api/product/update`, productData, {
       headers: {
@@ -496,6 +497,39 @@ export const restoreProduct = async (productId: number) => {
       success: false,
       data: null,
       message: error.message || 'Failed to restore product'
+    };
+  }
+};
+
+/**
+ * Khôi phục sản phẩm (thay đổi trạng thái từ deleted sang active)
+ * @param {number} id - ID của sản phẩm cần khôi phục
+ * @returns {Promise<Object>} - Promise trả về kết quả khôi phục sản phẩm
+ */
+  export const productMediaDelete = async (id: number) => {
+  try {
+    const response = await axioss.delete(`${API_BASE_URL}/api/product/media/delete`, {
+      params: { id },
+      headers: {
+          'Content-Type': 'application/json',
+        },
+        validateStatus: function (status) {
+          return status >= 200 && status < 300;
+        }
+      }
+    );
+    
+    return {
+      success: response.status >= 200 && response.status < 300,
+      data: response.data?.data || null,
+      message: response.data?.message || 'Product media deleted successfully'
+    };
+  } catch (error: any) {
+    console.error('Lỗi khi xóa media sản phẩm:', error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || 'Failed to delete product media'
     };
   }
 };
