@@ -267,6 +267,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
             createdAt: new Date(),
             updatedAt: new Date(),
             blogCategoryId: 0,
+            avatarUrl: "",
           }}
           onChange={() => { }} // Không cần xử lý onChange vì chỉ xem
         />

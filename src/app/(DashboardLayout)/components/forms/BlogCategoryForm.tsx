@@ -328,7 +328,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete the category "{formData?.name}"? This action cannot be undone.
+            Are you sure you want to delete the category {formData?.name}? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

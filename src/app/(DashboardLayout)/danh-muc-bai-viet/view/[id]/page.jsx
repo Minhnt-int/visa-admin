@@ -1,13 +1,14 @@
-'use client'
+'use client';
+export const dynamic = 'force-static';
+
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
 import { useEffect } from 'react';
-import { BlogCategory } from '@/data/blogCategory';
 import { Button, Space, message, Descriptions, Card, Spin, Image } from 'antd';
 import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter } from 'next/navigation';
 
-const BlogCategoryView = ({ params }: { params: { id: string } }) => {
+const BlogCategoryView = ({ params }) => {
   const router = useRouter();
   const id = Number(params.id);
   

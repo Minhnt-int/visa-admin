@@ -303,7 +303,7 @@ const BlogCategoryTable: React.FC = () => {
           open={ConfirmingPopup}
           onClose={() => setConfirmingPopup(false)}
           onSubmit={handleDeleteCategory}
-          Content={`Are you sure you want to delete the category "${formData?.name}"?`}
+          Content={`Are you sure you want to delete the category '${formData?.name}'?`}
         />
       </Card>
     </>

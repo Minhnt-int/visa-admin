@@ -61,6 +61,7 @@ const ProductsTable: React.FC = () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     blogCategoryId: 0,
+    avatarUrl: ""
   }
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {

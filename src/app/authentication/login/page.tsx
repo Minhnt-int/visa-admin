@@ -5,8 +5,9 @@ import { Grid, Box, Card, Stack, Typography } from "@mui/material";
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
 import AuthLogin from "./AuthLogin";
+import { Suspense } from 'react';
 
-const Login2 = () => {
+const LoginContent = () => {
   return (
     <PageContainer title="Đăng nhập" description="Trang đăng nhập hệ thống">
       <Box
@@ -94,4 +95,13 @@ const Login2 = () => {
     </PageContainer>
   );
 };
+
+const Login2 = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  );
+};
+
 export default Login2;

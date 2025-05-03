@@ -3,17 +3,13 @@ import { baselightTheme } from "@/utils/theme/DefaultColors";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Cookies from "js-cookie";
 import { usePathname, useSearchParams } from 'next/navigation';
 import nProgress from 'nprogress';
 import 'nprogress/nprogress.css';
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const AppContent = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -76,6 +72,14 @@ export default function RootLayout({
     };
   }, []);
 
+  return children;
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <head>
@@ -110,7 +114,11 @@ export default function RootLayout({
         <ThemeProvider theme={baselightTheme}>
           {/* CssBaseline kickstart an elegant, consistent, and simple baseline to build upon. */}
           <CssBaseline />
-          {children}
+          <Suspense fallback={<div>Loading...</div>}>
+            <AppContent>
+              {children}
+            </AppContent>
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>

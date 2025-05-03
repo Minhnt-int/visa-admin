@@ -4,8 +4,9 @@ import Link from "next/link";
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
 import AuthRegister from "../auth/AuthRegister";
+import { Suspense } from 'react';
 
-const Register2 = () => (
+const RegisterContent = () => (
   <PageContainer title="Register" description="this is Register page">
     <Box
       sx={{
@@ -89,6 +90,12 @@ const Register2 = () => (
       </Grid>
     </Box>
   </PageContainer>
+);
+
+const Register2 = () => (
+  <Suspense fallback={<div>Loading...</div>}>
+    <RegisterContent />
+  </Suspense>
 );
 
 export default Register2;
