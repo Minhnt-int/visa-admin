@@ -1,8 +1,8 @@
 /**
- * Service cho các cuộc gọi API liên quan đến sản phẩm
+ * Service cho các cuộc gọi API liên quan đến đơn hàng
  */
 
-import axioss from '../../axiosConfig'; // Import axios từ thư viện axios
+import ApiService from './ApiService';
 
 /**
  * Lấy danh sách đơn hàng từ API
@@ -40,14 +40,11 @@ export const fetchOrderList = async ({
       )
     );
     
-    const response = await axioss.get(`/api/order/list`, {
-      params: filteredParams
-    });
-    
-    return response.data;
+    const response = await ApiService.get(`/api/order/list`, filteredParams);
+    return ApiService.handleResponse(response);
   } catch (error) {
     console.error("Lỗi khi lấy danh sách đơn hàng:", error);
-    throw error;
+    return ApiService.handleError(error);
   }
 };
 
@@ -58,11 +55,11 @@ export const fetchOrderList = async ({
  */
 export const fetchOrderById = async (id) => {
   try {
-    const response = await axioss.get(`/api/order/${id}`);
-    return response.data;
+    const response = await ApiService.get(`/api/order/${id}`);
+    return ApiService.handleResponse(response);
   } catch (error) {
     console.error(`Lỗi khi lấy đơn hàng #${id}:`, error);
-    throw error;
+    return ApiService.handleError(error);
   }
 };
 
@@ -73,11 +70,11 @@ export const fetchOrderById = async (id) => {
  */
 export const createOrder = async (orderData) => {
   try {
-    const response = await axioss.post(`/api/order/create`, orderData);
-    return response.data;
+    const response = await ApiService.post(`/api/order/create`, orderData);
+    return ApiService.handleResponse(response);
   } catch (error) {
     console.error("Lỗi khi tạo đơn hàng:", error);
-    throw error;
+    return ApiService.handleError(error);
   }
 };
 
@@ -88,11 +85,11 @@ export const createOrder = async (orderData) => {
  */
 export const updateOrder = async (orderData) => {
   try {
-    const response = await axioss.put(`/api/order/update/${orderData.id}`, orderData);
-    return response.data;
+    const response = await ApiService.put(`/api/order/${orderData.id}`, orderData);
+    return ApiService.handleResponse(response);
   } catch (error) {
     console.error(`Lỗi khi cập nhật đơn hàng #${orderData.id}:`, error);
-    throw error;
+    return ApiService.handleError(error);
   }
 };
 
@@ -103,10 +100,10 @@ export const updateOrder = async (orderData) => {
  */
 export const deleteOrder = async (id) => {
   try {
-    const response = await axioss.delete(`/api/order/${id}`);
-    return response.data;
+    const response = await ApiService.delete(`/api/order/${id}`);
+    return ApiService.handleResponse(response);
   } catch (error) {
     console.error(`Lỗi khi xóa đơn hàng #${id}:`, error);
-    throw error;
+    return ApiService.handleError(error);
   }
 };

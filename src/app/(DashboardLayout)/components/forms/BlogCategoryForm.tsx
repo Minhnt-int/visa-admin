@@ -1,13 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Input, DatePicker, message, Modal } from 'antd';
-import { Button, Card, CardContent, Typography, Box, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, CircularProgress } from '@mui/material';
+import {
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  Snackbar,
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  CircularProgress
+} from '@/config/mui';
+import { SelectChangeEvent } from '@mui/material/Select';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import dayjs from 'dayjs';
 import { BlogCategory, initBlogCategory } from '@/data/blogCategory';
 import { ActionType, useAppContext } from '@/contexts/AppContext';
 import MediaPopup from '../popup/MediaPopup';
-import ConfirmPopup from '../popup/ConfirmPopup';
-import { useRouter } from 'next/navigation';
 import { ProductMedia } from '@/data/ProductAttributes';
+import { useRouter } from 'next/navigation';
 
 interface BlogCategoryFormProps {
   isView?: boolean;
@@ -42,8 +63,6 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     fetchBlogCategoryBySlug,
   } = useAppContext();
 
-  // Update form data when initialData or selectedBlogCategory changes
-
   useEffect(() => {
     if (currentAction.type === ActionType.EDIT && selectedBlogCategory?.slug) {
       fetchBlogCategoryBySlug(selectedBlogCategory?.slug).then(() => {
@@ -54,14 +73,13 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   }, [currentAction.type, selectedBlogCategory?.slug]);
 
   const formTitle = currentAction.type === ActionType.EDIT ? "Edit Blog Category" : "Add Blog Category";
-  
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-    
-    // Update context if editing existing category
+
     if (selectedBlogCategory && field in selectedBlogCategory) {
       setSelectedBlogCategory({
         ...selectedBlogCategory,
@@ -69,8 +87,8 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       });
     }
   };
-  
-  const handleMediaSelect = (item : ProductMedia) => {
+
+  const handleMediaSelect = (item: ProductMedia) => {
     handleInputChange('avatarUrl', item.url);
     setIsMediaPopupOpen(false);
   };
@@ -78,17 +96,15 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   const handleSubmit = async () => {
     try {
       setIsLoading(true);
-      
+
       if (formData.id) {
         const result = await updateBlogCategory(formData);
-        
+
         if (result) {
-          message.success(`Blog category updated successfully`);
+          setSnackbar({ open: true, message: 'Blog category updated successfully', severity: 'success' });
           router.push('/danh-muc-bai-viet');
-          // Reset form after successful update
           setFormData(initBlogCategory);
-          
-          // Notify parent component of success
+
           if (onSuccess) {
             onSuccess();
           }
@@ -96,12 +112,10 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       } else {
         const result = await createBlogCategory(formData);
         if (result) {
-          message.success(`Blog category created successfully`);
+          setSnackbar({ open: true, message: 'Blog category created successfully', severity: 'success' });
           router.push('/danh-muc-bai-viet');
-          // Reset form after successful creation
           setFormData(initBlogCategory);
-          
-          // Notify parent component of success
+
           if (onSuccess) {
             onSuccess();
           }
@@ -109,7 +123,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       }
     } catch (error) {
       console.error('Error saving blog category:', error);
-      message.error('Failed to save blog category');
+      setSnackbar({ open: true, message: 'Failed to save blog category', severity: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -118,24 +132,20 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   const handleDelete = async () => {
     try {
       setIsLoading(true);
-      
+
       const result = await deleteBlogCategory(formData.id);
-      
+
       if (result) {
-        // Reset selected category
         setSelectedBlogCategory(null);
-        
-        // Close confirm dialog
         setIsDeleteConfirmOpen(false);
-        
-        // Notify parent component of deletion
+
         if (afterDelete) {
           afterDelete();
         }
       }
     } catch (error) {
       console.error('Error deleting blog category:', error);
-      message.error('Failed to delete blog category');
+      setSnackbar({ open: true, message: 'Failed to delete blog category', severity: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -145,18 +155,24 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     try {
       if (currentAction.type === ActionType.EDIT) {
         await updateBlogCategory(formData);
-        message.success('Đã cập nhật danh mục thành công!');
+        setSnackbar({ open: true, message: 'Đã cập nhật danh mục thành công!', severity: 'success' });
       } else {
         await createBlogCategory(formData);
-        message.success('Đã tạo danh mục mới thành công!');
+        setSnackbar({ open: true, message: 'Đã tạo danh mục mới thành công!', severity: 'success' });
       }
       router.push('/danh-muc-bai-viet');
     } catch (error) {
       console.error('Error saving category:', error);
-      message.error('Không thể lưu danh mục. Vui lòng thử lại sau.');
+      setSnackbar({ open: true, message: 'Không thể lưu danh mục. Vui lòng thử lại sau.', severity: 'error' });
     }
     setConfirmingPopup(false);
   };
+
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   return (
     <>
@@ -165,39 +181,31 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
           <Typography variant="h5" component="h2" gutterBottom>
             {formTitle}
           </Typography>
-          
+
           {/* Basic Information */}
           <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
-            Blog Category Information
+            Danh mục bài viết
           </Typography>
-          
-          <Input
-            placeholder="Name"
+
+          <TextField
+            placeholder="Tên danh mục"
             value={formData?.name || ""}
             disabled={isView || isLoading}
             onChange={(e) => handleInputChange('name', e.target.value)}
-            style={{ marginBottom: "16px" }}
+            style={{ marginBottom: "16px", width: "100%" }}
           />
 
-          <Input
+          <TextField
             placeholder="Slug"
             value={formData?.slug || ""}
             disabled={isView || isLoading}
             onChange={(e) => handleInputChange('slug', e.target.value)}
-            style={{ marginBottom: "16px" }}
+            style={{ marginBottom: "16px", width: "100%"   }}
           />
 
-          {/* <Input
-            placeholder="Description"
-            value={formData?.description || ""}
-            disabled={isView || isLoading}
-            onChange={(e) => handleInputChange('description', e.target.value)}
-            style={{ marginBottom: "16px" }}
-          /> */}
-
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <Input
-              placeholder="Avatar URL"
+            <TextField
+              placeholder="Ảnh đại diện"
               value={formData?.avatarUrl || ""}
               disabled={isView || isLoading}
               onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
@@ -208,77 +216,68 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
               onClick={() => setIsMediaPopupOpen(true)}
               disabled={isView || isLoading}
             >
-              Select Image
+              Chọn ảnh
             </Button>
           </Box>
 
           {formData?.avatarUrl && (
             <Box sx={{ mb: 2, textAlign: 'center' }}>
-              <img 
-                src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
-                alt="Avatar Preview" 
-                style={{ 
-                  maxWidth: '100%', 
-                  maxHeight: 200, 
+              <img
+                src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`}
+                alt="Avatar Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: 200,
                   objectFit: 'contain',
                   border: '1px solid #eee',
                   borderRadius: 4,
                   padding: 4
-                }} 
+                }}
               />
             </Box>
           )}
 
-          <Input
-            placeholder="Parent Category ID"
-            type="number"
-            value={formData?.parentId || ""}
-            disabled={isView || isLoading}
-            onChange={(e) => handleInputChange('parentId', Number(e.target.value) || null)}
-            style={{ marginBottom: "16px" }}
-          />
-
           {/* Dates */}
           <Typography variant="h6" gutterBottom>Dates</Typography>
-          
+
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
             <div style={{ width: "50%" }}>
               <Typography variant="body2" gutterBottom>Created At</Typography>
-              <DatePicker
-                value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
-                onChange={(date) => {
-                  handleInputChange('createdAt', date ? date.toISOString() : null);
-                }}
-                format="YYYY-MM-DD HH:mm:ss"
-                showTime
-                disabled={true}
-                style={{ width: "100%" }}
-                getPopupContainer={(trigger) => trigger.parentElement!}
-              />
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  value={formData?.createdAt ? new Date(formData.createdAt) : null}
+                  onChange={(date) => {
+                    handleInputChange('createdAt', date ? date.toISOString() : null);
+                  }}
+                  format="yyyy-MM-dd HH:mm:ss"
+                  disabled={true}
+                  sx={{ width: "100%" }}
+                />
+              </LocalizationProvider>
             </div>
-            
+
             <div style={{ width: "50%" }}>
               <Typography variant="body2" gutterBottom>Updated At</Typography>
-              <DatePicker
-                value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
-                onChange={(date) => {
-                  handleInputChange('updatedAt', date ? date.toISOString() : null);
-                }}
-                format="YYYY-MM-DD HH:mm:ss"
-                showTime
-                disabled={true}
-                style={{ width: "100%" }}
-                getPopupContainer={(trigger) => trigger.parentElement!}
-              />
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  value={formData?.updatedAt ? new Date(formData.updatedAt) : null}
+                  onChange={(date) => {
+                    handleInputChange('updatedAt', date ? date.toISOString() : null);
+                  }}
+                  format="yyyy-MM-dd HH:mm:ss"
+                  disabled={true}
+                  sx={{ width: "100%" }}
+                />
+              </LocalizationProvider>
             </div>
           </div>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
             <Box>
               {currentAction.type === ActionType.EDIT && !isView && (
-                <Button 
+                <Button
                   onClick={() => setIsDeleteConfirmOpen(true)}
-                  variant="contained" 
+                  variant="contained"
                   color="error"
                   disabled={isLoading}
                 >
@@ -288,8 +287,8 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
             </Box>
             <Box>
               {onCancel && (
-                <Button 
-                  onClick={onCancel} 
+                <Button
+                  onClick={onCancel}
                   sx={{ mr: 1 }}
                   disabled={isLoading}
                 >
@@ -297,9 +296,9 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
                 </Button>
               )}
               {!isView && (
-                <Button 
-                  onClick={handleSubmit} 
-                  variant="contained" 
+                <Button
+                  onClick={handleSubmit}
+                  variant="contained"
                   color="primary"
                   disabled={isLoading}
                   startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
@@ -317,6 +316,10 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         open={isMediaPopupOpen}
         onClose={() => setIsMediaPopupOpen(false)}
         onSelect={handleMediaSelect}
+        onSubmit={(data: { type: string; url: string }) => {
+          handleInputChange('avatarUrl', data.url);
+          setIsMediaPopupOpen(false);
+        }}
         listMedia={[]}
       />
 
@@ -332,15 +335,15 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button 
-            onClick={() => setIsDeleteConfirmOpen(false)} 
+          <Button
+            onClick={() => setIsDeleteConfirmOpen(false)}
             disabled={isLoading}
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
+          <Button
+            onClick={handleDelete}
+            color="error"
             variant="contained"
             disabled={isLoading}
             startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
@@ -350,15 +353,20 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         </DialogActions>
       </Dialog>
 
-      <ConfirmPopup
-        open={confirmingPopup}
-        onClose={() => setConfirmingPopup(false)}
-        onSubmit={handleConfirm}
-        Content={currentAction.type === ActionType.EDIT 
-          ? "Xác nhận cập nhật danh mục này?"
-          : "Xác nhận tạo danh mục mới?"
-        }
-      />
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

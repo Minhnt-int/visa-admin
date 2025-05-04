@@ -1,38 +1,41 @@
 import React from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
-
-
-interface ProductFormData {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  categoryId: number;
-  slug: string;
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography
+} from '@/config/mui';
 
 interface ConfirmPopupProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: () => void;
-  Content: string;
+  onConfirm: () => void;
+  title: string;
+  content: string;
 }
 
-const ConfirmPopup: React.FC<ConfirmPopupProps> = ({ open,onClose, onSubmit, Content }) => {
+const ConfirmPopup: React.FC<ConfirmPopupProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  content
+}) => {
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{Content}</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-            
+        <Typography>{content}</Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={onSubmit}>Submit</Button>
+        <Button onClick={onClose} color="inherit">
+          Hủy
+        </Button>
+        <Button onClick={onConfirm} color="primary" variant="contained">
+          Xác nhận
+        </Button>
       </DialogActions>
     </Dialog>
   );

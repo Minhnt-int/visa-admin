@@ -1,12 +1,12 @@
 'use client'
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { ProductCategory } from '@/data/ProductCategory';
-import { message } from 'antd';
 import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProductCategoryForm from '../../components/forms/ProductCategoryForm';
+import { Snackbar, Alert } from '@/config/mui';
 
 const initialFormData: ProductCategory = {
   id: 0,
@@ -14,14 +14,15 @@ const initialFormData: ProductCategory = {
   slug: "",
   description: "",
   parentId: null,
+  status: "active",
+  avatarUrl: "",
   createdAt: new Date(),
-  updatedAt: new Date(),
+  updatedAt: new Date()
 };
 
-const ProductCategoryAction = () => {
+const ProductCategoryActionContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // const id = searchParams?.get('id') ? Number(searchParams.get('id')) : null;
   const mode = searchParams?.get('mode') || 'create';
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
@@ -29,43 +30,21 @@ const ProductCategoryAction = () => {
   const [formData, setFormData] = useState<ProductCategory>(initialFormData);
   
   const {
-    // ProductCategory State
     productCategories,
     selectedProductCategory,
-    
-    // Shared State
     loading,
-    
-    // ProductCategory Actions
     fetchProductCategories,
     createProductCategory,
     updateProductCategory,
-    
-    // Shared Actions
     setLoadingState,
     setCurrentAction,
   } = useAppContext();
 
-  // useEffect(() => {
-  //   const loadData = async () => {
-  //     try {
-  //       // Tải danh sách danh mục để có danh mục cha
-  //       await fetchProductCategories();
-        
-  //       if (id) {
-  //         // setLoadingState(true); 
-  //         // setLoadingState(false);
-  //       } else {
-  //         setCurrentAction(ActionType.CREATE, 'productCategory');
-  //       }
-  //     } catch (error) {
-  //       console.error('Lỗi khi tải dữ liệu:', error);
-  //       message.error('Không thể tải dữ liệu danh mục');
-  //     }
-  //   };
-    
-  //   loadData();
-  // }, [id, fetchProductCategories, setLoadingState, setCurrentAction]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   useEffect(() => {
     if (selectedProductCategory && (isEdit || isView)) {
@@ -81,25 +60,31 @@ const ProductCategoryAction = () => {
   const handleSubmit = async (data: ProductCategory) => {
     try {
       if (isEdit) {
-        console.log("edit", data);
-        
         if (!data.id) {
           throw new Error('Missing product category ID');
         }
         await updateProductCategory(data.id, data);
-        message.success('Đã cập nhật danh mục thành công!');
+        setSnackbar({
+          open: true,
+          message: 'Đã cập nhật danh mục thành công!',
+          severity: 'success'
+        });
       } else {
-        console.log("create", data);
-        
         await createProductCategory(data);
-        message.success('Đã tạo danh mục mới thành công!');
+        setSnackbar({
+          open: true,
+          message: 'Đã tạo danh mục mới thành công!',
+          severity: 'success'
+        });
       }
       router.push('/danh-muc-san-pham');
     } catch (error) {
-      console.log("error", error);
-      
       console.error('Error saving category:', error);
-      message.error('Không thể lưu danh mục. Vui lòng thử lại sau.');
+      setSnackbar({
+        open: true,
+        message: 'Không thể lưu danh mục. Vui lòng thử lại sau.',
+        severity: 'error'
+      });
     }
   };
 
@@ -129,8 +114,29 @@ const ProductCategoryAction = () => {
           </Grid>
         </Grid>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </PageContainer>
-  )
-}
+  );
+};
+
+const ProductCategoryAction = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ProductCategoryActionContent />
+    </Suspense>
+  );
+};
 
 export default ProductCategoryAction; 

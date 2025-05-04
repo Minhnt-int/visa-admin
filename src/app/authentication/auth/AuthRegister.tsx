@@ -36,18 +36,18 @@ const AuthRegister = ({ title, subtitle, subtext }: registerType) => {
         setError('');
 
         try {
-            const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
+            // const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/auth/register', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //     },
+            //     body: JSON.stringify(formData),
+            // });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Registration failed');
-            }
+            // if (!response.ok) {
+            //     const errorData = await response.json();
+            //     throw new Error(errorData.message || 'Registration failed');
+            // }
 
             // Registration successful
             router.push('/authentication/login');

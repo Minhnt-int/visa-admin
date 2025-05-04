@@ -3,8 +3,10 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { Button, Typography, Container, Stack, Box } from '@mui/material';
+import { useRouter } from 'next/navigation';
 
 const NotFoundContent = () => {
+  const router = useRouter();
   return (
     <Box
       display="flex"
@@ -23,21 +25,21 @@ const NotFoundContent = () => {
           <Typography variant="body1" color="textSecondary" paragraph>
             The page you are looking for doesn&apos;t exist or has been moved.
           </Typography>
-          <Link href="/" passHref>
-            <Button variant="contained" color="primary">
-              Go back to home
-            </Button>
-          </Link>
+          <Button variant="contained" onClick={() => router.push('/')}>
+            Về trang chủ
+          </Button>
         </Stack>
       </Container>
     </Box>
   );
 };
 
-export default function NotFound() {
+const NotFound = () => {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <NotFoundContent />
     </Suspense>
   );
-} 
+};
+
+export default NotFound; 

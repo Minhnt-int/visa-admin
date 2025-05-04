@@ -1,17 +1,20 @@
-export class BlogCategory {
-    public id!: number;
-    public name!: string;
-    public slug!: string;
-    public avatarUrl!: string;
-    public parentId?: number;
-    public createdAt!: Date;
-    public updatedAt!: Date;
+
+
+  export class BlogCategory {
+  public id!: number;
+  public name!: string;
+  public slug!: string;
+  public avatarUrl!: string;
+  public status!: string;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
   }
   export const initBlogCategory = {
     id: 0,
     name: '',
     slug: '',
     avatarUrl: '',
+    status: 'active',
     parentId: undefined,
     createdAt: new Date(),
     updatedAt: new Date(),

@@ -1,31 +1,34 @@
-/* eslint-disable jsx-a11y/alt-text */
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import {
-  Input,
-  DatePicker,
+  TextField,
+  FormControl,
+  InputLabel,
   Select,
+  MenuItem,
+  Box,
+  Typography,
+  Snackbar,
+  Alert,
   Button,
-  Space,
-  Upload,
-  message,
-  Modal,
-  Form,
-} from "antd";
-import { UploadOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import {
-  Button as MuiButton,
   Card,
   CardContent,
-  Typography,
-  Box,
-  Divider,
-  Paper,
+  Grid,
+  IconButton,
   CircularProgress,
   Tooltip,
-} from "@mui/material";
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+  Paper
+} from '@/config/mui';
+import { IconUpload, IconTrash, IconEdit, IconPlus } from '@tabler/icons-react';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs from "dayjs";
 import Editor from "../editor/Editor";
 import { ProductAttributes, ProductMedia } from "@/data/ProductAttributes";
@@ -38,9 +41,11 @@ import { productMediaDelete } from "@/services/productService";
 import Image from "next/image";
 
 interface ProductFormProps {
-  action?: string;
-  onCancel: () => void;
+  formData: ProductAttributes;
   isView?: boolean;
+  isEdit?: boolean;
+  onSubmit: (data: ProductAttributes) => Promise<void>;
+  onCancel: () => void;
   isLoading?: boolean;
 }
 
@@ -59,10 +64,28 @@ interface ExtendedProductMedia extends ProductMedia {
   fileObj?: File;
 }
 
+interface MediaPopupProps {
+  listMedia: ProductMedia[];
+  open: boolean;
+  onClose: () => void;
+  onSelect: (media: ProductMedia) => void;
+  onSubmit: () => void;
+}
+
+interface ConfirmPopupProps {
+  open: boolean;
+  onClose: () => void;
+  content: string;
+  onConfirm: () => void;
+  title: string;
+}
+
 const ProductForm: React.FC<ProductFormProps> = ({
-  action,
-  onCancel,
+  formData: initialFormData,
   isView = false,
+  isEdit = false,
+  onSubmit,
+  onCancel,
   isLoading = false,
 }) => {
   const {
@@ -75,7 +98,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setSelectedProduct,
   } = useAppContext();
 
-  const [mediaPopupOpen, setMediaPopupOpen] = useState(false);
+  const [formData, setFormData] = useState<ProductAttributes>(initialFormData);
+  const [editorContent, setEditorContent] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<ProductMedia[]>([]);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
   const [aiSuggestions, setAiSuggestions] = useState<{
@@ -90,43 +114,48 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
-  const [editorContent, setEditorContent] = useState("");
   const [confirmPopupOpen, setConfirmPopupOpen] = useState(false);
   const [primaryMediaIndex, setPrimaryMediaIndex] = useState<number>(-1);
   const [updateMediaModalVisible, setUpdateMediaModalVisible] = useState(false);
   const [updatedMediaData, setUpdatedMediaData] = useState<ExtendedProductMedia>({
     id: 0,
-    productId: 0,
-    name: "",
     url: "",
     type: "image",
-    altText: "",
+    isPrimary: false,
     createdAt: "",
-    updatedAt: "",
-    mediaId: 0
+    updatedAt: ""
   });
-
-  const [formData, setFormData] = useState<ProductAttributes>({
-    id: 0,
-    name: "",
-    description: "",
-    shortDescription: "",
-    categoryId: 0,
-    avatarUrl: "",
-    slug: "",
-    metaTitle: "",
-    metaDescription: "",
-    metaKeywords: "",
-    status: "active",
-    media: [],
-    items: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+  const [mediaPopupOpen, setMediaPopupOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const slug = searchParams?.get("slug") || "";
   const router = useRouter();
+
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
+  const showError = (msg: string) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: 'error'
+    });
+  };
+
+  const showSuccess = (msg: string) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: 'success'
+    });
+  };
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -135,7 +164,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         await fetchProductCategories();
       } catch (error) {
         console.error("Error loading product categories:", error);
-        message.error("Failed to load product categories");
+        showError("Failed to load product categories");
       } finally {
         setIsCategoriesLoading(false);
       }
@@ -145,12 +174,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
   }, [fetchProductCategories]);
 
   useEffect(() => {
-    if (action === "edit" && slug) {
+    if (isEdit && slug) {
       fetchProductBySlug(slug).then(() => {
         console.log("selectedProduct after fetch", selectedProduct);
       });
     }
-  }, [action, slug]);
+  }, [isEdit, slug]);
 
   useEffect(() => {
     if (selectedProduct) {
@@ -162,19 +191,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setFormData({
         id: 0,
         name: "",
+        slug: "",
         description: "",
         shortDescription: "",
+        price: 0,
+        salePrice: 0,
+        status: "draft",
         categoryId: 0,
         avatarUrl: "",
-        slug: "",
         metaTitle: "",
         metaDescription: "",
         metaKeywords: "",
-        status: "active",
-        media: [],
-        items: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        items: [],
+        media: []
       });
       setEditorContent("");
       setSelectedMedia([]);
@@ -188,7 +219,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   const handleInputChange = (field: keyof ProductAttributes, value: any) => {
     console.log(`Cập nhật trường ${field} với giá trị:`, value);
-    setFormData((prev) => ({
+    setFormData((prev: ProductAttributes) => ({
       ...prev,
       [field]: value,
     }));
@@ -202,17 +233,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleMediaSelect = (media: ProductMedia) => {
     console.log("handleMediaSelect được gọi với:", media);
 
-    const newProductMedia: any = {
+    const newProductMedia: ProductMedia = {
+      id: 0,
       url: media.url,
       type: mediaType,
-      altText: media.altText,
+      isPrimary: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     const newMedia = [...formData.media, newProductMedia];
 
-    setFormData((prev) => ({
+    setFormData((prev: ProductAttributes) => ({
       ...prev,
-      media: newMedia as any,
+      media: newMedia
     }));
 
     console.log("Đã cập nhật media trong formData:", newMedia);
@@ -231,9 +265,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
     console.log("newMedia sau khi xóa:", newMedia);
 
-    setFormData((prev) => ({
+    setFormData((prev: ProductAttributes) => ({
       ...prev,
-      media: newMedia as any,
+      media: newMedia
     }));
 
     console.log("Đã cập nhật media trong formData sau khi xóa");
@@ -244,15 +278,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
     newItems.push({
       id: 0,
       name: "",
-      color: "",
       price: 0,
-      originalPrice: 0,
-      status: "available",
+      salePrice: 0,
+      status: "active",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
 
-    setFormData((prev) => ({
+    setFormData((prev: ProductAttributes) => ({
       ...prev,
-      items: newItems,
+      items: newItems
     }));
   };
 
@@ -260,9 +295,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
     const newItems = [...formData.items];
     newItems.splice(index, 1);
 
-    setFormData((prev) => ({
+    setFormData((prev: ProductAttributes) => ({
       ...prev,
-      items: newItems,
+      items: newItems
     }));
   };
 
@@ -273,9 +308,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
       [field]: value,
     };
 
-    setFormData((prev) => ({
+    setFormData((prev: ProductAttributes) => ({
       ...prev,
-      items: newItems,
+      items: newItems
     }));
   };
 
@@ -285,29 +320,29 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleConfirmSubmit = () => {
-    if (action === "add") {
-      createProduct(formData)
-        .then(() => {
-          message.success("Thêm sản phẩm thành công");
-          router.push("/san-pham");
-        })
-        .catch((error) => {
-          message.error("Thêm sản phẩm thất bại");
-          console.error("Error creating product:", error);
-        });
-    } else if (action === "edit") {
+    if (isEdit) {
       const productData: ProductAttributes = {
         ...formData,
         updatedAt: new Date().toISOString(),
       };
       updateProduct(formData.id, productData)
         .then(() => {
-          message.success("Cập nhật sản phẩm thành công");
+          showSuccess("Cập nhật sản phẩm thành công");
           router.push("/san-pham");
         })
         .catch((error) => {
-          message.error("Cập nhật sản phẩm thất bại");
+          showError("Cập nhật sản phẩm thất bại");
           console.error("Error updating product:", error);
+        });
+    } else {
+      createProduct(formData)
+        .then(() => {
+          showSuccess("Thêm sản phẩm thành công");
+          router.push("/san-pham");
+        })
+        .catch((error) => {
+          showError("Thêm sản phẩm thất bại");
+          console.error("Error creating product:", error);
         });
     }
     setConfirmPopupOpen(false);
@@ -338,7 +373,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         throw new Error(data.message || "Failed to get AI suggestions");
       }
     } catch (error) {
-      message.error("Failed to get AI suggestions");
+      showError("Failed to get AI suggestions");
     } finally {
       setIsLoadingAi(false);
     }
@@ -372,14 +407,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setUpdateMediaModalVisible(true);
     setUpdatedMediaData({
       id: media.id || 0,
-      productId: media.productId || 0,
-      name: media.name || "",
       url: media.url || "",
       type: media.type || "image",
-      altText: media.altText || "",
+      isPrimary: false,
       createdAt: media.createdAt || "",
       updatedAt: media.updatedAt || "",
-      mediaId: media.mediaId || 0
     });
   };
 
@@ -425,7 +457,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               id: updatedMediaData.id,
               type: updatedMediaData.type,
               url: updatedMediaData.url,
-              altText: updatedMediaData.altText
+              isPrimary: updatedMediaData.isPrimary
             }
           ]
         }),
@@ -438,61 +470,54 @@ const ProductForm: React.FC<ProductFormProps> = ({
       const updateResult = await updateResponse.json();
       
       // Cập nhật media trong formData
-      const updatedMedia = [...(formData.media as ProductMedia[])];
+      const updatedMedia = [...formData.media];
       const mediaIndex = updatedMedia.findIndex(m => m.id === updatedMediaData.id);
       
       if (mediaIndex !== -1) {
         updatedMedia[mediaIndex] = {
           ...updatedMedia[mediaIndex],
           url: updatedMediaData.url,
-          altText: updatedMediaData.altText,
+          isPrimary: updatedMediaData.isPrimary,
           type: updatedMediaData.type
         };
         
-        setFormData(prev => ({
+        setFormData((prev: ProductAttributes) => ({
           ...prev,
           media: updatedMedia
         }));
         
-        message.success("Đã cập nhật thông tin media thành công");
+        showSuccess("Đã cập nhật thông tin media thành công");
       }
       
     } catch (error) {
       console.error("Lỗi khi cập nhật media:", error);
-      message.error("Cập nhật media thất bại: " + (error instanceof Error ? error.message : "Lỗi không xác định"));
+      showError("Cập nhật media thất bại: " + (error instanceof Error ? error.message : "Lỗi không xác định"));
     } finally {
       handleCloseUpdateMediaPopup();
     }
   };
 
-  const handleMediaUploadChange = (info: any) => {
-    if (info.file) {
-      // Xử lý upload file tại đây
-      console.log("File được chọn:", info.file);
-      
-      // Cập nhật preview
+  const handleMediaUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setUpdatedMediaData(prev => ({
-          ...prev,
-          fileObj: info.file,
-          previewUrl: e.target?.result as string
-        }));
+      reader.onload = () => {
+        setUpdatedMediaData({
+          ...updatedMediaData,
+          previewUrl: reader.result as string,
+          fileObj: file
+        });
       };
-      reader.readAsDataURL(info.file);
+      reader.readAsDataURL(file);
     }
-    return false; // Ngăn chặn hành vi upload mặc định
   };
 
   return (
+    <Suspense fallback={<p>Loading</p>}>
     <Card>
       <CardContent>
         <Typography variant="h5" component="h2" gutterBottom>
-          {action === "add"
-            ? "Thêm sản phẩm"
-            : action === "edit"
-            ? "Chỉnh sửa sản phẩm"
-            : "Xem sản phẩm"}
+          {isEdit ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
         </Typography>
 
         {/* Basic Information */}
@@ -500,15 +525,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
           Thông tin sản phẩm
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-          <Input
+        <Box sx={{ display: "flex", gap: 1, mb: 2, marginTop: "16px" }}>
+          <TextField
             placeholder="Nhập tên sản phẩm"
             value={formData.name}
             disabled={isView}
             onChange={(e) => handleInputChange("name", e.target.value)}
-            style={{ flex: 1 }}
+            style={{ flex: 1}}
+            label="Tên sản phẩm"
           />
-          <MuiButton
+          <Button
             variant="outlined"
             color="primary"
             onClick={handleGetSuggestions}
@@ -516,43 +542,45 @@ const ProductForm: React.FC<ProductFormProps> = ({
             startIcon={isLoadingAi ? <CircularProgress size={20} /> : null}
           >
             Gợi Ý (AI)
-          </MuiButton>
+          </Button>
         </Box>
 
-        <Input
-          placeholder="Nhập mô tả ngắn về sản phẩm"
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          label="Mô tả ngắn"
           value={formData.shortDescription}
+          onChange={(e) => handleInputChange("shortDescription", e.target.value)}
           disabled={isView}
-          onChange={(e) =>
-            handleInputChange("shortDescription", e.target.value)
-          }
-          style={{ marginBottom: "16px" }}
         />
 
-        <Input
+        <TextField
           placeholder="Nhập đường dẫn slug (vd: san-pham-moi)"
           value={formData.slug}
           disabled={isView}
           onChange={(e) => handleInputChange("slug", e.target.value)}
-          style={{ marginBottom: "16px" }}
+          style={{ marginBottom: "16px", width: "100%", marginTop: "16px" }}
+          label="Slug"
         />
 
-        <Select
-          placeholder="Chọn danh mục sản phẩm"
-          value={formData.categoryId}
-          disabled={isView || isCategoriesLoading}
-          onChange={(value) => handleInputChange("categoryId", value)}
-          style={{ width: "100%", marginBottom: "16px" }}
-          loading={isCategoriesLoading}
-        >
-          {productCategories && productCategories.length > 0
-            ? productCategories.map((category) => (
-                <Select.Option key={category.id} value={category.id}>
-                  {category.name}
-                </Select.Option>
-              ))
-            : null}
-        </Select>
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="category-label" style={{ backgroundColor: "white" }}>Chọn danh mục sản phẩm</InputLabel>
+          <Select
+            labelId="category-label"
+            value={formData.categoryId}
+            onChange={(e) => handleInputChange("categoryId", e.target.value)}
+            disabled={isView || isCategoriesLoading}
+          >
+            {productCategories && productCategories.length > 0
+              ? productCategories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))
+              : null}
+          </Select>
+        </FormControl>
 
         <div style={{ marginBottom: "16px" }}>
           <Typography variant="body2" gutterBottom>
@@ -574,9 +602,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
           Hình ảnh & Video
         </Typography>
         <Box sx={{ mb: 2 }}>
-          <Space>
+          <Stack direction="row" spacing={2}>
             <Button
-              type="primary"
+              variant="contained"
               onClick={() => {
                 setMediaType("image");
                 setMediaPopupOpen(true);
@@ -586,7 +614,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               Thêm hình ảnh
             </Button>
             <Button
-              type="primary"
+              variant="contained"
               onClick={() => {
                 setMediaType("video");
                 setMediaPopupOpen(true);
@@ -595,7 +623,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             >
               Thêm video
             </Button>
-          </Space>
+          </Stack>
           <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 2 }}>
             {formData?.media?.map((media, index) => (
               <Box
@@ -610,17 +638,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 {media.type === "image" ? (
                   <img
                     src={process.env.NEXT_PUBLIC_API_URL + media.url}
-                    alt={media.altText}
+                    alt=""
                     style={{ width: 100, height: 100, objectFit: "cover" }}
                   />
                 ) : (
                   <div className="item">
-                  <img
-                    src={"https://img.youtube.com/vi/" + getYoutubeVideoId(media.url) + "/hqdefault.jpg"}
-                    style={{ width: 100, height: 100, objectFit: "cover" }}
-                  />
-                
-                </div>
+                    <img
+                      src={"https://img.youtube.com/vi/" + getYoutubeVideoId(media.url) + "/hqdefault.jpg"}
+                      style={{ width: 100, height: 100, objectFit: "cover" }}
+                    />
+                  </div>
                 )}
                 {!isView && (
                   <>
@@ -632,9 +659,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       gap: "5px" 
                     }}>
                       {/* Nút Update */}
-                      <Button
-                        type="primary"
-                        icon={<EditOutlined />}
+                      <IconButton
+                        color="primary"
                         onClick={() => handleOpenUpdateMediaPopup(media, index)}
                         style={{
                           backgroundColor: "white",
@@ -664,13 +690,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           e.currentTarget.style.boxShadow =
                             "0 2px 4px rgba(0,0,0,0.2)";
                         }}
-                      />
+                      >
+                        <IconEdit />
+                      </IconButton>
                       
                       {/* Nút Delete */}
-                      <Button
-                        type="primary"
-                        danger
-                        icon={<DeleteOutlined />}
+                      <IconButton
+                        color="error"
                         onClick={() => handleRemoveMedia(index)}
                         style={{
                           backgroundColor: "white",
@@ -700,7 +726,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           e.currentTarget.style.boxShadow =
                             "0 2px 4px rgba(0,0,0,0.2)";
                         }}
-                      />
+                      >
+                        <IconTrash />
+                      </IconButton>
                     </div>
                
                   
@@ -711,261 +739,226 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </Box>
           
           {/* Modal cập nhật Media */}
-          <Modal
-            title="Cập nhật Media"
+          <Dialog
             open={updateMediaModalVisible}
-            onCancel={handleCloseUpdateMediaPopup}
-            footer={[
-              <Button key="cancel" onClick={handleCloseUpdateMediaPopup}>
+            onClose={handleCloseUpdateMediaPopup}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>
+              Cập nhật Media
+            </DialogTitle>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                {updatedMediaData.type === "image" && (
+                  <>
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Hình ảnh hiện tại
+                      </Typography>
+                      <Image
+                        src={updatedMediaData.previewUrl || process.env.NEXT_PUBLIC_API_URL + updatedMediaData.url}
+                        alt=""
+                        width={300}
+                        height={200}
+                        style={{ objectFit: "contain" }}
+                      />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Thay đổi hình ảnh
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        startIcon={<IconUpload />}
+                        component="label"
+                      >
+                        Chọn hình ảnh mới
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={handleMediaUploadChange}
+                        />
+                      </Button>
+                    </Box>
+                  </>
+                )}
+                {updatedMediaData.type === "video" && (
+                  <>
+                    <Box>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Video hiện tại
+                      </Typography>
+                      <Image
+                        src={`https://img.youtube.com/vi/${getYoutubeVideoId(updatedMediaData.url)}/hqdefault.jpg`}
+                        alt=""
+                        width={300}
+                        height={200}
+                        style={{ objectFit: "contain" }}
+                      />
+                    </Box>
+                    <TextField
+                      fullWidth
+                      label="YouTube URL"
+                      value={updatedMediaData.url}
+                      onChange={(e) => setUpdatedMediaData({
+                        ...updatedMediaData,
+                        url: e.target.value
+                      })}
+                      placeholder="Nhập URL YouTube (vd: https://www.youtube.com/watch?v=xxxx)"
+                    />
+                  </>
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseUpdateMediaPopup}>
                 Hủy
-              </Button>,
+              </Button>
               <Button
-                key="submit"
-                type="primary"
+                variant="contained"
                 onClick={handleUpdateMedia}
               >
                 Cập nhật
-              </Button>,
-            ]}
-          >
-            <Form layout="vertical">
-              {updatedMediaData.type === "image" && (
-                <>
-                  <Form.Item label="Hình ảnh hiện tại">
-                    {updatedMediaData.previewUrl ? (
-                      <img
-                        src={updatedMediaData.previewUrl}
-                        alt="Preview"
-                        style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }}
-                      />
-                    ) : (
-                      <img
-                        src={process.env.NEXT_PUBLIC_API_URL + updatedMediaData.url}
-                        alt={updatedMediaData.altText}
-                        style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }}
-                      />
-                    )}
-                  </Form.Item>
-                  <Form.Item label="Alt Text">
-                    <Input
-                      value={updatedMediaData.altText}
-                      onChange={(e) => setUpdatedMediaData({...updatedMediaData, altText: e.target.value})}
-                      placeholder="Nhập mô tả hình ảnh cho SEO"
-                    />
-                  </Form.Item>
-                  <Form.Item label="Thay đổi hình ảnh">
-                    <Upload
-                      name="file"
-                      listType="picture"
-                      maxCount={1}
-                      beforeUpload={() => false}
-                      onChange={handleMediaUploadChange}
-                    >
-                      <Button icon={<UploadOutlined />}>Chọn hình ảnh mới</Button>
-                    </Upload>
-                  </Form.Item>
-                </>
-              )}
-              {updatedMediaData.type === "video" && (
-                <>
-                  <Form.Item label="Video hiện tại">
-                    <img
-                      src={"https://img.youtube.com/vi/" + getYoutubeVideoId(updatedMediaData.url) + "/hqdefault.jpg"}
-                      style={{ width: "100%", maxHeight: "200px", objectFit: "contain" }}
-                    />
-                  </Form.Item>
-                  <Form.Item label="YouTube URL">
-                    <Input
-                      value={updatedMediaData.url}
-                      onChange={(e) => setUpdatedMediaData({...updatedMediaData, url: e.target.value})}
-                      placeholder="Nhập URL YouTube (vd: https://www.youtube.com/watch?v=xxxx)"
-                    />
-                  </Form.Item>
-                </>
-              )}
-            </Form>
-          </Modal>
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
 
         {/* Product Items */}
         <Typography variant="h6" gutterBottom>
           Danh sách sản phẩm con
         </Typography>
-        {formData?.items?.map((item, index) => (
-          <Box
-            key={index}
-            sx={{ mb: 2, p: 2, border: "1px solid #ddd", borderRadius: 1 }}
-          >
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <Input
-                placeholder="Nhập tên sản phẩm con"
-                value={item.name}
-                disabled={isView}
-                onChange={(e) =>
-                  handleItemChange(index, "name", e.target.value)
+        <Stack spacing={2}>
+          {formData.items.map((item, index) => (
+            <Box
+              key={index}
+              sx={{ mb: 2, p: 2, border: "1px solid #ddd", borderRadius: 1 }}
+            >
+              <Stack spacing={2} sx={{ width: "100%", alignItems: "center" }}>
+                <TextField
+                  placeholder="Nhập tên sản phẩm con"
+                  value={item.name}
+                  onChange={(e) => handleItemChange(index, "name", e.target.value)}
+                  disabled={isView}
+                  sx={{ width: "100%" }}
+                />
+                {!isView && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleRemoveItem(index)}
+                    sx={{ width: "30px" }}
+                  >
+                    <IconTrash />
+                  </Button>
+                )}
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+          {!isView && (
+            <Button
+              variant="outlined"
+              onClick={handleAddItem}
+              startIcon={<IconPlus size={20} />}
+              sx={{ 
+                minWidth: 200,
+                '&:hover': {
+                  backgroundColor: 'primary.light',
+                  color: 'white'
                 }
-              />
-              <Input
-                placeholder="Nhập màu sắc (vd: Đỏ, Xanh, v.v.)"
-                value={item.color}
-                disabled={isView}
-                onChange={(e) =>
-                  handleItemChange(index, "color", e.target.value)
-                }
-              />
-              <Input
-                type="number"
-                placeholder="Nhập giá bán (VNĐ)"
-                value={item.price}
-                disabled={isView}
-                onChange={(e) =>
-                  handleItemChange(index, "price", Number(e.target.value))
-                }
-              />
-              <Input
-                type="number"
-                placeholder="Nhập giá gốc (VNĐ)"
-                value={item.originalPrice}
-                disabled={isView}
-                onChange={(e) =>
-                  handleItemChange(
-                    index,
-                    "originalPrice",
-                    Number(e.target.value)
-                  )
-                }
-              />
-              <Select
-                placeholder="Chọn trạng thái"
-                value={item.status}
-                disabled={isView}
-                onChange={(value) => handleItemChange(index, "status", value)}
-                style={{ width: "100%" }}
-              >
-                <Select.Option value="available">Còn hàng</Select.Option>
-                <Select.Option value="out_of_stock">Hết hàng</Select.Option>
-                <Select.Option value="discontinued">Ngừng kinh doanh</Select.Option>
-              </Select>
-              {!isView && (
-                <Button
-                  type="link"
-                  danger
-                  onClick={() => handleRemoveItem(index)}
-                >
-                  Xóa sản phẩm con
-                </Button>
-              )}
-            </Space>
-          </Box>
-        ))}
-        {!isView && (
-          <Button
-            type="dashed"
-            onClick={handleAddItem}
-            style={{ width: "100%" }}
-          >
-            Thêm sản phẩm con
-          </Button>
-        )}
+              }}
+            >
+              Thêm sản phẩm con
+            </Button>
+          )}
+        </Box>
 
         {/* SEO Information */}
         <Typography variant="h6" gutterBottom>
           Thông tin SEO
         </Typography>
-        <Input
+        <TextField
           placeholder="Nhập tiêu đề cho SEO (Meta Title)"
           value={formData?.metaTitle || ""}
           disabled={isView}
           onChange={(e) => handleInputChange("metaTitle", e.target.value)}
           style={{ marginBottom: "16px" }}
+          sx={{ width: "100%" }}
         />
 
-        <Input
+        <TextField
           placeholder="Nhập mô tả cho SEO (Meta Description)"
           value={formData?.metaDescription || ""}
           disabled={isView}
           onChange={(e) => handleInputChange("metaDescription", e.target.value)}
           style={{ marginBottom: "16px" }}
+          sx={{ width: "100%" }}
         />
 
-        <Input
+        <TextField
           placeholder="Nhập từ khóa cho SEO, phân cách bằng dấu phẩy (Meta Keywords)"
           value={formData?.metaKeywords || ""}
           disabled={isView}
           onChange={(e) => handleInputChange("metaKeywords", e.target.value)}
           style={{ marginBottom: "16px" }}
+          sx={{ width: "100%" }}
         />
 
         {/* Dates */}
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
           Thông tin thời gian
         </Typography>
-        <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
-          <div style={{ width: "50%" }}>
-            <Typography variant="body2" gutterBottom>
-              Ngày tạo
-            </Typography>
-            <DatePicker
-              value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
-              onChange={(date) => {
-                handleInputChange(
-                  "createdAt",
-                  date ? date.toISOString() : null
-                );
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <Stack spacing={2}>
+            <DateTimePicker
+              label="Ngày tạo"
+              value={dayjs(formData.createdAt)}
+              onChange={(date) => handleInputChange("createdAt", date?.toISOString())}
               disabled={true}
-              style={{ width: "100%" }}
+              sx={{ width: "100%" }}
             />
-          </div>
-
-          <div style={{ width: "50%" }}>
-            <Typography variant="body2" gutterBottom>
-              Ngày cập nhật
-            </Typography>
-            <DatePicker
-              value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
-              onChange={(date) => {
-                handleInputChange(
-                  "updatedAt",
-                  date ? date.toISOString() : null
-                );
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
+            <DateTimePicker
+              label="Ngày cập nhật"
+              value={dayjs(formData.updatedAt)}
+              onChange={(date) => handleInputChange("updatedAt", date?.toISOString())}
               disabled={true}
-              style={{ width: "100%" }}
+              sx={{ width: "100%" }}
             />
-          </div>
-        </div>
+          </Stack>
+        </LocalizationProvider>
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-          {onCancel && (
-            <MuiButton onClick={onCancel} sx={{ mr: 1 }}>
-              Hủy
-            </MuiButton>
-          )}
-          {!isView && (
-            <MuiButton
-              onClick={handleSubmit}
-              variant="contained"
-              color="primary"
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              onClick={onCancel}
             >
-              Lưu
-            </MuiButton>
-          )}
+              {isView ? "Quay lại" : "Hủy"}
+            </Button>
+            {!isView && (
+              <Button
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : "Thêm mới"}
+              </Button>
+            )}
+          </Stack>
         </Box>
 
         <ConfirmPopup
           open={confirmPopupOpen}
           onClose={() => setConfirmPopupOpen(false)}
-          onSubmit={handleConfirmSubmit}
-          Content={
-            action === "add"
-              ? "Bạn có chắc chắn muốn thêm sản phẩm mới?"
-              : "Bạn có chắc chắn muốn cập nhật sản phẩm?"
-          }
+          content="Bạn có chắc chắn muốn lưu thông tin sản phẩm?"
+          onConfirm={handleConfirmSubmit}
+          title="Thêm sản phẩm mới"
         />
 
         {showAiSuggestions && (
@@ -974,7 +967,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               AI Suggestions
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <Input
+              <TextField
                 placeholder="Tiêu đề SEO được đề xuất"
                 value={aiSuggestions.title}
                 onChange={(e) =>
@@ -984,8 +977,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   }))
                 }
               />
-              <Input.TextArea
-                placeholder="Mô tả SEO được đề xuất"
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Mô tả SEO được đề xuất"
                 value={aiSuggestions.description}
                 onChange={(e) =>
                   setAiSuggestions((prev) => ({
@@ -994,7 +990,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   }))
                 }
               />
-              <Input
+              <TextField
                 placeholder="Từ khóa SEO được đề xuất"
                 value={aiSuggestions.keywords}
                 onChange={(e) =>
@@ -1005,7 +1001,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 }
               />
               <Box sx={{ display: "flex", gap: 1 }}>
-                <MuiButton
+                <Button
                   variant="contained"
                   color="primary"
                   onClick={() => {
@@ -1019,25 +1015,42 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   }}
                 >
                   Áp dụng gợi ý
-                </MuiButton>
-                <MuiButton
+                </Button>
+                <Button
                   variant="outlined"
                   onClick={() => setShowAiSuggestions(false)}
                 >
                   Hủy
-                </MuiButton>
+                </Button>
               </Box>
             </Box>
           </Paper>
         )}
+
+        {/* Add MUI Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </CardContent>
       <MediaPopup
-        listMedia={formData.media}
+        listMedia={selectedMedia}
         open={mediaPopupOpen}
         onClose={() => setMediaPopupOpen(false)}
         onSelect={handleMediaSelect}
+        onSubmit={() => {}}
       />
     </Card>
+    </Suspense>
   );
 };
 

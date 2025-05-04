@@ -1,27 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message, Card, Input, Select, Row, Col } from 'antd';
-import type { ColumnsType, TableProps } from 'antd/es/table';
-import { Pagination } from "antd";
-import ConfirmPopup from '../popup/ConfirmPopup';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Button, 
+  TextField, 
+  Select, 
+  MenuItem, 
+  FormControl, 
+  InputLabel, 
+  Grid, 
+  Card, 
+  CardContent,
+  TablePagination,
+  Box,
+  Typography,
+  Chip
+} from '@/config/mui';
+import { IconEdit, IconTrash, IconEye, IconPlus } from '@tabler/icons-react';
+import { useAppContext } from '@/contexts/AppContext';
 import { ProductCategory } from '@/data/ProductCategory';
-import { ActionType, useAppContext } from '@/contexts/AppContext';
+import { ActionType } from '@/contexts/AppContext';
 import { useRouter } from 'next/navigation';
 import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
-import { 
-  DeleteOutlined, 
-  EyeOutlined, 
-  EditOutlined, 
-  CheckCircleOutlined,
-  RollbackOutlined
-} from '@ant-design/icons';
+import ConfirmPopup from '../popup/ConfirmPopup';
+
 const initialFormData: ProductCategory = {
   id: 0,
   name: "",
   parentId: null,
   slug: "",
   description: "",
+  status: "active",
   createdAt: new Date(),
   updatedAt: new Date(),
+  avatarUrl: ""
 }
 
 const ProductCategoryTable: React.FC = () => {
@@ -29,14 +45,12 @@ const ProductCategoryTable: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<ProductCategory | null>(null);
-
-  const [limit, setLimit] = useState(10);
-  const [Currentpagination, setCurrentpagination] = useState(1);
-
-  const [searchText, setSearchText] = useState('');
-  const [sortField, setSortField] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('DESC');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const {
     // ProductCategory State
@@ -57,14 +71,29 @@ const ProductCategoryTable: React.FC = () => {
     setSelectedProductCategory,
   } = useAppContext();
 
-  
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const filteredData = productCategories.filter(category => {
+    const matchesSearch = category.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || category.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const paginatedData = filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
   };
 
   const handleLogSelected = () => {
-    message.info(`Đã chọn danh mục: ${selectedRowKeys.join(', ')}`);
+    console.log(`Đã chọn danh mục: ${selectedRowKeys.join(', ')}`);
   };
 
   const handleView = (record: ProductCategory) => {
@@ -99,119 +128,18 @@ const ProductCategoryTable: React.FC = () => {
   };
   
   const handleSubmit = () => {
-    message.info('Chức năng xem chi tiết danh mục');
-    setIsModalOpen(false);
-  };
-
-  const columns: ColumnsType<ProductCategory> = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      fixed: 'left',
-      width: 80,
-    },
-    {
-      title: 'Tên danh mục',
-      dataIndex: 'name',
-      key: 'name',
-      width: 200,
-    },
-    {
-      title: 'Slug',
-      dataIndex: 'slug',
-      key: 'slug',
-      width: 200,
-    },
-    {
-      title: 'Mô tả',
-      dataIndex: 'description',
-      key: 'description',
-      width: 120,
-    },
-    {
-      title: 'Ảnh đại diện',
-      dataIndex: 'avatarUrl',
-      key: 'avatarUrl',
-      width: 120,
-    },
-    {
-      title: 'Ngày tạo',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 170,
-      render: (date) => date ? new Date(date).toLocaleString() : '',
-      sorter: (a: any, b: any) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateA - dateB;
-      },
-    },
-    {
-      title: 'Ngày cập nhật',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 170,
-      render: (date) => date ? new Date(date).toLocaleString() : '',
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      fixed: 'right',
-      width: 180,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" onClick={() => handleView(record)}>
-            <EyeOutlined />
-          </Button>
-          <Button type="link" onClick={() => handleEdit(record)}>
-            <EditOutlined />
-          </Button>
-          <Button type="link" danger onClick={() => handleDelete(record)}>
-            <DeleteOutlined />
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
-  const handleSearch = () => {
-    fetchData({
-      page: Currentpagination,
-      limit: limit,
-      name: searchText,
-      sortBy: sortField,
-      sortOrder: sortOrder as 'ASC' | 'DESC'
-    });
-  };
-
-  const fetchData = async (params?: {
-    page?: number;
-    limit?: number;
-    name?: string;
-    parentId?: number;
-    sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-  }) => {
-    try {
-      setLoadingState(true);
-      await fetchProductCategories(params);
-      setLoadingState(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setErrorState(error instanceof Error ? error.message : 'Đã xảy ra lỗi');
-    }
+    console.log('Chức năng xem chi tiết danh mục');
   };
 
   const handleDeleteCategory = async () => {
     if (formData && formData.id) {
       try {
         await deleteProductCategory(formData.id);
-        message.success(`Đã xóa danh mục: ${formData.name}`);
-        fetchData();
+        console.log(`Đã xóa danh mục: ${formData.name}`);
+        fetchProductCategories();
       } catch (error) {
         console.error('Error deleting category:', error);
-        message.error(`Không thể xóa danh mục: ${formData.name}`);
+        console.log(`Không thể xóa danh mục: ${formData.name}`);
       }
       setConfirmingPopup(false);
       setFormData(null);
@@ -219,107 +147,182 @@ const ProductCategoryTable: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData({
-      page: 1,
-      limit: 10,
-      sortBy: 'createdAt',
-      sortOrder: 'DESC'
-    });
+    fetchProductCategories();
   }, []);
-  const tableProps: TableProps<ProductCategory> = {
-    columns,
-    dataSource: productCategories,
-    rowKey: 'id',
-    pagination: false,
-    loading,
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'success';
+      case 'inactive':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'Hoạt động';
+      case 'inactive':
+        return 'Không hoạt động';
+      default:
+        return status;
+    }
   };
 
   return (
-    <>
-      <Card title="Danh mục sản phẩm" style={{ width: '100%', margin: '0 auto' }}>
-        <Row style={{ marginBottom: 16 }}>
-          <Col span={12}>
-            <Space>
-              <Button type="primary" onClick={handleLogSelected} disabled={selectedRowKeys.length === 0}>
-                Xem đã chọn
-              </Button>
-              <Button type="primary" onClick={handleAdd}>
-                Thêm danh mục
-              </Button>
-            </Space>
-          </Col>
-          <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Space>
-              <Input
-                placeholder="Tìm kiếm..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: 200 }}
-              />
+    <Card>
+      <CardContent>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField
+              fullWidth
+              placeholder="Tìm kiếm theo tên"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Trạng thái</InputLabel>
               <Select
-                defaultValue="createdAt"
-                style={{ width: 120 }}
-                onChange={(value) => setSortField(value)}
-                options={[
-                  { value: 'id', label: 'ID' },
-                  { value: 'name', label: 'Tên' },
-                  { value: 'createdAt', label: 'Ngày tạo' },
-                ]}
-              />
-              <Select
-                defaultValue="DESC"
-                style={{ width: 120 }}
-                onChange={(value) => setSortOrder(value)}
-                options={[
-                  { value: 'ASC', label: 'Tăng dần' },
-                  { value: 'DESC', label: 'Giảm dần' },
-                ]}
-              />
-              <Button type="primary" onClick={handleSearch}>Tìm kiếm</Button>
-            </Space>
-          </Col>
-        </Row>
-        <Table
-          columns={columns}
-          dataSource={productCategories}
-          rowKey="id"
-          pagination={false}
-          loading={loading}
-          scroll={{ x: 1100 }}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: handleSelectChange,
-          }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                label="Trạng thái"
+              >
+                <MenuItem value="all">Tất cả</MenuItem>
+                <MenuItem value="active">Hoạt động</MenuItem>
+                <MenuItem value="inactive">Không hoạt động</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4} sx={{ textAlign: 'right' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<IconPlus />}
+              onClick={handleAdd}
+            >
+              Thêm mới
+            </Button>
+          </Grid>
+        </Grid>
+
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Tên</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Ngày tạo</TableCell>
+                <TableCell>Ngày cập nhật</TableCell>
+                <TableCell align="right">Thao tác</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography>Đang tải...</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : paginatedData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography>Không có dữ liệu</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedData.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell>{record.id}</TableCell>
+                    <TableCell>{record.name}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getStatusLabel(record.status)}
+                        color={getStatusColor(record.status)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : ''}
+                    </TableCell>
+                    <TableCell>
+                      {record.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : ''}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleView(record)}
+                          startIcon={<IconEye />}
+                        >
+                          Xem
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleEdit(record)}
+                          startIcon={<IconEdit />}
+                        >
+                          Sửa
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          onClick={() => handleDelete(record)}
+                          startIcon={<IconTrash />}
+                        >
+                          Xóa
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredData.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="Số hàng mỗi trang:"
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} của ${count}`
+          }
         />
-        {productCategories.length > 0 && (
-          <Pagination
-            style={{ marginTop: 16, textAlign: 'center' }}
-            current={Currentpagination}
-            total={productCategories.length}
-            pageSize={limit}
-            onChange={(page) => {
-              setCurrentpagination(page);
-            }}
-          />
-        )}
+
         {formData && (
           <AddProductCategoryFormPopup
             open={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSubmit={handleSubmit}
             formData={formData}
-            onChange={handleChange}
             isView={true}
           />
         )}
         <ConfirmPopup
           open={ConfirmingPopup}
           onClose={() => setConfirmingPopup(false)}
-          onSubmit={handleDeleteCategory}
-          Content={`Bạn có chắc chắn muốn xóa danh mục "${formData?.name}"?`}
+          onConfirm={handleDeleteCategory}
+          title="Xác nhận xóa"
+          content={`Bạn có chắc chắn muốn xóa danh mục "${formData?.name}"?`}
         />
-      </Card>
-    </>
+      </CardContent>
+    </Card>
   );
 };
 

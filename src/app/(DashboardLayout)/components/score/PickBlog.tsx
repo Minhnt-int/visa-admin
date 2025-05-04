@@ -3,47 +3,51 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Button
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Stack,
+  TablePagination,
+  Typography,
+  Radio,
+  RadioGroup,
+  FormControlLabel
 } from '@mui/material';
 import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 import { BlogPostAttributes } from '@/data/BlogPost';
 import { fetchBlogList } from '@/services/blogService';
-import { Table, Pagination, Space } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import AddBlogFormPopup from '../popup/AddBlogFormPopup';
+import { BlogCategory } from '@/data/blogCategory';
 
 interface PickBlogProps {
   onBlogSelect: (blog: BlogPostAttributes) => void;
-  disabled?: boolean; // Thêm prop disabled
+  disabled?: boolean;
 }
 
 const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) => {
-  // States
   const [blogs, setBlogs] = useState<BlogPostAttributes[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedBlog, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-
-  // States cho popup
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewBlog, setViewBlog] = useState<BlogPostAttributes | null>(null);
 
-  // Số lượng blog mỗi trang
-
-  // Hàm fetch danh sách blog
-  const fetchBlogs = async (page: number, limit: number) => {
+  const fetchBlogs = async (pageNumber: number, pageSize: number) => {
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetchBlogList({
-        page: page,
-        limit: limit,
+        page: pageNumber + 1,
+        limit: pageSize,
         categoryId: '',
         search: '',
         sortBy: '',
@@ -53,9 +57,6 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
       if (response.data) {
         setBlogs(response.data);
         setTotal(response.pagination.total);
-        setLimit(response.pagination.limit);
-        setTotalPages(Math.ceil(response.pagination.totalPages));
-
       } else {
         setError('Dữ liệu không đúng định dạng');
       }
@@ -67,40 +68,37 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
     }
   };
 
-  // Fetch blogs khi component mount
   useEffect(() => {
-    fetchBlogs(page, limit);
-  }, [page]);
+    fetchBlogs(page, rowsPerPage);
+  }, [page, rowsPerPage]);
 
-  // Xử lý chọn blog
   const handleSelectBlog = (blog: BlogPostAttributes) => {
-    if (disabled) return; // Không cho phép chọn nếu disabled
-
+    if (disabled) return;
     setSelectedBlog(blog);
-    setSelectedRowKeys([blog.id]);
     onBlogSelect(blog);
   };
 
-  // Xử lý mở modal xem blog
   const handleViewBlog = (blog: BlogPostAttributes) => {
     setViewBlog(blog);
     setIsModalOpen(true);
   };
 
-  // Xử lý đóng modal
   const handleModalClose = () => {
     setIsModalOpen(false);
     setViewBlog(null);
   };
 
-  // Xử lý thay đổi trang
-  const handlePageChange = (page: number) => {
-    if (disabled) return; // Không cho phép đổi trang nếu disabled
-    fetchBlogs(page, limit);
-    setPage(page);
+  const handleChangePage = (event: unknown, newPage: number) => {
+    if (disabled) return;
+    setPage(newPage);
   };
 
-  // Format ngày tháng
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
@@ -109,82 +107,14 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
     }).format(new Date(date));
   };
 
-  // Tạo excerpt từ content
   const createExcerpt = (content: string, maxLength: number = 100) => {
-    // Loại bỏ HTML tags
     const plainText = content.replace(/<[^>]*>/g, '');
-
     if (plainText.length <= maxLength) return plainText;
-
-    // Cắt đến khoảng trắng gần nhất để không cắt giữa từ
     return plainText.substr(0, plainText.lastIndexOf(' ', maxLength)) + '...';
   };
 
-  // Định nghĩa cột cho bảng
-  const columns: ColumnsType<BlogPostAttributes> = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-      fixed: 'left',
-    },
-    {
-      title: 'Tiêu đề',
-      dataIndex: 'title',
-      key: 'title',
-      width: 250,
-      render: (text) => <span style={{ fontWeight: 'bold' }}>{text}</span>,
-    },
-    {
-      title: 'Nội dung',
-      dataIndex: 'content',
-      key: 'content',
-      width: 300,
-      render: (content) => createExcerpt(content, 150),
-    },
-    {
-      title: 'Danh mục',
-      dataIndex: 'blogCategoryId',
-      key: 'blogCategoryId',
-      width: 120,
-    },
-    {
-      title: 'Ngày đăng',
-      dataIndex: 'publishedAt',
-      key: 'publishedAt',
-      width: 150,
-      render: (date) => formatDate(date || new Date()),
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      width: 180, // Tăng chiều rộng để chứa thêm nút
-      fixed: 'right',
-      render: (_, record) => (
-        <Space>
-          <Button
-            variant="outlined"
-            color="info"
-            size="small"
-            onClick={() => handleViewBlog(record)}
-            disabled={disabled}
-          >
-            Xem
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            onClick={() => handleSelectBlog(record)}
-            disabled={disabled}
-          >
-            Chọn
-          </Button>
-        </Space>
-      ),
-    },
-  ];
+  // Add empty categories array since we're only viewing
+  const emptyCategories: BlogCategory[] = [];
 
   return (
     <DashboardCard title="Chọn Blog để đánh giá">
@@ -200,7 +130,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
               size="small"
               variant="outlined"
               sx={{ ml: 2 }}
-              onClick={() => fetchBlogs(page, limit)}
+              onClick={() => fetchBlogs(page, rowsPerPage)}
               disabled={disabled}
             >
               Thử lại
@@ -208,69 +138,108 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
           </Alert>
         ) : (
           <>
-            <Table
-              style={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}
-              loading={loading}
-              rowSelection={{
-                type: 'radio',
-                selectedRowKeys,
-                onChange: (selectedKeys) => {
-                  if (disabled) return; // Không cho phép chọn nếu disabled
-
-                  setSelectedRowKeys(selectedKeys);
-                  const selectedBlog = blogs.find(blog => blog.id === selectedKeys[0]);
-                  if (selectedBlog) {
-                    setSelectedBlog(selectedBlog);
-                    onBlogSelect(selectedBlog);
-                  }
-                },
-                getCheckboxProps: () => ({
-                  disabled: disabled // Disable checkbox khi disabled
-                })
-              }}
-              columns={columns}
-              dataSource={blogs.map(blog => ({ ...blog, key: blog.id }))}
-              pagination={false}
-              scroll={{ x: 800 }} // Kích hoạt cuộn ngang nếu nội dung vượt quá
-              rowClassName={(record) => record.id === selectedBlog?.id ? 'ant-table-row-selected' : ''}
-            />
-
-            {/* Phân trang */}
-            {!loading   && (
-              <Pagination
-                align="center"
-                current={page} // Trang hiện tại
-                total={total} // Tổng số mục (giả sử mỗi trang có 10 mục)
-                pageSize={limit} // Số lượng mục trên mỗi trang
-                onChange={handlePageChange}
+            <TableContainer component={Paper} sx={{ width: '90%', margin: '0 auto', maxWidth: '90%' }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>ID</TableCell>
+                    <TableCell>Tiêu đề</TableCell>
+                    <TableCell>Nội dung</TableCell>
+                    <TableCell>Danh mục</TableCell>
+                    <TableCell>Ngày đăng</TableCell>
+                    <TableCell>Thao tác</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {blogs.map((blog) => (
+                    <TableRow 
+                      key={blog.id}
+                      selected={selectedBlog?.id === blog.id}
+                      hover
+                    >
+                      <TableCell padding="checkbox">
+                        <Radio
+                          checked={selectedBlog?.id === blog.id}
+                          onChange={() => handleSelectBlog(blog)}
+                          disabled={disabled}
+                        />
+                      </TableCell>
+                      <TableCell>{blog.id}</TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 'bold' }}>
+                          {blog.title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{createExcerpt(blog.content, 150)}</TableCell>
+                      <TableCell>{blog.blogCategoryId}</TableCell>
+                      <TableCell>
+                        {blog.publishedAt ? formatDate(blog.publishedAt) : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="outlined"
+                            color="info"
+                            size="small"
+                            onClick={() => handleViewBlog(blog)}
+                            disabled={disabled}
+                          >
+                            Xem
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            size="small"
+                            onClick={() => handleSelectBlog(blog)}
+                            disabled={disabled}
+                          >
+                            Chọn
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                component="div"
+                count={total}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[5, 10, 25]}
+                labelRowsPerPage="Số hàng mỗi trang"
               />
-            )}
+            </TableContainer>
+
+            <AddBlogFormPopup
+              open={isModalOpen}
+              isView={true}
+              onClose={handleModalClose}
+              onSubmit={() => {}}
+              formData={viewBlog || {
+                id: 0,
+                title: "",
+                content: "",
+                slug: "",
+                metaTitle: "",
+                metaDescription: "",
+                metaKeywords: "",
+                author: "",
+                publishedAt: new Date(),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                blogCategoryId: 0,
+                avatarUrl: "",
+                status: "draft"
+              }}
+              onChange={(data) => {}}
+              categories={emptyCategories}
+            />
           </>
         )}
-
-        {/* Thêm AddBlogFormPopup */}
-        <AddBlogFormPopup
-          open={isModalOpen}
-          isView={true} // Chỉ cho phép xem, không cho phép chỉnh sửa
-          onClose={handleModalClose}
-          onSubmit={() => { }} // Không cần xử lý submit vì chỉ xem
-          formData={viewBlog || {
-            id: 0,
-            title: "",
-            content: "",
-            slug: "",
-            metaTitle: "",
-            metaDescription: "",
-            metaKeywords: "",
-            author: "",
-            publishedAt: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            blogCategoryId: 0,
-            avatarUrl: "",
-          }}
-          onChange={() => { }} // Không cần xử lý onChange vì chỉ xem
-        />
       </>
     </DashboardCard>
   );

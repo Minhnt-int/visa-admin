@@ -1,13 +1,12 @@
 'use client'
+import React, { useState, useEffect, Suspense } from 'react';
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import { useState, useEffect } from 'react';
 import { BlogCategory } from '@/data/blogCategory';
-import { message } from 'antd';
 import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
-import ConfirmPopup from '../../components/popup/ConfirmPopup';
 import BlogCategoryForm from '../../components/forms/BlogCategoryForm';
+import { Snackbar, Alert } from '@/config/mui';
 
 const initialFormData: BlogCategory = {
   id: 0,
@@ -16,6 +15,7 @@ const initialFormData: BlogCategory = {
   avatarUrl: "",
   createdAt: new Date(),
   updatedAt: new Date(),
+  status: "active"
 };
 
 const BlogCategoryAction = () => {
@@ -28,6 +28,11 @@ const BlogCategoryAction = () => {
 
   const [confirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<BlogCategory>(initialFormData);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
   
   const {
     selectedBlogCategory,
@@ -51,7 +56,11 @@ const BlogCategoryAction = () => {
         }
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu:', error);
-        message.error('Không thể tải dữ liệu danh mục');
+        setSnackbar({
+          open: true,
+          message: 'Không thể tải dữ liệu danh mục',
+          severity: 'error'
+        });
       }
     };
     
@@ -75,7 +84,6 @@ const BlogCategoryAction = () => {
       [data.name]: data.value,
     }));
     console.log(data, formData);
-
   };
 
   const handleSubmit = () => {
@@ -86,21 +94,34 @@ const BlogCategoryAction = () => {
     try {
       if (isEdit && id) {
         await updateBlogCategory(formData);
-        message.success('Đã cập nhật danh mục thành công!');
+        setSnackbar({
+          open: true,
+          message: 'Đã cập nhật danh mục thành công!',
+          severity: 'success'
+        });
       } else {
         await createBlogCategory(formData);
-        message.success('Đã tạo danh mục mới thành công!');
+        setSnackbar({
+          open: true,
+          message: 'Đã tạo danh mục mới thành công!',
+          severity: 'success'
+        });
       }
       router.push('/danh-muc-bai-viet');
     } catch (error) {
       console.error('Error saving category:', error);
-      message.error('Không thể lưu danh mục. Vui lòng thử lại sau.');
+      setSnackbar({
+        open: true,
+        message: 'Không thể lưu danh mục. Vui lòng thử lại sau.',
+        severity: 'error'
+      });
     }
     setConfirmingPopup(false);
   };
 
   return (
-    <PageContainer title={isView ? 'Chi tiết danh mục' : isEdit ? 'Cập nhật danh mục' : 'Thêm danh mục mới'} 
+    <Suspense fallback={<div>Đang tải thông tin...</div>}>
+        <PageContainer title={isView ? 'Chi tiết danh mục' : isEdit ? 'Cập nhật danh mục' : 'Thêm danh mục mới'} 
       description="Quản lý danh mục bài viết">
       <Box>
         <Grid container spacing={3}>
@@ -111,20 +132,30 @@ const BlogCategoryAction = () => {
           {formData.avatarUrl && (
             <div className="mb-4">
               <img 
-                src={`${process.env.NEXT_PUBLIC_API_URL || ''}${formData.avatarUrl}`} 
+                src={`${process.env.NEXT_PUBLIC_API_URL || ''}${formData.avatarUrl}` || '/placeholder.png'} 
                 alt="Category Avatar" 
                 className="w-32 h-32 object-cover rounded"
-                onError={(e) => {
-                  console.error('Error loading image:', e);
-                  e.currentTarget.src = '/placeholder.png'; // Fallback image
-                }}
               />
             </div>
           )}
         </Grid>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </PageContainer>
-  )
-}
+    </Suspense>
+  );
+};
 
 export default BlogCategoryAction;

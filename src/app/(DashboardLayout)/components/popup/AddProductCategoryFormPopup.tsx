@@ -1,102 +1,151 @@
-import React from 'react';
-import { Input, DatePicker } from 'antd';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
-import dayjs from 'dayjs';
+import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Box
+} from '@/config/mui';
 import { ProductCategory } from '@/data/ProductCategory';
+import { SelectChangeEvent } from '@mui/material/Select';
 
-interface AddFormPopupProps {
+interface AddProductCategoryFormPopupProps {
   open: boolean;
-  isView?: boolean;
   onClose: () => void;
-  onChange: (data: { name: string; value: any }) => void;
-  onSubmit: () => void;
-  formData: ProductCategory;
+  onSubmit: (data: ProductCategory) => void;
+  formData?: ProductCategory;
+  isView?: boolean;
 }
 
-const AddProductCategoryFormPopup: React.FC<AddFormPopupProps> = ({
+const AddProductCategoryFormPopup: React.FC<AddProductCategoryFormPopupProps> = ({
   open,
-  isView = false,
   onClose,
-  onChange,
   onSubmit,
   formData,
+  isView = false
 }) => {
-  const title = isView ? "Chi tiết danh mục" : (formData && formData.id ? "Sửa danh mục" : "Thêm danh mục");
+  const [formState, setFormState] = useState<ProductCategory>(formData || {
+    id: 0,
+    name: '',
+    slug: '',
+    description: '',
+    parentId: null,
+    status: 'active',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    avatarUrl: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<number | string>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSubmit = () => {
+    onSubmit(formState);
+    onClose();
+  };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {isView ? 'Xem chi tiết danh mục' : formData ? 'Sửa danh mục' : 'Thêm danh mục mới'}
+      </DialogTitle>
       <DialogContent>
-        {/* Basic Information */}
-        <h4>Thông tin cơ bản</h4>
-        <Input
-          placeholder="Tên danh mục"
-          value={formData?.name || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'name', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Slug"
-          value={formData?.slug || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input.TextArea
-          placeholder="Mô tả"
-          value={formData?.description || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'description', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-          rows={4}
-        />
-
-        {/* Dates */}
-        <h4>Ngày tháng</h4>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-          <div style={{ width: '50%' }}>
-            <p style={{ margin: '0 0 8px 0' }}>Ngày tạo:</p>
-            <DatePicker
-              value={formData?.createdAt ? dayjs(formData?.createdAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'createdAt',
-                  value: date ? date.toDate() : null,
-                });
-              }}
-              format="DD/MM/YYYY HH:mm:ss"
-              disabled={true}
-              style={{ width: "100%" }}
-              showTime
-            />
-          </div>
-
-          <div style={{ width: '50%' }}>
-            <p style={{ margin: '0 0 8px 0' }}>Ngày cập nhật:</p>
-            <DatePicker
-              value={formData?.updatedAt ? dayjs(formData?.updatedAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'updatedAt',
-                  value: date ? date.toDate() : null,
-                });
-              }}
-              format="DD/MM/YYYY HH:mm:ss"
-              disabled={true}
-              style={{ width: "100%" }}
-              showTime
-            />
-          </div>
-        </div>
+        <Box sx={{ mt: 2 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Tên danh mục"
+                name="name"
+                value={formState.name}
+                onChange={handleInputChange}
+                disabled={isView}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Slug"
+                name="slug"
+                value={formState.slug}
+                onChange={handleInputChange}
+                disabled={isView}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Mô tả"
+                name="description"
+                value={formState.description}
+                onChange={handleInputChange}
+                disabled={isView}
+                multiline
+                rows={4}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Danh mục cha</InputLabel>
+                <Select
+                  name="parentId"
+                  value={formState.parentId || ''}
+                  onChange={handleSelectChange}
+                  disabled={isView}
+                  label="Danh mục cha"
+                >
+                  <MenuItem value="">Không có</MenuItem>
+                  {/* Add parent category options here */}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Trạng thái</InputLabel>
+                <Select
+                  name="status"
+                  value={formState.status}
+                  onChange={handleSelectChange}
+                  disabled={isView}
+                  label="Trạng thái"
+                >
+                  <MenuItem value="active">Hoạt động</MenuItem>
+                  <MenuItem value="inactive">Không hoạt động</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Đóng</Button>
+        <Button onClick={onClose} color="inherit">
+          Hủy
+        </Button>
         {!isView && (
-          <Button onClick={onSubmit} variant="contained" color="primary">
-            Lưu
+          <Button onClick={handleSubmit} color="primary" variant="contained">
+            {formData ? 'Cập nhật' : 'Thêm mới'}
           </Button>
         )}
       </DialogActions>

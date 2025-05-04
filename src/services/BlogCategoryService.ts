@@ -41,7 +41,7 @@ const BlogCategoryService = {
    */
   async getCategoryBySlug(slug: string) {
     try {
-      const response = await ApiService.get(`${BLOG_CATEGORIES_URL}/${slug}`);
+      const response = await ApiService.get(`${BLOG_CATEGORY_URL}/${slug}`);
       return ApiService.handleResponse<BlogCategory>(response);
     } catch (error) {
       return ApiService.handleError(error);

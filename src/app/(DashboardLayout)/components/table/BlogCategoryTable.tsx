@@ -1,36 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, message, Input, Select, Row, Col } from 'antd';
-import type { ColumnsType, TableProps } from 'antd/es/table';
-import { Pagination } from "antd";
-import ConfirmPopup from '../popup/ConfirmPopup';
-import { Card } from "antd";
-import { BlogCategory, initBlogCategory } from '@/data/blogCategory';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Button, 
+  TextField, 
+  Select, 
+  MenuItem, 
+  FormControl, 
+  InputLabel, 
+  Grid, 
+  Card, 
+  CardContent,
+  TablePagination,
+  Box,
+  Typography,
+  Snackbar,
+  Alert
+} from '@/config/mui';
+import { IconEdit, IconTrash, IconEye } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/AppContext';
+import { BlogCategory } from '@/data/blogCategory';
+import ConfirmPopup from '../popup/ConfirmPopup';
 import AddBlogCategoryFormPopup from '../popup/AddBlogCategoryFormPopup';
 import { ActionType } from '@/contexts/AppContext';
-import { 
-  DeleteOutlined, 
-  EyeOutlined, 
-  EditOutlined, 
-  CheckCircleOutlined,
-  RollbackOutlined
-} from '@ant-design/icons';
+import BlogCategoryService from '@/services/BlogCategoryService';
 
+interface BlogCategoryTableProps {
+  data: BlogCategory[];
+  onEdit: (category: BlogCategory) => void;
+  onDelete: (id: number) => void;
+  onView: (category: BlogCategory) => void;
+}
 
-const BlogCategoryTable: React.FC = () => {
+interface ExtendedBlogCategory extends BlogCategory {
+  status: 'active' | 'inactive';
+}
+
+const BlogCategoryTable = () => {
   const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [ConfirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<BlogCategory | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [limit, setLimit] = useState(10);
-  const [Currentpagination, setCurrentpagination] = useState(1);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [currentId, setCurrentId] = useState<number | null>(null);
-
-  const [searchText, setSearchText] = useState('');
-  const [sortField, setSortField] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('DESC');
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const {
     // BlogCategory State
@@ -52,7 +82,9 @@ const BlogCategoryTable: React.FC = () => {
     setErrorState,
     setCurrentAction,
   } = useAppContext();
-
+  useEffect(() => {
+    fetchBlogCategories();
+  }, []);
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
   };
@@ -79,7 +111,11 @@ const BlogCategoryTable: React.FC = () => {
       setConfirmingPopup(true);
     } catch (error) {
       console.error("Error deleting blog category:", error);
-      message.error("Failed to delete blog category");
+      setSnackbar({
+        open: true,
+        message: "Failed to delete blog category",
+        severity: 'error'
+      });
     }
   };
 
@@ -89,91 +125,68 @@ const BlogCategoryTable: React.FC = () => {
     setCurrentId(null);
   };
 
-  const handleChange = (data: { name: string; value: any }) => {
-    // This function is only needed for the interface props but not actually used in view mode
+  const handleSubmit = async (data: BlogCategory) => {
+    try {
+      if (currentId) {
+        await BlogCategoryService.updateCategory(data);
+        setSnackbar({
+          open: true,
+          message: 'Cập nhật danh mục thành công',
+          severity: 'success'
+        });
+      } else {
+        await BlogCategoryService.createCategory(data);
+        setSnackbar({
+          open: true,
+          message: 'Thêm danh mục thành công',
+          severity: 'success'
+        });
+      }
+      handleModalClose();
+      fetchData();
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Có lỗi xảy ra',
+        severity: 'error'
+      });
+    }
   };
 
-  const columns: ColumnsType<BlogCategory> = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-      fixed: 'left',
-    },
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      width: 200,
-    },
-    {
-      title: 'Slug',
-      dataIndex: 'slug',
-      key: 'slug',
-      width: 150,
-    },
-    {
-      title: 'Parent ID',
-      dataIndex: 'parentId',
-      key: 'parentId',
-      width: 120,
-      render: (value) => value ? value : 'None',
-    },
-    {
-      title: 'Created At',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 170,
-      render: (date) => date ? new Date(date).toLocaleString() : '',
-    },
-    {
-      title: 'Updated At',
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      width: 170,
-      render: (date) => date ? new Date(date).toLocaleString() : '',
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      fixed: 'right',
-      width: 180,
-      render: (_, record) => (
-        <Space>
-          <Button type="link" onClick={() => handleView(record)}>
-            <EyeOutlined />
-          </Button>
-          <Button type="link" onClick={() => handleEdit(record)}>
-            <EditOutlined />
-          </Button>
-          <Button type="link" danger onClick={() => handleDelete(record)}>
-            <DeleteOutlined />
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
-  const handleSearch = () => {
-    fetchData({
-      page: Currentpagination,
-      limit: limit,
-      name: searchText,
-      sortBy: sortField,
-      sortOrder: sortOrder as 'ASC' | 'DESC'
-    });
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
   };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const filteredData = blogCategories?.filter(category => {
+    const matchesSearch = category.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || (category as ExtendedBlogCategory).status === statusFilter;
+    return matchesSearch && matchesStatus;
+  }) || [];
+
+  const paginatedData = filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const handleDeleteCategory = async () => {
     if (formData && formData.id) {
       try {
         await deleteBlogCategory(formData.id);
-        message.success(`Deleted blog category: ${formData.name}`);
+        setSnackbar({
+          open: true,
+          message: `Deleted blog category: ${formData.name}`,
+          severity: 'success'
+        });
         fetchData();
       } catch (error) {
         console.error('Error deleting blog category:', error);
-        message.error(`Failed to delete blog category: ${formData.name}`);
+        setSnackbar({
+          open: true,
+          message: `Failed to delete blog category: ${formData.name}`,
+          severity: 'error'
+        });
       }
       setConfirmingPopup(false);
       setFormData(null);
@@ -206,107 +219,150 @@ const BlogCategoryTable: React.FC = () => {
       sortOrder: 'DESC'
     });
   }, []);
-  
-  const tableProps: TableProps<BlogCategory> = {
-    columns,
-    dataSource: blogCategories,
-    rowKey: 'id',
-    pagination: false,
-    loading,
-  };
+
   return (
-    <>
-      <Card title="Blog Categories Management" style={{ width: '100%', margin: '0 auto' }}>
-        <Row style={{ marginBottom: 16 }}>
-          <Col span={12}>
-            <Space>
-              <Button type="primary" onClick={handleAdd}>
-                Add New Category
-              </Button>
-            </Space>
-          </Col>
-          <Col span={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Space>
-              <Input
-                placeholder="Search..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: 200 }}
-              />
+    <Card>
+      <CardContent>
+        <Button onClick={() => console.log(paginatedData, filteredData)}>Click me</Button>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Tìm kiếm"
+              variant="outlined"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Trạng thái</InputLabel>
               <Select
-                defaultValue="createdAt"
-                style={{ width: 120 }}
-                onChange={(value) => setSortField(value)}
-                options={[
-                  { value: 'id', label: 'ID' },
-                  { value: 'name', label: 'Name' },
-                  { value: 'createdAt', label: 'Created Date' },
-                ]}
-              />
-              <Select
-                defaultValue="DESC"
-                style={{ width: 120 }}
-                onChange={(value) => setSortOrder(value)}
-                options={[
-                  { value: 'ASC', label: 'Ascending' },
-                  { value: 'DESC', label: 'Descending' },
-                ]}
-              />
-              <Button type="primary" onClick={handleSearch}>Search</Button>
-            </Space>
-          </Col>
-        </Row>
-        <Table
-          style={{ width: '100%' }}
-          loading={loading}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: handleSelectChange,
-          }}
-          columns={columns}
-          dataSource={blogCategories}
-          pagination={false}
-          scroll={{ x: 1100 }}
+                value={statusFilter}
+                label="Trạng thái"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="all">Tất cả</MenuItem>
+                <MenuItem value="active">Hoạt động</MenuItem>
+                <MenuItem value="inactive">Không hoạt động</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Tên danh mục</TableCell>
+                <TableCell>Slug</TableCell>
+                <TableCell>Trạng thái</TableCell>
+                <TableCell>Hành động</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                      <Typography>Đang tải...</Typography>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : paginatedData?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    <Typography>Không có dữ liệu</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedData?.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell>{category.id}</TableCell>
+                    <TableCell>{category.name}</TableCell>
+                    <TableCell>{category.slug}</TableCell>
+                    <TableCell>
+                      <Typography
+                        sx={{
+                          color: (category as ExtendedBlogCategory).status === 'active' ? 'success.main' : 'error.main',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        {(category as ExtendedBlogCategory).status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleView(category)}
+                          startIcon={<IconEye size={16} />}
+                        >
+                          Xem
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          onClick={() => handleEdit(category)}
+                          startIcon={<IconEdit size={16} />}
+                        >
+                          Sửa
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => handleDelete(category)}
+                          startIcon={<IconTrash size={16} />}
+                        >
+                          Xóa
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredData?.length || 0}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
         />
-        {blogCategories.length > 0 && (
-          <Pagination
-            style={{ marginTop: 16, textAlign: 'center' }}
-            current={Currentpagination}
-            total={blogCategories.length}
-            pageSize={limit}
-            onChange={(page) => {
-              setCurrentpagination(page);
-              fetchData({
-                page,
-                limit,
-                name: searchText,
-                sortBy: sortField,
-                sortOrder: sortOrder as 'ASC' | 'DESC'
-              });
-            }}
-          />
-        )}
-        
-        {formData && (
-          <AddBlogCategoryFormPopup
-            open={isModalOpen}
-            onClose={handleModalClose}
-            onSubmit={() => {}}
-            formData={formData}
-            onChange={handleChange}
-            isView={true}
-            categoryId={currentId}
-          />
-        )}
-        
-        <ConfirmPopup
-          open={ConfirmingPopup}
-          onClose={() => setConfirmingPopup(false)}
-          onSubmit={handleDeleteCategory}
-          Content={`Are you sure you want to delete the category '${formData?.name}'?`}
-        />
-      </Card>
-    </>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </CardContent>
+      <AddBlogCategoryFormPopup
+        open={isModalOpen}
+        onClose={handleModalClose}
+        isView={true}
+        formData={formData!}
+        onSubmit={handleSubmit}
+      />
+    </Card>
   );
 };
 

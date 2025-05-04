@@ -7,7 +7,7 @@ import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
 import AuthLogin from "./AuthLogin";
 import { Suspense } from 'react';
 
-const LoginContent = () => {
+const Login = () => {
   return (
     <PageContainer title="Đăng nhập" description="Trang đăng nhập hệ thống">
       <Box
@@ -48,46 +48,49 @@ const LoginContent = () => {
               <Box display="flex" alignItems="center" justifyContent="center">
                 <Logo />
               </Box>
-              <AuthLogin
-                title="Đăng nhập"
-                subtext={
-                  <Typography
-                    variant="subtitle1"
-                    textAlign="center"
-                    color="textSecondary"
-                    mb={1}
-                  >
-                    Vui lòng đăng nhập để tiếp tục
-                  </Typography>
-                }
-                subtitle={
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    justifyContent="center"
-                    mt={3}
-                  >
+              {/* Bọc AuthLogin trong Suspense vì nó có thể sử dụng useSearchParams */}
+              <Suspense fallback={<div>Đang tải form đăng nhập...</div>}>
+                <AuthLogin
+                  title="Đăng nhập"
+                  subtext={
                     <Typography
+                      variant="subtitle1"
+                      textAlign="center"
                       color="textSecondary"
-                      variant="h6"
-                      fontWeight="500"
+                      mb={1}
                     >
-                      Chưa có tài khoản?
+                      Vui lòng đăng nhập để tiếp tục
                     </Typography>
-                    <Typography
-                      component={Link}
-                      href="/authentication/register"
-                      fontWeight="500"
-                      sx={{
-                        textDecoration: "none",
-                        color: "primary.main",
-                      }}
+                  }
+                  subtitle={
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      justifyContent="center"
+                      mt={3}
                     >
-                      Đăng ký
-                    </Typography>
-                  </Stack>
-                }
-              />
+                      <Typography
+                        color="textSecondary"
+                        variant="h6"
+                        fontWeight="500"
+                      >
+                        Chưa có tài khoản?
+                      </Typography>
+                      <Typography
+                        component={Link}
+                        href="/authentication/register"
+                        fontWeight="500"
+                        sx={{
+                          textDecoration: "none",
+                          color: "primary.main",
+                        }}
+                      >
+                        Đăng ký
+                      </Typography>
+                    </Stack>
+                  }
+                />
+              </Suspense>
             </Card>
           </Grid>
         </Grid>
@@ -96,12 +99,4 @@ const LoginContent = () => {
   );
 };
 
-const Login2 = () => {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LoginContent />
-    </Suspense>
-  );
-};
-
-export default Login2;
+export default Login;

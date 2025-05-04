@@ -1,23 +1,30 @@
 'use client'
+import { Suspense } from 'react';
 import { Grid, Box } from '@mui/material';
 import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
-import OrderTable from '../components/table/OrderTable';
+import OrderTable from '@/app/(DashboardLayout)/components/table/OrderTable';
 
-
-
-const Dashboard = () => {
-
+const OrderContent = () => {
   return (
-    <PageContainer title="Dashboard" description="this is Dashboard">
+    <PageContainer title="Đơn hàng" description="Quản lý đơn hàng">
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <OrderTable ></OrderTable>
+            {/* Bọc OrderTable trong Suspense */}
+            <Suspense fallback={<div>Đang tải dữ liệu đơn hàng...</div>}>
+              <OrderTable />
+            </Suspense>
           </Grid>
         </Grid>
       </Box>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default Dashboard;
+const OrderPage = () => {
+  return (
+    <OrderContent />
+  );
+};
+
+export default OrderPage;

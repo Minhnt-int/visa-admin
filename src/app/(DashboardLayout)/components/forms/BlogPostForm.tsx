@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Input, DatePicker, Select, message } from 'antd';
-import { Button, Card, CardContent, Typography, Box, Divider, Paper, CircularProgress, Tooltip } from '@mui/material';
+import { 
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  Snackbar,
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Tooltip,
+  Paper
+} from '@/config/mui';
+import { Divider } from '@mui/material';
+import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes, initBlog } from '@/data/BlogPost';
@@ -39,6 +58,12 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const [form, setForm] = useState<BlogPostAttributes>(formData);
   const { blogCategories, fetchBlogCategories } = useAppContext();
   const router = useRouter();
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
   useEffect(() => {
     fetchBlogCategories();
   }, [fetchBlogCategories]);
@@ -155,271 +180,284 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         const result = await updateBlogPost(form);
         
         if (result) {
-          message.success(`Blog post updated successfully`);
+          setSnackbar({ open: true, message: 'Blog post updated successfully', severity: 'success' });
           router.push('/bai-viet');
           setForm(initBlog);
-        } else {
-          console.log('Update failed - result is false');
         }
       } else {
         const result = await createBlogPost(form);
         
         if (result) {
-          message.success(`Blog post created successfully`);
+          setSnackbar({ open: true, message: 'Blog post created successfully', severity: 'success' });
           router.push('/bai-viet');
           setForm(initBlog);
-        } else {
-          console.log('Create failed - result is false');
         }
       }
     } catch (error) {
       console.error('Error saving blog post:', error);
-      message.error('Failed to save blog post');
+      setSnackbar({ open: true, message: 'Failed to save blog post', severity: 'error' });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h5" component="h2" gutterBottom>
-          {formTitle}
-        </Typography>
+    <>
+      <Card>
+        <CardContent>
+          <Typography variant="h5" component="h2" gutterBottom>
+            {formTitle}
+          </Typography>
 
-        {/* Basic Information */}
-        <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
-          Blog Post Information
-        </Typography>
+          {/* Basic Information */}
+          <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
+            Thông tin bài viết
+          </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-          <Input
-            placeholder="Title"
-            value={form?.title || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'title', value: e.target.value })}
-            style={{ flex: 1 }}
-          />
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleGenerateContent}
-            disabled={isView || !form?.title || isLoading}
-            startIcon={isLoading ? <CircularProgress size={20} /> : null}
-          >
-            Viết bài (AI)
-          </Button>
-        </Box>
-
-        <Input
-          placeholder="Slug"
-          value={form?.slug || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Input
-            placeholder="Avatar URL"
-            value={form?.avatarUrl || ""}
-            disabled={isView || isLoading}
-            onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <Button
-            variant="outlined"
-            onClick={() => setIsMediaPopupOpen(true)}
-            disabled={isView || isLoading}
-          >
-            Select Image
-          </Button>
-        </Box>
-        {form?.avatarUrl && (
-          <Box sx={{ mb: 2, textAlign: 'center' }}>
-            <img
-              src={`${process.env.NEXT_PUBLIC_API_URL}${form?.avatarUrl}`}
-              alt="Avatar Preview"
-              style={{
-                maxWidth: '100%',
-                maxHeight: 200,
-                objectFit: 'contain',
-                border: '1px solid #eee',
-                borderRadius: 4,
-                padding: 4
-              }}
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            <TextField
+              placeholder="Tiêu đề"
+              value={form?.title || ""}
+              disabled={isView}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              style={{ flex: 1 }}
             />
-          </Box>
-        )}
-        <Input
-          placeholder="Author"
-          value={form?.author || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'author', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <div style={{ marginBottom: "16px" }}>
-          <Typography variant="body2" gutterBottom>Blog Category</Typography>
-          <Select
-            placeholder="Select category"
-            value={form?.blogCategoryId}
-            disabled={isView}
-            onChange={(value) => onChange({ name: 'blogCategoryId', value })}
-            style={{ width: "100%" }}
-            options={blogCategories.map(category => ({
-              value: category.id,
-              label: category.name
-            }))}
-          />
-        </div>
-
-        <div style={{ marginBottom: "16px" }}>
-          <Typography variant="body2" gutterBottom>Content</Typography>
-          <Editor
-            disabled={isView}
-            value={editorContent}
-            onChange={handleEditorChange}
-            placeholder="Content"
-          />
-        </div>
-
-        {/* SEO Information */}
-        <Typography variant="h6" gutterBottom>SEO Information</Typography>
-        <Input
-          placeholder="Meta Title"
-          value={form?.metaTitle || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'metaTitle', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Meta Description"
-          value={form?.metaDescription || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'metaDescription', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        <Input
-          placeholder="Meta Keywords"
-          value={form?.metaKeywords || ""}
-          disabled={isView}
-          onChange={(e) => onChange({ name: 'metaKeywords', value: e.target.value })}
-          style={{ marginBottom: "16px" }}
-        />
-
-        {/* Dates */}
-        <Typography variant="h6" gutterBottom>Dates</Typography>
-
-        <div style={{ marginBottom: "16px" }}>
-          <Typography variant="body2" gutterBottom>Published Date</Typography>
-          <DatePicker
-            value={form?.publishedAt ? dayjs(form?.publishedAt) : null}
-            onChange={(date) => {
-              onChange({
-                name: 'publishedAt',
-                value: date ? date.toISOString() : null,
-              });
-            }}
-            format="YYYY-MM-DD HH:mm:ss"
-            showTime
-            disabled={isView}
-            style={{ width: "100%" }}
-            getPopupContainer={(trigger) => trigger.parentElement!}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-          <div style={{ width: "50%" }}>
-            <Typography variant="body2" gutterBottom>Created At</Typography>
-            <DatePicker
-              value={form?.createdAt ? dayjs(form?.createdAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'createdAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
-              disabled={true}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
-            />
-          </div>
-
-          <div style={{ width: "50%" }}>
-            <Typography variant="body2" gutterBottom>Updated At</Typography>
-            <DatePicker
-              value={form?.updatedAt ? dayjs(form?.updatedAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'updatedAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
-              disabled={true}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
-            />
-          </div>
-        </div>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          {onCancel && (
-            <Button onClick={onCancel} sx={{ mr: 1 }}>
-              Cancel
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={handleGenerateContent}
+              disabled={isView || !form?.title || isLoading}
+              startIcon={isLoading ? <CircularProgress size={20} /> : null}
+            >
+              Viết bài (AI)
             </Button>
-          )}
-          <Button
+          </Box>
+
+          <TextField
+            placeholder="Slug"
+            value={form?.slug || ""}
             disabled={isView}
-            onClick={handleSubmit}
-            variant="contained"
-            color="primary"
-            sx={{ mr: 1 }}
-          >
-            Submit
-          </Button>
-          <Tooltip title={!isFormValid() && !isLoading ? "Vui lòng điền đầy đủ các trường thông tin trước khi sử dụng gợi ý AI" : ""}>
-            <span>
-              <Button
-                disabled={isView || !isFormValid() || isLoading}
-                onClick={handleGetSuggestions}
-                variant="outlined"
-                color="primary"
-                startIcon={isLoading ? <CircularProgress size={20} /> : null}
-              >
-                {"Gợi ý (AI)"}
+            onChange={(e) => handleInputChange('slug', e.target.value)}
+            style={{ marginBottom: "16px", width: "100%" }}
+          />
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <TextField
+              placeholder="Ảnh đại diện"
+              value={form?.avatarUrl || ""}
+              disabled={isView || isLoading}
+              onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <Button
+              variant="outlined"
+              onClick={() => setIsMediaPopupOpen(true)}
+              disabled={isView || isLoading}
+            >
+              Chọn ảnh
+            </Button>
+          </Box>
+          {form?.avatarUrl && (
+            <Box sx={{ mb: 2, textAlign: 'center' }}>
+              <img
+                src={`${process.env.NEXT_PUBLIC_API_URL}${form?.avatarUrl}`}
+                alt="Avatar Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: 200,
+                  objectFit: 'contain',
+                  border: '1px solid #eee',
+                  borderRadius: 4,
+                  padding: 4
+                }}
+              />
+            </Box>
+          )}
+          <TextField
+            placeholder="Tác giả"
+            value={form?.author || ""}
+            disabled={isView}
+            onChange={(e) => handleInputChange('author', e.target.value)}
+            style={{ marginBottom: "16px", width: "100%" }}
+          />
+
+          <div style={{ marginBottom: "16px" }}>
+            <Typography variant="body2" gutterBottom>Danh mục bài viết</Typography>
+            <Select
+              value={form?.blogCategoryId}
+              disabled={isView}
+              onChange={(value) => handleInputChange('blogCategoryId', value)}
+              style={{ width: "100%" }}
+            >
+              {blogCategories.map(category => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </div>
+
+          <div style={{ marginBottom: "16px" }}>
+            <Typography variant="body2" gutterBottom>Nội dung</Typography>
+            <Editor
+              disabled={isView}
+              value={editorContent}
+              onChange={handleEditorChange}
+              placeholder="Nội dung"
+            />
+          </div>
+
+          {/* SEO Information */}
+          <Typography variant="h6" gutterBottom>Thông tin SEO</Typography>
+          <TextField
+            placeholder="Meta Title"
+            value={form?.metaTitle || ""}
+            disabled={isView}
+            onChange={(e) => handleInputChange('metaTitle', e.target.value)}
+            style={{ marginBottom: "16px", width: "100%" }}
+          />
+
+          <TextField
+            placeholder="Meta Description"
+            value={form?.metaDescription || ""}
+            disabled={isView}
+            onChange={(e) => handleInputChange('metaDescription', e.target.value)}
+            style={{ marginBottom: "16px", width: "100%" }}
+          />
+
+          <TextField
+            placeholder="Meta Keywords"
+            value={form?.metaKeywords || ""}
+            disabled={isView}
+            onChange={(e) => handleInputChange('metaKeywords', e.target.value)}
+            style={{ marginBottom: "16px", width: "100%" }}
+          />
+
+          {/* Dates */}
+          <Typography variant="h6" gutterBottom>Ngày tạo</Typography>
+
+          <div style={{ marginBottom: "16px" }}>
+            <Typography variant="body2" gutterBottom>Ngày xuất bản</Typography>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DatePicker
+              value={form?.publishedAt ? new Date(form?.publishedAt) : null}
+              onChange={(date) => {
+                onChange({
+                  name: 'publishedAt',
+                  value: date ? date.toISOString() : null,
+                });
+              }}
+    format="yyyy-MM-dd HH:mm:ss"
+    sx={{ width: "100%" }}
+  />
+            </LocalizationProvider>
+
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ width: "50%" }}>
+              <Typography variant="body2" gutterBottom>Ngày tạo</Typography>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                value={form?.createdAt ? new Date(form?.createdAt) : null}
+                onChange={(date) => {
+                  onChange({
+                    name: 'createdAt',
+                    value: date ? date.toISOString() : null,
+                  });
+                }}
+    format="yyyy-MM-dd HH:mm:ss"
+    disabled={true}
+    sx={{ width: "100%" }}
+  />
+              </LocalizationProvider>
+            </div>
+
+            <div style={{ width: "50%" }}>
+              <Typography variant="body2" gutterBottom>Ngày cập nhật</Typography>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                value={form?.updatedAt ? new Date(form?.updatedAt) : null}
+                onChange={(date) => {
+                  onChange({
+                    name: 'updatedAt',
+                    value: date ? date.toISOString() : null,
+                  });
+                }}
+                format="yyyy-MM-dd HH:mm:ss"
+                disabled={true}
+                sx={{ width: "100%" }}
+  />
+              </LocalizationProvider>
+            </div>
+          </div>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            {onCancel && (
+              <Button onClick={onCancel} sx={{ mr: 1 }}>
+                Cancel
               </Button>
-            </span>
-          </Tooltip>
-        </Box>
+            )}
+            <Button
+              disabled={isView}
+              onClick={handleSubmit}
+              variant="contained"
+              color="primary"
+              sx={{ mr: 1 }}
+            >
+              Submit
+            </Button>
+            <Tooltip title={!isFormValid() && !isLoading ? "Vui lòng điền đầy đủ các trường thông tin trước khi sử dụng gợi ý AI" : ""}>
+              <span>
+                <Button
+                  disabled={isView || !isFormValid() || isLoading}
+                  onClick={handleGetSuggestions}
+                  variant="outlined"
+                  color="primary"
+                  startIcon={isLoading ? <CircularProgress size={20} /> : null}
+                >
+                  {"Gợi ý (AI)"}
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
 
-        {showAiSuggestions && aiSuggestions && (
-          <>
-            <Divider sx={{ my: 3 }} />
-            <Typography variant="h6" gutterBottom>
-              Gợi ý AI
-            </Typography>
-            <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                {aiSuggestions.result}
+          {showAiSuggestions && aiSuggestions && (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Typography variant="h6" gutterBottom>
+                Gợi ý AI
               </Typography>
-            </Paper>
-          </>
-        )}
+              <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                  {aiSuggestions.result}
+                </Typography>
+              </Paper>
+            </>
+          )}
 
-        <MediaPopup
-          open={isMediaPopupOpen}
-          onClose={() => setIsMediaPopupOpen(false)}
-          onSelect={handleMediaSelect}
-          listMedia={[]}
-        />
-      </CardContent>
-    </Card>
+          <MediaPopup
+            open={isMediaPopupOpen}
+            onClose={() => setIsMediaPopupOpen(false)}
+            onSelect={handleMediaSelect}
+            onSubmit={() => {}}
+            listMedia={[]}
+          />
+        </CardContent>
+      </Card>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

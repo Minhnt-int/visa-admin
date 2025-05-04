@@ -2,39 +2,39 @@
 export interface ProductItemAttributes {
   id: number;
   name: string;
-  color: string;
   price: number;
-  originalPrice: number;
-  status: 'available' | 'out_of_stock';
+  salePrice: number;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProductMedia {
   id: number;
-  productId: number;
-  name: string;
   url: string;
-  type: string;
+  type: 'image' | 'video';
+  isPrimary: boolean;
   createdAt: string;
   updatedAt: string;
-  mediaId: number;
-  altText: string;
 }
 
 // ProductCategory Model
 export interface ProductAttributes {
   id: number;
   name: string;
-  description?: string;
-  shortDescription?: string;
-  categoryId: number;
-  avatarUrl?: string;
   slug: string;
+  description: string;
+  shortDescription: string;
+  price: number;
+  salePrice: number;
+  status: 'active' | 'inactive' | 'draft';
+  categoryId: number;
+  avatarUrl: string;
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string;
-  status: 'active' | 'inactive';
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
   items: ProductItemAttributes[];
   media: ProductMedia[];
 }

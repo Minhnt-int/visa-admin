@@ -5,7 +5,7 @@ import { ProductAttributes } from '@/data/ProductAttributes';
 import { BlogCategory } from '@/data/blogCategory';
 import { ProductCategory } from '@/data/ProductCategory';
 import { OrderAttributes } from '@/data/Order';
-import { message } from 'antd';
+import { Snackbar, Alert } from '@/config/mui';
 import BlogCategoryService from '@/services/BlogCategoryService';
 import ProductCategoryService from '@/services/ProductCategoryService';
 import instance from '../../axiosConfig';
@@ -23,6 +23,7 @@ import {
   ApiResponse
 } from '@/services/productService';
 import { useRouter } from 'next/navigation';
+import { fetchOrderList, updateOrder, deleteOrder } from '@/services/orderService';
 
 // Enum cho các loại hành động
 export enum ActionType {
@@ -139,7 +140,20 @@ interface AppContextProps {
   setSelectedProductCategory: (category: ProductCategory | null) => void;
   
   // Order Actions
-  fetchOrders: () => Promise<void>;
+  fetchOrders: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) => Promise<{
+    data: OrderAttributes[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>;
   fetchOrderById: (id: number) => Promise<void>;
   createOrder: (order: OrderAttributes) => Promise<boolean>;
   updateOrder: (id: number, order: OrderAttributes) => Promise<boolean>;
@@ -160,6 +174,8 @@ interface AppContextProps {
   productStatus: 'draft' | 'active' | 'deleted';
   toggleProductStatus: (status: 'draft' | 'active' | 'deleted') => void;
   setSelectedProduct: (product: ProductAttributes | null) => void;
+
+  showMessage: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -203,6 +219,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Product Status State
   const [productStatus, setProductStatus] = useState<'draft' | 'active' | 'deleted'>('active');
+
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  const showMessage = useCallback((message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setSnackbar({ ...snackbar, open: false });
+  }, [snackbar]);
 
   // ====================== SHARED METHODS ======================
   
@@ -570,114 +604,102 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const activateProduct = useCallback(async (id: number) => {
     try {
       setLoading(true);
-      setCurrentAction(ActionType.EDIT, 'product', id);
-      
-      const result = await activateProductService(id) as ApiResponse;
+      const result = await activateProductService(id);
       
       if (result.success) {
-        message.success('Product activated successfully');
+        showMessage('Product activated successfully', 'success');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
-        setError(null);
         return true;
       } else {
         setError(result.message);
-        message.error(result.message || 'Failed to activate product');
+        showMessage(result.message || 'Failed to activate product', 'error');
         return false;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
       setError(errorMessage);
-      message.error(errorMessage);
+      showMessage(errorMessage, 'error');
       return false;
     } finally {
       setLoading(false);
     }
-  }, [fetchProducts, setCurrentAction]);
+  }, [fetchProducts, setCurrentAction, showMessage]);
 
   const restoreProduct = useCallback(async (id: number) => {
     try {
       setLoading(true);
-      setCurrentAction(ActionType.EDIT, 'product', id);
-      
-      const result = await restoreProductService(id) as ApiResponse;
+      const result = await restoreProductService(id);
       
       if (result.success) {
-        message.success('Product restored successfully');
+        showMessage('Product restored successfully', 'success');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
-        setError(null);
         return true;
       } else {
         setError(result.message);
-        message.error(result.message || 'Failed to restore product');
+        showMessage(result.message || 'Failed to restore product', 'error');
         return false;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
       setError(errorMessage);
-      message.error(errorMessage);
+      showMessage(errorMessage, 'error');
       return false;
     } finally {
       setLoading(false);
     }
-  }, [fetchProducts, setCurrentAction]);
+  }, [fetchProducts, setCurrentAction, showMessage]);
 
   const permanentlyDeleteProduct = useCallback(async (id: number) => {
     try {
       setLoading(true);
-      setCurrentAction(ActionType.DELETE, 'product', id);
-      
-      const result = await permanentlyDeleteProductService(id) as ApiResponse;
+      const result = await permanentlyDeleteProductService(id);
       
       if (result.success) {
-        message.success('Product permanently deleted successfully');
+        showMessage('Product permanently deleted successfully', 'success');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
-        setError(null);
         return true;
       } else {
         setError(result.message);
-        message.error(result.message || 'Failed to permanently delete product');
+        showMessage(result.message || 'Failed to permanently delete product', 'error');
         return false;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
       setError(errorMessage);
-      message.error(errorMessage);
+      showMessage(errorMessage, 'error');
       return false;
     } finally {
       setLoading(false);
     }
-  }, [fetchProducts, setCurrentAction]);
+  }, [fetchProducts, setCurrentAction, showMessage]);
 
   const changeProductStatus = useCallback(async (productId: number, status: string) => {
     try {
       setLoading(true);
-      setCurrentAction(ActionType.EDIT, 'product', productId);
-      
-      const result = await changeProductStatusService(productId, status) as ApiResponse;
+      const result = await changeProductStatusService(productId, status);
       
       if (result.success) {
-        message.success(`Product status changed to ${status} successfully`);
+        showMessage(`Product status changed to ${status} successfully`, 'success');
         await fetchProducts();
         setCurrentAction(ActionType.NONE, null);
-        setError(null);
         return true;
       } else {
         setError(result.message);
-        message.error(result.message || 'Failed to change product status');
+        showMessage(result.message || 'Failed to change product status', 'error');
         return false;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
       setError(errorMessage);
-      message.error(errorMessage);
+      showMessage(errorMessage, 'error');
       return false;
     } finally {
       setLoading(false);
     }
-  }, [fetchProducts, setCurrentAction]);
+  }, [fetchProducts, setCurrentAction, showMessage]);
 
   // Clear selected product
   const clearSelectedProduct = useCallback(() => {
@@ -771,13 +793,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ====================== ORDER METHODS ======================
   
   // Lấy tất cả đơn hàng
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) => {
     try {
       setLoading(true);
-      // TODO: Sử dụng OrderService
       setError(null);
+      const result = await fetchOrderList(params) as {
+        data: OrderAttributes[],
+        pagination: { total: number; page: number; limit: number; totalPages: number }
+      };
+      if (result && result.data) {
+        setOrders(result.data);
+        return result;
+      }
+      return {
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+      return {
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
     } finally {
       setLoading(false);
     }
@@ -815,11 +867,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [fetchOrders, setCurrentAction]);
 
   // Cập nhật đơn hàng
-  const updateOrder = useCallback(async (id: number, order: OrderAttributes) => {
+  const updateOrderHandle = useCallback(async (id: number, order: OrderAttributes) => {
     try {
       setLoading(true);
       setCurrentAction(ActionType.EDIT, 'order', id);
-      // TODO: Sử dụng OrderService
+      await updateOrder({ ...order, id });
       await fetchOrders();
       setError(null);
       return true;
@@ -832,11 +884,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [fetchOrders, setCurrentAction]);
 
   // Xóa đơn hàng
-  const deleteOrder = useCallback(async (id: number) => {
+  const deleteOrderHandle = useCallback(async (id: number) => {
     try {
       setLoading(true);
       setCurrentAction(ActionType.DELETE, 'order', id);
       // TODO: Sử dụng OrderService
+      await deleteOrder(id);
       await fetchOrders();
       setCurrentAction(ActionType.NONE, null);
       setError(null);
@@ -981,8 +1034,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     fetchOrders,
     fetchOrderById,
     createOrder,
-    updateOrder,
-    deleteOrder,
+    updateOrder: updateOrderHandle,
+    deleteOrder: deleteOrderHandle,
     clearSelectedOrder,
     
     // Shared Actions
@@ -993,9 +1046,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Product Status
     productStatus,
     toggleProductStatus,
+
+    showMessage,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}>
+    {children}
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={6000}
+      onClose={handleClose}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+    >
+      <Alert onClose={handleClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+  </AppContext.Provider>;
 };
 
 // Custom hook để sử dụng app context

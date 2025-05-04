@@ -8,7 +8,8 @@ import {
   IconTablePlus,
 } from "@tabler/icons-react";
 
-import { uniqueId } from "lodash";
+let counter = 0;
+const uniqueId = () => `id-${counter++}`;
 
 const Menuitems = [
   {

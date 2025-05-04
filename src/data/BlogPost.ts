@@ -1,4 +1,3 @@
-
 export interface BlogPostAttributes {
   id: number;
   title: string;
@@ -13,6 +12,7 @@ export interface BlogPostAttributes {
   createdAt: Date;
   updatedAt: Date;
   blogCategoryId: number; // Thêm trường blogCategoryId
+  status: 'published' | 'draft' | 'archived';
 }
 
 export const initBlog = {
@@ -29,4 +29,5 @@ export const initBlog = {
   createdAt: new Date(),
   updatedAt: new Date(),
   blogCategoryId: 0, // Thêm trường blogCategoryId
+  status: 'draft' as const
 };

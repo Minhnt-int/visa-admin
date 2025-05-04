@@ -18,7 +18,6 @@ const SidebarItems = ({ toggleMobileSidebar }: any) => {
             return <NavGroup item={item} key={item.subheader} />;
 
             // {/********If Sub Menu**********/}
-            /* eslint no-else-return: "off" */
           } else {
             return (
               <NavItem

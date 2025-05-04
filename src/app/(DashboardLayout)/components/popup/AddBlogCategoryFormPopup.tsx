@@ -1,33 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Input, DatePicker, Select } from 'antd';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress } from '@mui/material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Box,
+  CircularProgress
+} from '@/config/mui';
 import dayjs from 'dayjs';
 import { BlogCategory } from '@/data/blogCategory';
-import AIResultPopup from './AIResultPopup';
 import { useAppContext } from '@/contexts/AppContext';
+import { SelectChangeEvent } from '@mui/material';
 
-interface AddFormPopupProps {
+interface AddBlogCategoryFormPopupProps {
   open: boolean;
-  isView: boolean;
   onClose: () => void;
-  onChange: (data: { name: string; value: any }) => void;
-  onSubmit: () => void;
-  formData: BlogCategory;
-  categoryId?: number | null;
+  onSubmit: (data: BlogCategory) => void;
+  formData?: BlogCategory;
+  isView?: boolean;
 }
 
-const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
+const AddBlogCategoryFormPopup: React.FC<AddBlogCategoryFormPopupProps> = ({
   open,
-  isView,
   onClose,
-  onChange,
   onSubmit,
   formData,
-  categoryId
+  isView = false
 }) => {
+  const [formState, setFormState] = useState<BlogCategory>({
+    id: 0,
+    name: '',
+    slug: '',
+    status: 'active',
+    avatarUrl: '',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isAIResultOpen, setIsAIResultOpen] = useState(false);
-  const [localFormData, setLocalFormData] = useState<BlogCategory | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
 
   const {
@@ -36,20 +53,20 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
   } = useAppContext();
 
   useEffect(() => {
-    if (open && categoryId) {
+    if (open && formData?.id) {
       setDataLoading(true);
       // Kiểm tra xem đã có dữ liệu trong blogCategories chưa
-      const existingCategory = blogCategories.find(cat => cat.id === categoryId);
+      const existingCategory = blogCategories.find(cat => cat.id === formData.id);
       if (existingCategory) {
-        setLocalFormData(existingCategory);
+        setFormState(existingCategory);
         setDataLoading(false);
       } else {
         // Nếu không, fetch lại danh sách để đảm bảo có dữ liệu mới nhất
         fetchBlogCategories()
           .then(() => {
-            const category = blogCategories.find(cat => cat.id === categoryId);
+            const category = blogCategories.find(cat => cat.id === formData.id);
             if (category) {
-              setLocalFormData(category);
+              setFormState(category);
             }
           })
           .finally(() => {
@@ -57,13 +74,41 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
           });
       } 
     }
-  }, [open, categoryId, fetchBlogCategories, blogCategories]);
+  }, [open, formData?.id, fetchBlogCategories, blogCategories]);
 
   useEffect(() => {
     if (formData) {
-      setLocalFormData(formData);
+      const newFormState = { ...formData };
+      if (typeof formData.createdAt === 'string') {
+        newFormState.createdAt = dayjs(formData.createdAt).toDate();
+      }
+      if (typeof formData.updatedAt === 'string') {
+        newFormState.updatedAt = dayjs(formData.updatedAt).toDate();
+      }
+      setFormState(newFormState);
     }
   }, [formData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<number | string>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSubmit = () => {
+    onSubmit(formState);
+    onClose();
+  };
 
   const handleGenerateContent = async () => {
     try {
@@ -74,7 +119,7 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + (localFormData?.name || formData?.name)
+          content: "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + formState.name
         }),
       });
       
@@ -93,12 +138,11 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
     }
   };
 
-  const categoryData = localFormData || formData;
-  const title = isView ? 'View Category' : 'Add New Category';
+  const title = isView ? 'Xem chi tiết danh mục' : formData ? 'Sửa danh mục' : 'Thêm danh mục mới';
 
   if (dataLoading) {
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle>Loading...</DialogTitle>
         <DialogContent style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
           <CircularProgress />
@@ -109,132 +153,62 @@ const AddBlogCategoryFormPopup: React.FC<AddFormPopupProps> = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle>{title}</DialogTitle>
         <DialogContent>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
-            <Input
-              placeholder="Name"
-              value={categoryData?.name || ""}
-              disabled={isView}
-              onChange={(e) => onChange({ name: 'name', value: e.target.value })}
-              style={{ flex: 1 }}
-            />
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleGenerateContent}
-              disabled={isView || !categoryData?.name || isLoading}
-              startIcon={isLoading ? <CircularProgress size={20} /> : null}
-            >
-              Viết bài (AI)
-            </Button>
-          </div>
-
-          <Input
-            placeholder="Slug"
-            value={categoryData?.slug || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <div style={{ marginBottom: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Parent Category</p>
-            <Select
-              style={{ width: '100%' }}
-              placeholder="Select parent category"
-              value={categoryData?.parentId || undefined}
-              onChange={(value) => onChange({ name: 'parentId', value })}
-              disabled={isView}
-              options={blogCategories.map(category => ({
-                value: category.id,
-                label: category.name
-              }))}
-            />
-          </div>
-
-          <div style={{ marginBottom: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Avatar URL</p>
-            <Input
-              placeholder="Avatar URL"
-              value={categoryData?.avatarUrl || ""}
-              disabled={isView}
-              onChange={(e) => onChange({ name: 'avatarUrl', value: e.target.value })}
-              style={{ marginBottom: "8px" }}
-            />
-            {categoryData?.avatarUrl && (
-              <div style={{ marginTop: "8px", textAlign: "center" }}>
-                <img 
-                  src={`${process.env.NEXT_PUBLIC_API_URL}${categoryData.avatarUrl}`} 
-                  alt="Avatar Preview" 
-                  style={{ 
-                    maxWidth: "100%", 
-                    maxHeight: "200px", 
-                    objectFit: "contain",
-                    border: "1px solid #eee",
-                    borderRadius: "4px",
-                    padding: "4px"
-                  }} 
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Tên danh mục"
+                  name="name"
+                  value={formState.name}
+                  onChange={handleInputChange}
+                  disabled={isView}
+                  required
                 />
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ width: "50%" }}>
-              <p style={{ marginBottom: "8px" }}>Created At</p>
-              <DatePicker
-                value={categoryData?.createdAt ? dayjs(categoryData?.createdAt) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: 'createdAt',
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-                format="YYYY-MM-DD HH:mm:ss"
-                showTime
-                disabled={true}
-                style={{ width: "100%" }}
-                getPopupContainer={(trigger) => trigger.parentElement!}
-              />
-            </div>
-            
-            <div style={{ width: "50%" }}>
-              <p style={{ marginBottom: "8px" }}>Updated At</p>
-              <DatePicker
-                value={categoryData?.updatedAt ? dayjs(categoryData?.updatedAt) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: 'updatedAt',
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-                format="YYYY-MM-DD HH:mm:ss"
-                showTime
-                disabled={true}
-                style={{ width: "100%" }}
-                getPopupContainer={(trigger) => trigger.parentElement!}
-              />
-            </div>
-          </div>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Slug"
+                  name="slug"
+                  value={formState.slug}
+                  onChange={handleInputChange}
+                  disabled={isView}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    name="status"
+                    value={formState.status}
+                    onChange={handleSelectChange}
+                    disabled={isView}
+                    label="Trạng thái"
+                  >
+                    <MenuItem value="active">Hoạt động</MenuItem>
+                    <MenuItem value="inactive">Không hoạt động</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose} color="inherit">
+            Hủy
+          </Button>
           {!isView && (
-            <Button onClick={onSubmit} variant="contained" color="primary">
-              Submit
+            <Button onClick={handleSubmit} color="primary" variant="contained">
+              {formData ? 'Cập nhật' : 'Thêm mới'}
             </Button>
           )}
         </DialogActions>
       </Dialog>
-
-      <AIResultPopup
-        open={isAIResultOpen}
-        onClose={() => setIsAIResultOpen(false)}
-        formData={categoryData}
-        type="blog"
-      />
     </>
   );
 };

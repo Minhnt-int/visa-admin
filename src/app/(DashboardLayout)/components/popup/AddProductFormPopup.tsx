@@ -1,37 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { Input, DatePicker, Button as AntButton, Space, Divider } from 'antd';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, IconButton } from '@mui/material';
-import dayjs from 'dayjs';
-import _ from 'lodash';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Box,
+  Typography
+} from '@/config/mui';
 import { ProductAttributes, ProductItemAttributes, ProductMedia } from '@/data/ProductAttributes';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import Editor from "../editor/Editor"
-import AIResultPopup from './AIResultPopup';
 import { useAppContext } from '@/contexts/AppContext';
+import { ProductCategory } from '@/data/ProductCategory';
+import { SelectChangeEvent } from '@mui/material';
 
-interface AddFormPopupProps {
+interface AddProductFormPopupProps {
   open: boolean;
   isView: boolean;
   onClose: () => void;
   onChange: (data: { name: string; value: any }) => void;
-  onSubmit: () => void;
+  onSubmit: (data: ProductAttributes) => void;
   formData: ProductAttributes;
   slug?: string;
+  categories: ProductCategory[];
 }
 
-const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
+const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
   open,
   isView,
   onClose,
   onChange,
   onSubmit,
   formData,
-  slug
+  slug,
+  categories
 }) => {
   const [isAIResultOpen, setIsAIResultOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [localFormData, setLocalFormData] = useState<ProductAttributes | null>(null);
+  const [formState, setFormState] = useState<ProductAttributes>({
+    id: 0,
+    name: '',
+    description: '',
+    categoryId: 0,
+    slug: '',
+    metaTitle: '',
+    metaDescription: '',
+    metaKeywords: '',
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    media: [],
+    items: []
+  });
 
   const {
     selectedProduct,
@@ -55,6 +81,33 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
       setLocalFormData(formData);
     }
   }, [selectedProduct, formData]);
+
+  useEffect(() => {
+    if (formData) {
+      setFormState(formData);
+    }
+  }, [formData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<number | string>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSubmit = () => {
+    onSubmit(formState);
+    onClose();
+  };
 
   // Hàm để xử lý thay đổi trong mảng items
   const handleItemChange = (index: number, field: string, value: any) => {
@@ -179,301 +232,111 @@ const AddProductFormPopup: React.FC<AddFormPopupProps> = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>{title}</DialogTitle>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {isView ? 'Xem chi tiết sản phẩm' : formData ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
+        </DialogTitle>
+
         <DialogContent>
-          {/* Basic Information */}
-          <Input
-            placeholder="Name"
-            value={productToDisplay?.name || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'name', value: e.target.value })}
-          />
-
-          <Editor
-            disabled={isView}
-            value={productToDisplay?.description || ""}
-            onChange={(content) => onChange({ name: 'description', value: content })}
-            placeholder="Description"
-          />
-
-          <Input
-            placeholder="shortDescription"
-            value={productToDisplay?.shortDescription || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'shortDescription', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-          <Input
-            placeholder="Category ID"
-            type="number"
-            value={productToDisplay?.categoryId || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'categoryId', value: Number(e.target.value) || 0 })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Slug"
-            value={productToDisplay?.slug || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          {/* Meta Information */}
-          <h4>Meta Information</h4>
-          <Input
-            placeholder="Meta Title"
-            value={productToDisplay?.metaTitle || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'metaTitle', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Meta Description"
-            value={productToDisplay?.metaDescription || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'metaDescription', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Meta Keywords"
-            value={productToDisplay?.metaKeywords || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'metaKeywords', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          {/* Dates */}
-          <h4>Dates</h4>
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <DatePicker
-              value={productToDisplay?.createdAt ? dayjs(productToDisplay.createdAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'createdAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD"
-              disabled={true}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
-            />
-
-            <DatePicker
-              value={productToDisplay?.updatedAt ? dayjs(productToDisplay.updatedAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'updatedAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD"
-              disabled={true}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
-            />
-          </div>
-
-          {/* Media Section */}
-          <div style={{ marginBottom: "16px", border: "1px solid #eee", padding: "10px" }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4>Media</h4>
-              {!isView && (
-                <IconButton
-                  color="primary"
-                  onClick={handleAddMedia}
-                >
-                  <AddIcon />
-                </IconButton>
-              )}
-            </div>
-
-            {productToDisplay?.media && productToDisplay.media.map((media, index) => (
-              <div key={index} style={{ border: '1px dashed #ccc', padding: '10px', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                  <h5>Media {index + 1}</h5>
-                  {!isView && (
-                    <IconButton
-                      color="error"
-                      size="small"
-                      onClick={() => handleRemoveMedia(index)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </div>
-
-                <Input
-                  placeholder="Type"
-                  value={media.type || ""}
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Tên sản phẩm"
+                  name="name"
+                  value={formState.name}
+                  onChange={handleInputChange}
                   disabled={isView}
-                  onChange={(e) => handleMediaChange(index, 'type', e.target.value)}
-                  style={{ marginBottom: "8px" }}
+                  required
                 />
-
-                <Input
-                  placeholder="URL"
-                  value={media.url || ""}
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Slug"
+                  name="slug"
+                  value={formState.slug}
+                  onChange={handleInputChange}
                   disabled={isView}
-                  onChange={(e) => handleMediaChange(index, 'url', e.target.value)}
-                  style={{ marginBottom: "8px" }}
+                  required
                 />
-                {media.url && (
-                  <div style={{ margin: "8px 0", textAlign: "center" }}>
-                    <img
-                      src={`${process.env.NEXT_PUBLIC_API_URL}${media.url}`}
-                      alt="Avatar Preview"
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "200px",
-                        objectFit: "contain",
-                        border: "1px solid #eee",
-                        borderRadius: "4px",
-                        padding: "4px"
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <DatePicker
-                    value={media.createdAt ? dayjs(media.createdAt) : null}
-                    onChange={(date) => {
-                      handleMediaChange(index, 'createdAt', date ? date.toISOString() : null);
-                    }}
-                    format="YYYY-MM-DD"
-                    disabled={true}
-                    style={{ width: "100%", marginBottom: "8px" }}
-                    getPopupContainer={(trigger) => trigger.parentElement!}
-                  />
-
-                  <DatePicker
-                    value={media.updatedAt ? dayjs(media.updatedAt) : null}
-                    onChange={(date) => {
-                      handleMediaChange(index, 'updatedAt', date ? date.toISOString() : null);
-                    }}
-                    format="YYYY-MM-DD"
-                    disabled={true}
-                    style={{ width: "100%", marginBottom: "8px" }}
-                    getPopupContainer={(trigger) => trigger.parentElement!}
-                  />
-                </div>
-              </div>
-            ))}
-
-            {(!productToDisplay?.media || productToDisplay.media.length === 0) && (
-              <div style={{ textAlign: 'center', color: '#999', padding: '10px' }}>
-                No media. Click + to add.
-              </div>
-            )}
-          </div>
-
-          {/* Items Section */}
-          <div style={{ marginBottom: "16px", border: "1px solid #eee", padding: "10px" }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4>Product Variants</h4>
-              {!isView && (
-                <IconButton
-                  color="primary"
-                  onClick={handleAddItem}
-                >
-                  <AddIcon />
-                </IconButton>
-              )}
-            </div>
-
-            {productToDisplay?.items && productToDisplay.items.map((item, index) => (
-              <div key={index} style={{ border: '1px dashed #ccc', padding: '10px', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                  <h5>Variant {index + 1}</h5>
-                  {!isView && (
-                    <IconButton
-                      color="error"
-                      size="small"
-                      onClick={() => handleRemoveItem(index)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </div>
-
-                <Input
-                  placeholder="Name"
-                  value={item.name || ""}
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Mô tả"
+                  name="description"
+                  value={formState.description}
+                  onChange={handleInputChange}
                   disabled={isView}
-                  onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                  style={{ marginBottom: "8px" }}
+                  multiline
+                  rows={4}
                 />
-
-                <Input
-                  placeholder="Color"
-                  value={item.color || ""}
-                  disabled={isView}
-                  onChange={(e) => handleItemChange(index, 'color', e.target.value)}
-                  style={{ marginBottom: "8px" }}
-                />
-
-                <Input
-                  placeholder="Price"
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Giá"
+                  name="price"
                   type="number"
-                  value={item.price || ""}
+                  value={formState?.items[0]?.price}
+                  onChange={handleInputChange}
                   disabled={isView}
-                  onChange={(e) => handleItemChange(index, 'price', Number(e.target.value) || 0)}
-                  style={{ marginBottom: "8px" }}
+                  required
+                  InputProps={{
+                    startAdornment: <Typography>₫</Typography>
+                  }}
                 />
-
-                <Input
-                  placeholder="Original Price"
-                  type="number"
-                  value={item.originalPrice || ""}
-                  disabled={isView}
-                  onChange={(e) => handleItemChange(index, 'originalPrice', Number(e.target.value) || 0)}
-                  style={{ marginBottom: "8px" }}
-                />
-
-                <Input
-                  placeholder="Status"
-                  value={item.status || ""}
-                  disabled={isView}
-                  onChange={(e) => handleItemChange(index, 'status', e.target.value)}
-                  style={{ marginBottom: "8px" }}
-                />
-              </div>
-            ))}
-
-            {(!productToDisplay?.items || productToDisplay.items.length === 0) && (
-              <div style={{ textAlign: 'center', color: '#999', padding: '10px' }}>
-                No variants. Click + to add.
-              </div>
-            )}
-          </div>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Danh mục</InputLabel>
+                  <Select
+                    name="categoryId"
+                    value={formState.categoryId || ''}
+                    onChange={handleSelectChange}
+                    disabled={isView}
+                    label="Danh mục"
+                  >
+                    <MenuItem value="">Chọn danh mục</MenuItem>
+                    {categories.map(category => (
+                      <MenuItem key={category.id} value={category.id}>
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    name="status"
+                    value={formState.status}
+                    onChange={handleSelectChange}
+                    disabled={isView}
+                    label="Trạng thái"
+                  >
+                    <MenuItem value="active">Hoạt động</MenuItem>
+                    <MenuItem value="inactive">Không hoạt động</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose} color="inherit">
+            Hủy
+          </Button>
           {!isView && (
-            <>
-              <Button onClick={handleAISuggestion} variant="outlined">
-                Gợi Ý (AI)
-              </Button>
-              <Button onClick={onSubmit} variant="contained" color="primary">
-                Submit
-              </Button>
-            </>
+            <Button onClick={handleSubmit} color="primary" variant="contained">
+              {formData ? 'Cập nhật' : 'Thêm mới'}
+            </Button>
           )}
         </DialogActions>
       </Dialog>
-
-      <AIResultPopup
-        open={isAIResultOpen}
-        onClose={() => setIsAIResultOpen(false)}
-        formData={productToDisplay}
-        type="product"
-      />
     </>
   );
 };

@@ -1,35 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { Input, DatePicker } from 'antd';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box } from '@mui/material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Box,
+  Typography
+} from '@/config/mui';
 import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes } from '@/data/BlogPost';
-import AIResultPopup from './AIResultPopup';
 import { useAppContext } from '@/contexts/AppContext';
 import { fetchBlogList } from '@/services/blogService';
+import { BlogCategory } from '@/data/blogCategory';
+import { SelectChangeEvent } from '@mui/material';
 
-interface AddFormPopupProps {
+interface AddBlogFormPopupProps {
   open: boolean;
   isView: boolean;
   onClose: () => void;
   onChange: (data: { name: string; value: any }) => void;
-  onSubmit: () => void;
+  onSubmit: (data: BlogPostAttributes) => void;
   formData: BlogPostAttributes;
   slug?: string;
+  categories: BlogCategory[];
 }
 
-const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
+const AddBlogFormPopup: React.FC<AddBlogFormPopupProps> = ({
   open,
   isView,
   onClose,
   onChange,
   onSubmit,
   formData,
-  slug
+  slug,
+  categories
 }) => {
   const [isAIResultOpen, setIsAIResultOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [localFormData, setLocalFormData] = useState<BlogPostAttributes | null>(null);
+  const [formState, setFormState] = useState<BlogPostAttributes>({
+    id: 0,
+    title: '',
+    slug: '',
+    content: '',
+    blogCategoryId: 0,
+    status: 'draft',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    avatarUrl: '',
+    metaTitle: '',
+    metaDescription: '',
+    metaKeywords: '',
+    author: '',
+    publishedAt: new Date()
+  });
   
   const { blogs } = useAppContext();
 
@@ -57,7 +89,7 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
 
   useEffect(() => {
     if (formData) {
-      setLocalFormData(formData);
+      setFormState(formData);
     }
   }, [formData]);
 
@@ -68,6 +100,27 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
   const title = isView ? "View Blog Post" : "Edit Blog Post";
   
   const blogToDisplay = localFormData || formData;
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormState( (prev: any) => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<number | string>) => {
+    const { name, value } = e.target;
+    setFormState( (prev: any) => ({
+      ...prev,
+      [name as string]: value
+    }));
+  };
+
+  const handleSubmit = () => {
+    onSubmit(formState);
+    onClose();
+  };
 
   if (loading) {
     return (
@@ -82,181 +135,95 @@ const AddBlogFormPopup: React.FC<AddFormPopupProps> = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>{title}</DialogTitle>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {isView ? 'Xem chi tiết bài viết' : formData ? 'Sửa bài viết' : 'Thêm bài viết mới'}
+        </DialogTitle>
         <DialogContent>
-          {/* Basic Information */}
-          <h4 style={{ marginTop: "16px" }}>Blog Post Information</h4>
-          
-          <Input
-            placeholder="Title"
-            value={blogToDisplay?.title || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'title', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Slug"
-            value={blogToDisplay?.slug || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'slug', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-                    <Input
-            placeholder="avatarUrl"
-            value={blogToDisplay?.avatarUrl || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'avatarUrl', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-{blogToDisplay?.avatarUrl && (
-          <Box sx={{ mb: 2, textAlign: 'center' }}>
-            <img
-              src={`${process.env.NEXT_PUBLIC_API_URL}${blogToDisplay?.avatarUrl}`}
-              alt="Avatar Preview"
-              style={{
-                maxWidth: '100%',
-                maxHeight: 200,
-                objectFit: 'contain',
-                border: '1px solid #eee',
-                borderRadius: 4,
-                padding: 4
-              }}
-            />
+          <Box sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Tiêu đề"
+                  name="title"
+                  value={formState.title}
+                  onChange={handleInputChange}
+                  disabled={isView}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Slug"
+                  name="slug"
+                  value={formState.slug}
+                  onChange={handleInputChange}
+                  disabled={isView}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Nội dung"
+                  name="content"
+                  value={formState.content}
+                  onChange={handleInputChange}
+                  disabled={isView}
+                  multiline
+                  rows={4}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Danh mục</InputLabel>
+                  <Select
+                    name="blogCategoryId"
+                    value={formState.blogCategoryId || ''}
+                    onChange={handleSelectChange}
+                    disabled={isView}
+                    label="Danh mục"
+                  >
+                    <MenuItem value="">Chọn danh mục</MenuItem>
+                    {categories.map(category => (
+                      <MenuItem key={category.id} value={category.id}>
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    name="status"
+                    value={formState.status}
+                    onChange={handleSelectChange}
+                    disabled={isView}
+                    label="Trạng thái"
+                  >
+                    <MenuItem value="active">Hoạt động</MenuItem>
+                    <MenuItem value="inactive">Không hoạt động</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
           </Box>
-        )}
-
-          <Input
-            placeholder="Author"
-            value={blogToDisplay?.author || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'author', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Blog Category ID"
-            type="number"
-            value={blogToDisplay?.blogCategoryId || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'blogCategoryId', value: Number(e.target.value) || 0 })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <div style={{ marginBottom: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Content</p>
-            <Editor 
-              disabled={isView} 
-              value={blogToDisplay?.content || ""}
-              onChange={(content) => onChange({ name: 'content', value: content })}
-              placeholder="Content"
-            />
-          </div>
-
-          {/* SEO Information */}
-          <h4>SEO Information</h4>
-          <Input
-            placeholder="Meta Title"
-            value={blogToDisplay?.metaTitle || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'metaTitle', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Meta Description"
-            value={blogToDisplay?.metaDescription || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'metaDescription', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          <Input
-            placeholder="Meta Keywords"
-            value={blogToDisplay?.metaKeywords || ""}
-            disabled={isView}
-            onChange={(e) => onChange({ name: 'metaKeywords', value: e.target.value })}
-            style={{ marginBottom: "16px" }}
-          />
-
-          {/* Dates */}
-          <h4>Dates</h4>
-          
-          <div style={{ marginBottom: "16px" }}>
-            <p style={{ marginBottom: "8px" }}>Published Date</p>
-            <DatePicker
-              value={blogToDisplay?.publishedAt ? dayjs(blogToDisplay?.publishedAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'publishedAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-              format="YYYY-MM-DD HH:mm:ss"
-              showTime
-              disabled={isView}
-              style={{ width: "100%" }}
-              getPopupContainer={(trigger) => trigger.parentElement!}
-            />
-          </div>
-          
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ width: "50%" }}>
-              <p style={{ marginBottom: "8px" }}>Created At</p>
-              <DatePicker
-                value={blogToDisplay?.createdAt ? dayjs(blogToDisplay?.createdAt) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: 'createdAt',
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-                format="YYYY-MM-DD HH:mm:ss"
-                showTime
-                disabled={true}
-                style={{ width: "100%" }}
-                getPopupContainer={(trigger) => trigger.parentElement!}
-              />
-            </div>
-            
-            <div style={{ width: "50%" }}>
-              <p style={{ marginBottom: "8px" }}>Updated At</p>
-              <DatePicker
-                value={blogToDisplay?.updatedAt ? dayjs(blogToDisplay?.updatedAt) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: 'updatedAt',
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-                format="YYYY-MM-DD HH:mm:ss"
-                showTime
-                disabled={true}
-                style={{ width: "100%" }}
-                getPopupContainer={(trigger) => trigger.parentElement!}
-              />
-            </div>
-          </div>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          {/* <Button onClick={handleAISuggestion} variant="outlined">
-            Gợi Ý (AI)
+          <Button onClick={onClose} color="inherit">
+            Hủy
           </Button>
-          <Button onClick={onSubmit} variant="contained" color="primary">
-            Submit
-          </Button> */}
+          {!isView && (
+            <Button onClick={handleSubmit} color="primary" variant="contained">
+              {formData ? 'Cập nhật' : 'Thêm mới'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
-
-      {/* <AIResultPopup
-        open={isAIResultOpen}
-        onClose={() => setIsAIResultOpen(false)}
-        formData={formData}
-        type="blog"
-      /> */}
     </>
   );
 };

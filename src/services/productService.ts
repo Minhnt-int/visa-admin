@@ -320,7 +320,7 @@ export const changeProductStatus = async (productId: number, status: string) => 
  */
 export const deleteProduct = async (productId: number) => {
   try {
-    const response = await axioss.put(`${API_BASE_URL}/api/product/delete`, { id: productId }, {
+    const response = await axioss.put(`${API_BASE_URL}/api/product/change-status`, { id: productId, status: 'deleted' }, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -360,47 +360,6 @@ export const createProductCategory = async (productCategoryData: ProductCategory
     return response.data;
   } catch (error) {
     console.error('Lỗi khi tạo sản phẩm:', error);
-    throw error;
-  }
-};
-
-/**
- * Cập nhật thông tin sản phẩm
- * @param {ProductAttributes} productData - Dữ liệu sản phẩm cần cập nhật
- * @returns {Promise<Object>} - Promise trả về kết quả cập nhật sản phẩm
- */
-export const updateProductCategory = async (productCategoryData: ProductCategory) => {
-  try {
-    // Sử dụng URL tương đối thay vì URL tuyệt đối
-    const response = await axioss.put('/api/product-category/update-category', productCategoryData, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      validateStatus: function (status) {
-        // Chấp nhận mã trạng thái 200 và 201 là thành công
-        return status >= 200 && status < 300;
-      }
-
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error('Lỗi khi cập nhật sản phẩm:', error);
-    throw error;
-  }
-};
-
-/**
- * Xóa sản phẩm theo ID
- * @param {number} productId - ID của sản phẩm cần xóa
- * @returns {Promise<Object>} - Promise trả về kết quả xóa sản phẩm
- */
-export const deleteProductCategory = async (productCategoryId: number) => {
-  try {
-    const response = await axioss.delete(`/api/product/delete/${productCategoryId}`);
-    return response.data;
-  } catch (error: any) {
-    console.error('Lỗi khi xóa sản phẩm:', error);
     throw error;
   }
 };
@@ -474,8 +433,8 @@ export const activateProduct = async (productId: number) => {
  */
 export const restoreProduct = async (productId: number) => {
   try {
-    const response = await axioss.put(`${API_BASE_URL}/api/product/restore`, 
-      { id: productId },
+    const response = await axioss.put(`${API_BASE_URL}/api/product/change-status`, 
+      { id: productId, status: 'draft' },
       {
         headers: {
           'Content-Type': 'application/json',

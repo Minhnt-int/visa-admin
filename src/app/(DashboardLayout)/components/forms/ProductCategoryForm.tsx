@@ -1,13 +1,28 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Select, Button, Space, Card, Row, Col, Image } from 'antd';
+import { 
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  Snackbar,
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  Grid
+} from '@/config/mui';
 import { ProductCategory } from '@/data/ProductCategory';
 import { useAppContext } from '@/contexts/AppContext';
 import dayjs from 'dayjs';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
+import { SelectChangeEvent } from '@mui/material';
 
 interface ProductCategoryFormProps {
   formData: ProductCategory;
@@ -42,10 +57,10 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
     }));
   };
   
-  const handleSelectChange = (value: number | null) => {
+  const handleSelectChange = (event: SelectChangeEvent<number | null>) => {
     setFormData(prev => ({
       ...prev,
-      parentId: value,
+      parentId: event.target.value as number | null,
     }));
   };
 
@@ -69,133 +84,106 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
   };
 
   return (
-    <Card>
-      <Form layout="vertical" style={{ maxWidth: 800, margin: '0 auto' }}>
-        <Form.Item 
-          label="Tên danh mục" 
-          required 
-          rules={[{ required: true, message: 'Vui lòng nhập tên danh mục' }]}
-        >
-          <Input
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            disabled={isView}
-            placeholder="Nhập tên danh mục"
-          />
-        </Form.Item>
-        
-        <Form.Item 
-          label="Slug" 
-          required
-          rules={[{ required: true, message: 'Vui lòng nhập slug' }]}
-        >
-          <Input
-            name="slug"
-            value={formData.slug}
-            onChange={handleChange}
-            disabled={isView}
-            placeholder="Nhập slug"
-          />
-        </Form.Item>
-        
-        <Form.Item label="Danh mục cha">
-          <Select
-            allowClear
-            placeholder="Chọn danh mục cha (nếu có)"
-            value={formData.parentId}
-            onChange={handleSelectChange}
-            disabled={isView}
-            options={productCategories
-              .filter(cat => cat.id !== formData.id) // Loại bỏ danh mục hiện tại
-              .map(category => ({
-                value: category.id,
-                label: category.name
-              }))}
-          />
-        </Form.Item>
-        
-        <Form.Item label="Hình ảnh">
-          <Row gutter={16}>
-            <Col span={16}>
-              <Input 
-                value={formData.avatarUrl || ''} 
-                onChange={(e) => handleChange({ target: { name: 'avatarUrl', value: e.target.value } } as React.ChangeEvent<HTMLInputElement>)}
-                disabled={isView}
-                placeholder="URL hình ảnh"
-              />
-            </Col>
-            <Col span={8}>
-              <Button 
-                type="primary" 
-                onClick={() => setMediaPopupOpen(true)} 
-                disabled={isView}
-              >
-                Chọn hình ảnh
-              </Button>
-            </Col>
-          </Row>
-          {formData.avatarUrl && (
-            <div style={{ marginTop: 16 }}>
-              <Image 
-                src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
-                alt="Category thumbnail" 
-                style={{ maxWidth: '100%', maxHeight: 200 }}
-              />
-            </div>
-          )}
-        </Form.Item>
-        
-        <Form.Item label="Mô tả">
-          {isView ? (
-            <div dangerouslySetInnerHTML={{ __html: formData.description || '' }} />
-          ) : (
-            <Input.TextArea
-              rows={6}
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              disabled={isView}
-              placeholder="Nhập mô tả"
-            />
-          )}
-        </Form.Item>
-        
-        <Form.Item>
-          <Space>
-            {isView ? (
-              <Button type="primary" onClick={onCancel}>
-                Quay lại
-              </Button>
-            ) : (
-              <>
-                <Button onClick={onCancel}>
-                  Hủy
-                </Button>
-                <Button type="primary" onClick={handleSubmitClick}>
-                  {isEdit ? 'Cập nhật' : 'Thêm mới'}
-                </Button>
-              </>
-            )}
-          </Space>
-        </Form.Item>
-      </Form>
+    <Card style={{ padding: 16 }}>
+      <FormControl fullWidth style={{ marginTop: 16 }}>
+        <label>Tên danh mục</label>
+        <TextField
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          disabled={isView}
+          placeholder="Nhập tên danh mục"
+        />
+      </FormControl>
       
-      <ConfirmPopup
-        open={confirmingPopup}
-        onClose={() => setConfirmingPopup(false)}
-        onSubmit={handleConfirm}
-        Content={isEdit 
-          ? "Xác nhận cập nhật danh mục này?"
-          : "Xác nhận tạo danh mục mới?"
-        }
-      />
+      <FormControl fullWidth style={{ marginTop: 16 }}>
+        <label>Slug</label>
+        <TextField
+          name="slug"
+          value={formData.slug}
+          onChange={handleChange}
+          disabled={isView}
+          placeholder="Nhập slug"
+        />
+      </FormControl>
+      
+      <FormControl fullWidth style={{ marginTop: 16 }}>
+        <label>Danh mục cha</label>
+        <Select
+          value={formData.parentId}
+          onChange={handleSelectChange}
+          disabled={isView}
+        >
+          {productCategories
+            .filter(cat => cat.id !== formData.id) // Loại bỏ danh mục hiện tại
+            .map(category => (
+              <MenuItem key={category.id} value={category.id}>
+                {category.name}
+              </MenuItem>
+            ))}
+        </Select>
+      </FormControl>
+      
+      <FormControl fullWidth style={{ marginTop: 16 }}>
+        <label>Hình ảnh</label>
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              name="avatarUrl"
+              value={formData.avatarUrl || ''}
+              onChange={(e) => handleChange({ target: { name: 'avatarUrl', value: e.target.value } } as React.ChangeEvent<HTMLInputElement>)}
+              disabled={isView}
+              placeholder="URL hình ảnh"
+              style={{ width: '100%' }}
+            />
+          </Grid>
+          <Grid item xs={4}>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={() => setMediaPopupOpen(true)} 
+              disabled={isView}
+            >
+              Chọn hình ảnh
+            </Button>
+          </Grid>
+        </Grid>
+        {formData.avatarUrl && (
+          <div style={{ marginTop: 16 }}>
+            <img 
+              src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
+              alt="Category thumbnail" 
+              style={{ maxWidth: '100%', maxHeight: 200 }}
+            />
+          </div>
+        )}
+      </FormControl>
       
       <MediaPopup
         open={mediaPopupOpen}
         onClose={() => setMediaPopupOpen(false)}
         onSelect={handleMediaSelect}
+        onSubmit={() => {}}
         listMedia={[]}
+      />
+
+      <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+        <Button variant="outlined" onClick={onCancel}>
+          Hủy
+        </Button>
+        {!isView && (
+          <Button variant="contained" color="primary" onClick={handleSubmitClick}>
+            {isEdit ? 'Cập nhật' : 'Tạo mới'}
+          </Button>
+        )}
+      </Box>
+
+      <ConfirmPopup
+        open={confirmingPopup}
+        onClose={() => setConfirmingPopup(false)}
+        onConfirm={handleConfirm}
+        title={isEdit ? "Xác nhận cập nhật" : "Xác nhận tạo mới"}
+        content={isEdit ? "Bạn có chắc chắn muốn cập nhật danh mục này?" : "Bạn có chắc chắn muốn tạo danh mục mới?"}
       />
     </Card>
   );
