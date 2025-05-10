@@ -5,7 +5,7 @@
   public name!: string;
   public slug!: string;
   public avatarUrl!: string;
-  public status!: string;
+  public status!: typeof BlogStatus[keyof typeof BlogStatus];
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
   }
@@ -19,3 +19,10 @@
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+
+  
+export const BlogStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};

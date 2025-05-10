@@ -73,7 +73,8 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
   }, [page, rowsPerPage]);
 
   const handleSelectBlog = (blog: BlogPostAttributes) => {
-    if (disabled) return;
+    // if (disabled) return;
+
     setSelectedBlog(blog);
     onBlogSelect(blog);
   };

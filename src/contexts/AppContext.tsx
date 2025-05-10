@@ -9,7 +9,17 @@ import { Snackbar, Alert } from '@/config/mui';
 import BlogCategoryService from '@/services/BlogCategoryService';
 import ProductCategoryService from '@/services/ProductCategoryService';
 import instance from '../../axiosConfig';
-import { fetchBlogList, fetchBlogBySlug, createBlog, updateBlog, deleteBlog } from '@/services/blogService';
+import { 
+  fetchBlogList, 
+  fetchBlogBySlug, 
+  createBlog, 
+  updateBlog, 
+  deleteBlog, 
+  changeBlogStatus, 
+  changeBlogCategoryStatus,
+  generateAIContent,
+  getAISuggestions
+} from '@/services/blogService';
 import { 
   fetchProductList, 
   fetchProductBySlug as fetchProductBySlugService, 
@@ -61,6 +71,8 @@ interface AppContextProps {
     totalPages: number;
   };
   selectedProduct: ProductAttributes | null;
+  activateProduct: (productId: number) => Promise<boolean>;
+  restoreProduct : (productId: number) => Promise<boolean>;
   
   // ProductCategory State
   productCategories: ProductCategory[];
@@ -83,7 +95,9 @@ interface AppContextProps {
   setSelectedBlogPost: (blog: BlogPostAttributes | null) => void;
   clearSelectedBlogPost: () => void;
   updateBlogPost: (blog: BlogPostAttributes) => Promise<boolean>;
-  createBlogPost: (blog: BlogPostAttributes) => Promise<boolean>;
+  createBlogPost: (blog: BlogPostAttributes) => Promise<any>; // Hoặc định nghĩa type cụ thể
+  changeBlogStatus: (id: number, status: string) => Promise<any>;
+  fetchBlogBySlug: (slug: string) => Promise<void>;
   
   // BlogCategory Actions
   fetchBlogCategories: (params?: {
@@ -100,9 +114,8 @@ interface AppContextProps {
   deleteBlogCategory: (id: number) => Promise<boolean>;
   clearSelectedBlogCategory: () => void;
   setSelectedBlogCategory: (category: BlogCategory | null) => void;
-  permanentlyDeleteProduct: (id: number) => Promise<boolean>;
-  activateProduct: (id: number) => Promise<boolean>;
-  restoreProduct: (id: number) => Promise<boolean>;
+  changeBlogCategoryStatus: (id: number, status: string) => Promise<any>;
+  
   // Product Actions
   fetchProducts: (params?: {
     page?: number;
@@ -119,8 +132,8 @@ interface AppContextProps {
   createProduct: (product: ProductAttributes) => Promise<boolean>;
   updateProduct: (id: number, product: ProductAttributes) => Promise<boolean>;
   deleteProduct: (id: number) => Promise<boolean>;
-  clearSelectedProduct: () => void;
   changeProductStatus: (productId: number, status: string) => Promise<boolean>;
+  permanentlyDeleteProduct: (id: number) => Promise<boolean>;
   
   // ProductCategory Actions
   fetchProductCategories: (params?: {
@@ -176,6 +189,10 @@ interface AppContextProps {
   setSelectedProduct: (product: ProductAttributes | null) => void;
 
   showMessage: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
+
+  // AI Actions
+  generateAIContent: (title: string, mode?: 'write' | 'evaluate') => Promise<{ data: string }>;
+  getAISuggestions: (content: string) => Promise<{ data: any }>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -239,7 +256,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [snackbar]);
 
   // ====================== SHARED METHODS ======================
-  
+
   // Action method (chung)
   const setCurrentAction = useCallback((
     type: ActionType, 
@@ -276,9 +293,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const selectBlog = useCallback((blog: BlogPostAttributes | null, actionType?: ActionType) => {
-    setSelectedBlog(blog);
-    if (blog) {
-      setCurrentAction(actionType || ActionType.VIEW, 'blog', blog.id, blog.slug);
+      setSelectedBlog(blog);
+      if (blog) {
+        setCurrentAction(actionType || ActionType.VIEW, 'blog', blog.id, blog.slug);
     }
   }, [selectedBlog, setCurrentAction]);
 
@@ -309,21 +326,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       const result = await BlogCategoryService.getAllCategories(params);
-      console.log("Blog Categories API Response:", result); // Debug log
       
       if (result.success) {
         // Đảm bảo result.data là một mảng
         const categories = result.data ? result.data : [];
-        console.log("Processed Blog Categories:", categories); // Debug log
         setBlogCategories(categories.categories);
         setError(null);
       } else {
-        console.error("API Error:", result.message); // Debug log
         setError(result.message);
         setBlogCategories([]);
       }
     } catch (err) {
-      console.error("Fetch Error:", err); // Debug log
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
       setBlogCategories([]);
     } finally {
@@ -336,19 +349,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       const result = await BlogCategoryService.getCategoryBySlug(slug);
-      console.log("API Response by ID:", result); // Debug log
       
       if (result.success) {
         setSelectedBlogCategory(result.data);
         setCurrentAction(ActionType.VIEW, 'blogCategory', result.data.id);
         setError(null);
       } else {
-        console.error("API Error by ID:", result.message); // Debug log
         setError(result.message);
         setSelectedBlogCategory(null);
       }
     } catch (err) {
-      console.error("Fetch Error by ID:", err); // Debug log
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
     } finally {
       setLoading(false);
@@ -428,6 +438,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [fetchBlogCategories, setCurrentAction]);
 
+  // Thay đổi trạng thái danh mục blog
+  const changeBlogCategoryStatus = useCallback(async (id: number, status: string) => {
+    try {
+      setLoading(true);
+      const result = await BlogCategoryService.changeBlogCategoryStatus(id, status);
+      
+      if (result.success) {
+        showMessage(`Đã cập nhật trạng thái danh mục thành ${status === 'active' ? 'hoạt động' : status === 'draft' ? 'bản nháp' : 'đã xóa'}`, 'success');
+        await fetchBlogCategories();
+        return true;
+      } else {
+        setError(result.message);
+        showMessage(result.message || 'Không thể cập nhật trạng thái danh mục', 'error');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchBlogCategories, showMessage]);
+
   // Clear selected blog category
   const clearSelectedBlogCategory = useCallback(() => {
     setSelectedBlogCategory(null);
@@ -490,20 +525,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
       const response = await instance.get(`${process.env.NEXT_PUBLIC_API_URL}/api/product-category/get-list`, { params });
-      console.log("Product Categories API Response:", response);
       
       if (response.status >= 200 && response.status < 300) {
         const categories = response.data.data || [];
-        console.log("Processed Product Categories:", categories);
         setProductCategories(categories);
         setError(null);
       } else {
-        console.error("API Error:", response.data.message);
         setError(response.data.message);
         setProductCategories([]);
       }
     } catch (err) {
-      console.error("Fetch Error:", err);
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
       setProductCategories([]);
     } finally {
@@ -520,7 +551,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (response && response.data && response.data.success) {
         setSelectedProduct(response.data.data);
         setCurrentAction(ActionType.VIEW, 'product', response.data.data.id);
-        setError(null);
+      setError(null);
       } else {
         setError(response.data ? response.data.message : 'Failed to fetch product');
         setSelectedProduct(null);
@@ -944,23 +975,106 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setLoading(true);
       setCurrentAction(ActionType.CREATE, 'blog');
       
-      const result = await createBlog(blog) as { success: boolean; message?: string };
+      const result = await createBlog(blog);
       
-      if (result.success) {
+      if (result && (result.success || result.data)) {
+        // Vẫn refresh danh sách blog
         await fetchBlogList();
         setError(null);
-        return true;
+        // Trả về toàn bộ response
+        return result;
       } else {
         setError(result.message ?? 'Đã xảy ra lỗi');
-        return false;
+        return result;
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
+    } catch (err: any) {
+      // Xử lý lỗi và đảm bảo trả về message từ API
+      if (err.response?.data) {
+        return err.response.data; // Trả về nguyên response lỗi từ API
+      }
+      throw err; // Throw lại lỗi nếu không có response data
     } finally {
       setLoading(false);
     }
   }, [fetchBlogList, setCurrentAction]);
+
+  // AI Actions
+  const handleGenerateAIContent = useCallback(async (title: string, mode: 'write' | 'evaluate' = 'write'): Promise<{ data: string }> => {
+    try {
+      setLoading(true);
+      const result = await generateAIContent(title, mode) as { data: string };
+      return { data: result.data };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleGetAISuggestions = useCallback(async (content: string): Promise<{ data: any }> => {
+    try {
+      setLoading(true);
+      const result = await getAISuggestions(content) as { data: any };
+      return { data: result.data };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Add the implementation
+  const handleFetchBlogBySlug = useCallback(async (slug: string) => {
+    try {
+      setLoading(true);
+      const response = await fetchBlogBySlug(slug) as unknown as { 
+        data: {
+          id: number;
+          title: string;
+          content: string;
+          slug: string;
+          metaTitle: string;
+          metaDescription: string;
+          metaKeywords: string;
+          author: string;
+          publishedAt: string;
+          viewCount: number;
+          blogCategoryId: number;
+          avatarUrl: string;
+          status: string;
+          createdAt: string;
+          updatedAt: string;
+          category: {
+            id: number;
+            name: string;
+            slug: string;
+          };
+        };
+      };
+      console.log('response', response);
+      if (response.data) {
+        const blogData = {
+          ...response.data,
+          publishedAt: new Date(response.data.publishedAt),
+          createdAt: new Date(response.data.createdAt),
+          updatedAt: new Date(response.data.updatedAt)
+        };
+        setSelectedBlog(blogData as unknown as BlogPostAttributes);
+        setCurrentAction(ActionType.VIEW, 'blog', response.data.id);
+        setError(null);
+      } else {
+        setError('Failed to fetch blog');
+        setSelectedBlog(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      setSelectedBlog(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [setCurrentAction]);
 
   // Cập nhật object value
   const value = {
@@ -1001,6 +1115,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     clearSelectedBlogPost,
     updateBlogPost,
     createBlogPost,
+    changeBlogStatus,
+    fetchBlogBySlug: handleFetchBlogBySlug,
     
     // BlogCategory Actions
     fetchBlogCategories,
@@ -1010,6 +1126,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     deleteBlogCategory,
     clearSelectedBlogCategory,
     setSelectedBlogCategory,
+    changeBlogCategoryStatus,
     
     // Product Actions
     fetchProducts,
@@ -1048,6 +1165,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     toggleProductStatus,
 
     showMessage,
+
+    // AI Actions
+    generateAIContent: handleGenerateAIContent,
+    getAISuggestions: handleGetAISuggestions,
   };
 
   return <AppContext.Provider value={value}>

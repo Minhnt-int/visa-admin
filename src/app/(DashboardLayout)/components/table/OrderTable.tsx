@@ -27,7 +27,7 @@ import {
 } from '@tabler/icons-react';
 import { OrderAttributes } from '@/data/Order';
 import { useAppContext } from '@/contexts/AppContext';
-import { fetchOrderList, updateOrder } from '@/services/orderService';
+import { fetchOrderList } from '@/services/orderService';
 
 const OrderTableContent = () => {
   const [page, setPage] = useState(1);
@@ -42,7 +42,13 @@ const OrderTableContent = () => {
     message: '',
     severity: 'success'
   });
-  const { selectedOrder, clearSelectedOrder, updateOrder, createOrder, deleteOrder, fetchOrders } = useAppContext();
+  const { 
+    selectedOrder, 
+    clearSelectedOrder, 
+    updateOrder: updateOrderHandle, 
+    deleteOrder: deleteOrderHandle, 
+    fetchOrders 
+  } = useAppContext();
 
   const fetchData = async () => {
     try {
@@ -76,7 +82,7 @@ const OrderTableContent = () => {
     try {
       const order = orders.find(o => o.id === orderId);
       if (order) {
-        await updateOrder(orderId, { ...order, status });
+        await updateOrderHandle(orderId, { ...order, status });
         setSnackbar({
           open: true,
           message: 'Cập nhật trạng thái thành công',
@@ -88,6 +94,24 @@ const OrderTableContent = () => {
       setSnackbar({
         open: true,
         message: 'Cập nhật trạng thái thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: number) => {
+    try {
+      await deleteOrderHandle(orderId);
+      setSnackbar({
+        open: true,
+        message: 'Xóa đơn hàng thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Xóa đơn hàng thất bại',
         severity: 'error'
       });
     }
@@ -111,7 +135,6 @@ const OrderTableContent = () => {
   return (
     <>
       <TableContainer component={Paper}>
-        <Button variant="contained" color="primary" onClick={() => console.log(orders)}>Fetch Orders</Button>
         <Table>
           <TableHead>
             <TableRow>
@@ -167,13 +190,17 @@ const OrderTableContent = () => {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
-                      <IconButton onClick={() => console.log('View:', row)} size="small" color="primary">
+                      {/* <IconButton onClick={() => console.log('View:', row)} size="small" color="primary">
                         <IconEye size={18} />
                       </IconButton>
                       <IconButton onClick={() => console.log('Edit:', row)} size="small" color="primary">
                         <IconEdit size={18} />
-                      </IconButton>
-                      <IconButton onClick={() => console.log('Delete:', row)} size="small" color="error">
+                      </IconButton> */}
+                      <IconButton 
+                        onClick={() => row.id && handleDeleteOrder(row.id)} 
+                        size="small" 
+                        color="error"
+                      >
                         <IconTrash size={18} />
                       </IconButton>
                     </Stack>

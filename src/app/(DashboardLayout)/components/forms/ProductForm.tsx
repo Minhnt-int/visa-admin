@@ -121,9 +121,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
     id: 0,
     url: "",
     type: "image",
-    isPrimary: false,
     createdAt: "",
-    updatedAt: ""
+    updatedAt: "",
+    productId: 0,
+    previewUrl: "",
+    fileObj: undefined,
   });
   const [mediaPopupOpen, setMediaPopupOpen] = useState(false);
 
@@ -160,8 +162,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        setIsCategoriesLoading(true);
-        await fetchProductCategories();
+        // Kiểm tra nếu danh mục đã được tải
+        if (productCategories.length === 0) {
+          setIsCategoriesLoading(true);
+          await fetchProductCategories();
+        }
       } catch (error) {
         console.error("Error loading product categories:", error);
         showError("Failed to load product categories");
@@ -171,19 +176,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
     };
 
     loadCategories();
-  }, [fetchProductCategories]);
-
+  }, [fetchProductCategories, productCategories.length]);
+  
   useEffect(() => {
     if (isEdit && slug) {
       fetchProductBySlug(slug).then(() => {
-        console.log("selectedProduct after fetch", selectedProduct);
       });
     }
   }, [isEdit, slug]);
 
   useEffect(() => {
     if (selectedProduct) {
-      console.log("Cập nhật formData từ selectedProduct:", selectedProduct);
       setFormData(selectedProduct);
       setEditorContent(selectedProduct.description || "");
       setSelectedMedia((selectedProduct.media as any) || []);
@@ -194,8 +197,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         slug: "",
         description: "",
         shortDescription: "",
-        price: 0,
-        salePrice: 0,
         status: "draft",
         categoryId: 0,
         avatarUrl: "",
@@ -213,12 +214,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
   }, [selectedProduct]);
 
   useEffect(() => {
-    console.log("formData.media đã thay đổi:", formData.media);
     setSelectedMedia((formData.media as any) || []);
   }, [formData.media]);
 
   const handleInputChange = (field: keyof ProductAttributes, value: any) => {
-    console.log(`Cập nhật trường ${field} với giá trị:`, value);
     setFormData((prev: ProductAttributes) => ({
       ...prev,
       [field]: value,
@@ -231,15 +230,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleMediaSelect = (media: ProductMedia) => {
-    console.log("handleMediaSelect được gọi với:", media);
 
     const newProductMedia: ProductMedia = {
       id: 0,
       url: media.url,
       type: mediaType,
-      isPrimary: false,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      productId: 0,
     };
 
     const newMedia = [...formData.media, newProductMedia];
@@ -249,7 +247,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
       media: newMedia
     }));
 
-    console.log("Đã cập nhật media trong formData:", newMedia);
   };
 
   const handleRemoveMedia = async (index: number) => {
@@ -263,14 +260,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
     const newMedia = [...formData.media];
     newMedia.splice(index, 1);
 
-    console.log("newMedia sau khi xóa:", newMedia);
 
     setFormData((prev: ProductAttributes) => ({
       ...prev,
       media: newMedia
     }));
 
-    console.log("Đã cập nhật media trong formData sau khi xóa");
   };
 
   const handleAddItem = () => {
@@ -279,10 +274,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
       id: 0,
       name: "",
       price: 0,
-      salePrice: 0,
+      originalPrice: 0,
       status: "active",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      color: "",
     });
 
     setFormData((prev: ProductAttributes) => ({
@@ -315,8 +311,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleSubmit = () => {
-    console.log("submit", formData);
-    setConfirmPopupOpen(true);
+      setConfirmPopupOpen(true);
   };
 
   const handleConfirmSubmit = () => {
@@ -400,7 +395,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
       media: newMedia as any,
     }));
 
-    console.log("Đã đặt media index", index, "lên đầu array");
   };
 
   const handleOpenUpdateMediaPopup = (media: ProductMedia, index: number) => {
@@ -409,9 +403,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
       id: media.id || 0,
       url: media.url || "",
       type: media.type || "image",
-      isPrimary: false,
       createdAt: media.createdAt || "",
       updatedAt: media.updatedAt || "",
+      fileObj: undefined,
+      previewUrl: media.url || "",
+      productId: media.productId || 0,
     });
   };
 
@@ -457,8 +453,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               id: updatedMediaData.id,
               type: updatedMediaData.type,
               url: updatedMediaData.url,
-              isPrimary: updatedMediaData.isPrimary
-            }
+              }
           ]
         }),
       });
@@ -477,7 +472,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         updatedMedia[mediaIndex] = {
           ...updatedMedia[mediaIndex],
           url: updatedMediaData.url,
-          isPrimary: updatedMediaData.isPrimary,
           type: updatedMediaData.type
         };
         
@@ -834,27 +828,84 @@ const ProductForm: React.FC<ProductFormProps> = ({
           {formData.items.map((item, index) => (
             <Box
               key={index}
-              sx={{ mb: 2, p: 2, border: "1px solid #ddd", borderRadius: 1 }}
+              sx={{ mb: 2, p: 3, border: "1px solid #ddd", borderRadius: 1 }}
             >
-              <Stack spacing={2} sx={{ width: "100%", alignItems: "center" }}>
-                <TextField
-                  placeholder="Nhập tên sản phẩm con"
-                  value={item.name}
-                  onChange={(e) => handleItemChange(index, "name", e.target.value)}
-                  disabled={isView}
-                  sx={{ width: "100%" }}
-                />
-                {!isView && (
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={() => handleRemoveItem(index)}
-                    sx={{ width: "30px" }}
-                  >
-                    <IconTrash />
-                  </Button>
-                )}
-              </Stack>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Tên sản phẩm con"
+                    placeholder="Nhập tên sản phẩm con"
+                    value={item.name}
+                    onChange={(e) => handleItemChange(index, "name", e.target.value)}
+                    disabled={isView}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Loại"
+                    placeholder="Loại"
+                    value={item.color}
+                    onChange={(e) => handleItemChange(index, "color", e.target.value)}
+                    disabled={isView}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Giá gốc"
+                    type="number"
+                    placeholder="Nhập giá gốc"
+                    value={item.price}
+                    onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
+                    disabled={isView}
+                    InputProps={{
+                      startAdornment: <Typography>₫</Typography>,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Giá khuyến mãi"
+                    type="number"
+                    placeholder="Nhập giá khuyến mãi"
+                    value={item.originalPrice}
+                    onChange={(e) => handleItemChange(index, "originalPrice", Number(e.target.value))}
+                    disabled={isView}
+                    InputProps={{
+                      startAdornment: <Typography>₫</Typography>,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Trạng thái</InputLabel>
+                    <Select
+                      value={item.status}
+                      onChange={(e) => handleItemChange(index, "status", e.target.value)}
+                      disabled={isView}
+                    >
+                      <MenuItem value="active">Hoạt động</MenuItem>
+                      <MenuItem value="inactive">Không hoạt động</MenuItem>
+                      <MenuItem value="outofstock">Hết hàng</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  {!isView && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={() => handleRemoveItem(index)}
+                      startIcon={<IconTrash />}
+                    >
+                      Xóa sản phẩm con
+                    </Button>
+                  )}
+                </Grid>
+              </Grid>
             </Box>
           ))}
         </Stack>

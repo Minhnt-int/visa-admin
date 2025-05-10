@@ -12,7 +12,7 @@ export interface BlogPostAttributes {
   createdAt: Date;
   updatedAt: Date;
   blogCategoryId: number; // Thêm trường blogCategoryId
-  status: 'published' | 'draft' | 'archived';
+  status: 'active' | 'draft' | 'deleted';
 }
 
 export const initBlog = {

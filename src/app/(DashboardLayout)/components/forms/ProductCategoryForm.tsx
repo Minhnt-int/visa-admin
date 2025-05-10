@@ -5,17 +5,16 @@ import {
   TextField,
   FormControl,
   InputLabel,
-  Select,
+  Select as MuiSelect, // Đổi tên để tránh xung đột
   MenuItem,
   Box,
   Typography,
-  Snackbar,
-  Alert,
   Button,
   Card,
   CardContent,
-  Grid
-} from '@/config/mui';
+  Grid,
+  Divider
+} from '@mui/material'; // Thay vì '@/config/mui'
 import { ProductCategory } from '@/data/ProductCategory';
 import { useAppContext } from '@/contexts/AppContext';
 import dayjs from 'dayjs';
@@ -84,81 +83,169 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
   };
 
   return (
-    <Card style={{ padding: 16 }}>
-      <FormControl fullWidth style={{ marginTop: 16 }}>
-        <label>Tên danh mục</label>
-        <TextField
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          disabled={isView}
-          placeholder="Nhập tên danh mục"
-        />
-      </FormControl>
-      
-      <FormControl fullWidth style={{ marginTop: 16 }}>
-        <label>Slug</label>
-        <TextField
-          name="slug"
-          value={formData.slug}
-          onChange={handleChange}
-          disabled={isView}
-          placeholder="Nhập slug"
-        />
-      </FormControl>
-      
-      <FormControl fullWidth style={{ marginTop: 16 }}>
-        <label>Danh mục cha</label>
-        <Select
-          value={formData.parentId}
-          onChange={handleSelectChange}
-          disabled={isView}
-        >
-          {productCategories
-            .filter(cat => cat.id !== formData.id) // Loại bỏ danh mục hiện tại
-            .map(category => (
-              <MenuItem key={category.id} value={category.id}>
-                {category.name}
-              </MenuItem>
-            ))}
-        </Select>
-      </FormControl>
-      
-      <FormControl fullWidth style={{ marginTop: 16 }}>
-        <label>Hình ảnh</label>
-        <Grid container spacing={2}>
+    <Card>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          {isView ? "Chi tiết danh mục" : isEdit ? "Cập nhật danh mục" : "Tạo mới danh mục"}
+        </Typography>
+        <Divider sx={{ mb: 3 }} />
+
+        <Grid container spacing={3}>
+          {/* Tên danh mục */}
           <Grid item xs={12}>
             <TextField
-              name="avatarUrl"
-              value={formData.avatarUrl || ''}
-              onChange={(e) => handleChange({ target: { name: 'avatarUrl', value: e.target.value } } as React.ChangeEvent<HTMLInputElement>)}
+              name="name"
+              label="Tên danh mục"
+              fullWidth
+              value={formData.name}
+              onChange={handleChange}
               disabled={isView}
-              placeholder="URL hình ảnh"
-              style={{ width: '100%' }}
+              placeholder="Nhập tên danh mục"
+              required
             />
           </Grid>
-          <Grid item xs={4}>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={() => setMediaPopupOpen(true)} 
+          
+          {/* Slug */}
+          <Grid item xs={12}>
+            <TextField
+              name="slug"
+              label="Slug"
+              fullWidth
+              value={formData.slug}
+              onChange={handleChange}
               disabled={isView}
-            >
-              Chọn hình ảnh
-            </Button>
+              placeholder="Nhập slug (vd: danh-muc-moi)"
+              helperText="Định dạng URL thân thiện cho danh mục"
+            />
           </Grid>
+          
+          {/* Danh mục cha */}
+          <Grid item xs={12}>
+            <FormControl fullWidth>
+              <InputLabel id="parent-category-label">Danh mục cha</InputLabel>
+              <MuiSelect // Sử dụng tên mới
+                labelId="parent-category-label"
+                value={formData.parentId}
+                onChange={handleSelectChange}
+                disabled={isView}
+                label="Danh mục cha"
+              >
+                <MenuItem value="">
+                  <em>Không có</em>
+                </MenuItem>
+                {productCategories
+                  .filter(cat => cat.id !== formData.id) // Loại bỏ danh mục hiện tại
+                  .map(category => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+              </MuiSelect>
+            </FormControl>
+          </Grid>
+          
+          {/* Mô tả */}
+          <Grid item xs={12}>
+            <TextField
+              name="description"
+              label="Mô tả"
+              fullWidth
+              multiline
+              rows={4}
+              value={formData.description || ''}
+              onChange={handleChange}
+              disabled={isView}
+              placeholder="Nhập mô tả cho danh mục này"
+            />
+          </Grid>
+          
+          {/* Hình ảnh */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" gutterBottom>
+              Hình ảnh đại diện
+            </Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={8}>
+                <TextField
+                  name="avatarUrl"
+                  fullWidth
+                  value={formData.avatarUrl || ''}
+                  onChange={(e) => handleChange({ target: { name: 'avatarUrl', value: e.target.value } } as React.ChangeEvent<HTMLInputElement>)}
+                  disabled={isView}
+                  placeholder="URL hình ảnh"
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={() => setMediaPopupOpen(true)} 
+                  disabled={isView}
+                  fullWidth
+                >
+                  Chọn hình ảnh
+                </Button>
+              </Grid>
+            </Grid>
+            {formData.avatarUrl && (
+              <Box mt={2} sx={{ textAlign: 'center' }}>
+                <img 
+                  src={formData.avatarUrl.startsWith('http') 
+                    ? formData.avatarUrl 
+                    : `${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
+                  alt="Category thumbnail" 
+                  style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
+                />
+              </Box>
+            )}
+          </Grid>
+          
+          {/* Thời gian tạo và cập nhật */}
+          {(formData.createdAt || formData.updatedAt) && (
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" gutterBottom>
+                Thông tin thời gian
+              </Typography>
+              <Grid container spacing={2}>
+                {formData.createdAt && (
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Ngày tạo"
+                      value={dayjs(formData.createdAt).format('DD/MM/YYYY HH:mm:ss')}
+                      InputProps={{ readOnly: true }}
+                    />
+                  </Grid>
+                )}
+                {formData.updatedAt && (
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Ngày cập nhật"
+                      value={dayjs(formData.updatedAt).format('DD/MM/YYYY HH:mm:ss')}
+                      InputProps={{ readOnly: true }}
+                    />
+                  </Grid>
+                )}
+              </Grid>
+            </Grid>
+          )}
         </Grid>
-        {formData.avatarUrl && (
-          <div style={{ marginTop: 16 }}>
-            <img 
-              src={`${process.env.NEXT_PUBLIC_API_URL}${formData.avatarUrl}`} 
-              alt="Category thumbnail" 
-              style={{ maxWidth: '100%', maxHeight: 200 }}
-            />
-          </div>
-        )}
-      </FormControl>
-      
+
+        {/* Nút điều khiển */}
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Button variant="outlined" onClick={onCancel}>
+            {isView ? "Quay lại" : "Hủy"}
+          </Button>
+          {!isView && (
+            <Button variant="contained" color="primary" onClick={handleSubmitClick}>
+              {isEdit ? 'Cập nhật' : 'Tạo mới'}
+            </Button>
+          )}
+        </Box>
+      </CardContent>
+
       <MediaPopup
         open={mediaPopupOpen}
         onClose={() => setMediaPopupOpen(false)}
@@ -166,17 +253,6 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
         onSubmit={() => {}}
         listMedia={[]}
       />
-
-      <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-        <Button variant="outlined" onClick={onCancel}>
-          Hủy
-        </Button>
-        {!isView && (
-          <Button variant="contained" color="primary" onClick={handleSubmitClick}>
-            {isEdit ? 'Cập nhật' : 'Tạo mới'}
-          </Button>
-        )}
-      </Box>
 
       <ConfirmPopup
         open={confirmingPopup}
@@ -189,4 +265,4 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
   );
 };
 
-export default ProductCategoryForm; 
+export default ProductCategoryForm;

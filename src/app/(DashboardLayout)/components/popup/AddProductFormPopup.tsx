@@ -40,24 +40,8 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
   slug,
   categories
 }) => {
-  const [isAIResultOpen, setIsAIResultOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [localFormData, setLocalFormData] = useState<ProductAttributes | null>(null);
-  const [formState, setFormState] = useState<ProductAttributes>({
-    id: 0,
-    name: '',
-    description: '',
-    categoryId: 0,
-    slug: '',
-    metaTitle: '',
-    metaDescription: '',
-    metaKeywords: '',
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    media: [],
-    items: []
-  });
+  const [formState, setFormState] = useState<ProductAttributes>(formData);
 
   const {
     selectedProduct,
@@ -76,32 +60,28 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
 
   useEffect(() => {
     if (selectedProduct) {
-      setLocalFormData(selectedProduct);
+      setFormState(selectedProduct);
     } else if (formData) {
-      setLocalFormData(formData);
-    }
-  }, [selectedProduct, formData]);
-
-  useEffect(() => {
-    if (formData) {
       setFormState(formData);
     }
-  }, [formData]);
+  }, [selectedProduct, formData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormState(prev => ({
       ...prev,
-      [name as string]: value
+      [name]: value
     }));
+    onChange({ name, value });
   };
 
   const handleSelectChange = (e: SelectChangeEvent<number | string>) => {
     const { name, value } = e.target;
     setFormState(prev => ({
       ...prev,
-      [name as string]: value
+      [name]: value
     }));
+    onChange({ name, value });
   };
 
   const handleSubmit = () => {
@@ -109,9 +89,8 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
     onClose();
   };
 
-  // Hàm để xử lý thay đổi trong mảng items
   const handleItemChange = (index: number, field: string, value: any) => {
-    const updatedItems = [...(formData.items || [])];
+    const updatedItems = [...(formState.items || [])];
 
     if (!updatedItems[index]) {
       updatedItems[index] = {} as ProductItemAttributes;
@@ -122,13 +101,16 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
       [field]: value
     };
 
+    setFormState(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
     onChange({
       name: 'items',
       value: updatedItems
     });
   };
 
-  // Hàm để thêm một item mới vào mảng items
   const handleAddItem = () => {
     const newItem: ProductItemAttributes = {
       name: '',
@@ -136,29 +118,38 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
       price: 0,
       originalPrice: 0,
       status: 'available',
-      id: 0
+      id: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    onChange({
-      name: 'items',
-      value: [...(formData.items || []), newItem]
-    });
-  };
-
-  // Hàm để xóa một item khỏi mảng items
-  const handleRemoveItem = (index: number) => {
-    const updatedItems = [...(formData.items || [])];
-    updatedItems.splice(index, 1);
-
+    const updatedItems = [...(formState.items || []), newItem];
+    setFormState(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
     onChange({
       name: 'items',
       value: updatedItems
     });
   };
 
-  // Hàm để xử lý thay đổi trong mảng media
+  const handleRemoveItem = (index: number) => {
+    const updatedItems = [...(formState.items || [])];
+    updatedItems.splice(index, 1);
+
+    setFormState(prev => ({
+      ...prev,
+      items: updatedItems
+    }));
+    onChange({
+      name: 'items',
+      value: updatedItems
+    });
+  };
+
   const handleMediaChange = (index: number, field: string, value: any) => {
-    const updatedMedia = [...(formData.media || [])];
+    const updatedMedia = [...(formState.media || [])];
 
     if (!updatedMedia[index]) {
       updatedMedia[index] = {} as ProductMedia;
@@ -169,13 +160,16 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
       [field]: value
     };
 
+    setFormState(prev => ({
+      ...prev,
+      media: updatedMedia
+    }));
     onChange({
       name: 'media',
       value: updatedMedia
     });
   };
 
-  // Hàm để thêm một media mới vào mảng media
   const handleAddMedia = () => {
     const newMedia: ProductMedia = {
       type: 'image',
@@ -184,40 +178,42 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
       updatedAt: new Date().toISOString(),
       id: 0,
       productId: 0,
-      mediaId: 0,
       altText: '',
       name: ''
     };
 
-    onChange({
-      name: 'media',
-      value: [...(formData.media || []), newMedia]
-    });
-  };
-
-  // Hàm để xóa một media khỏi mảng media
-  const handleRemoveMedia = (index: number) => {
-    const updatedMedia = [...(formData.media || [])];
-    updatedMedia.splice(index, 1);
-
+    const updatedMedia = [...(formState.media || []), newMedia];
+    setFormState(prev => ({
+      ...prev,
+      media: updatedMedia
+    }));
     onChange({
       name: 'media',
       value: updatedMedia
     });
   };
 
-  // Trong component cha
+  const handleRemoveMedia = (index: number) => {
+    const updatedMedia = [...(formState.media || [])];
+    updatedMedia.splice(index, 1);
+
+    setFormState(prev => ({
+      ...prev,
+      media: updatedMedia
+    }));
+    onChange({
+      name: 'media',
+      value: updatedMedia
+    });
+  };
+
   const handleEditorChange = (content: string) => {
+    setFormState(prev => ({
+      ...prev,
+      description: content
+    }));
     onChange({ name: 'description', value: content });
   };
-
-  const title = isView ? "View Product" : selectedProduct?.id ? "Edit Product" : "Add Product";
-
-  const handleAISuggestion = () => {
-    setIsAIResultOpen(true);
-  };
-
-  const productToDisplay = localFormData || formData;
 
   if (loading) {
     return (
@@ -231,113 +227,111 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
   }
 
   return (
-    <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {isView ? 'Xem chi tiết sản phẩm' : formData ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
-        </DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {isView ? 'Xem chi tiết sản phẩm' : formData.id ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
+      </DialogTitle>
 
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Tên sản phẩm"
-                  name="name"
-                  value={formState.name}
-                  onChange={handleInputChange}
-                  disabled={isView}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Slug"
-                  name="slug"
-                  value={formState.slug}
-                  onChange={handleInputChange}
-                  disabled={isView}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Mô tả"
-                  name="description"
-                  value={formState.description}
-                  onChange={handleInputChange}
-                  disabled={isView}
-                  multiline
-                  rows={4}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Giá"
-                  name="price"
-                  type="number"
-                  value={formState?.items[0]?.price}
-                  onChange={handleInputChange}
-                  disabled={isView}
-                  required
-                  InputProps={{
-                    startAdornment: <Typography>₫</Typography>
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Danh mục</InputLabel>
-                  <Select
-                    name="categoryId"
-                    value={formState.categoryId || ''}
-                    onChange={handleSelectChange}
-                    disabled={isView}
-                    label="Danh mục"
-                  >
-                    <MenuItem value="">Chọn danh mục</MenuItem>
-                    {categories.map(category => (
-                      <MenuItem key={category.id} value={category.id}>
-                        {category.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Trạng thái</InputLabel>
-                  <Select
-                    name="status"
-                    value={formState.status}
-                    onChange={handleSelectChange}
-                    disabled={isView}
-                    label="Trạng thái"
-                  >
-                    <MenuItem value="active">Hoạt động</MenuItem>
-                    <MenuItem value="inactive">Không hoạt động</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+      <DialogContent>
+        <Box sx={{ mt: 2 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Tên sản phẩm"
+                name="name"
+                value={formState.name}
+                onChange={handleInputChange}
+                disabled={isView}
+                required
+              />
             </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} color="inherit">
-            Hủy
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Slug"
+                name="slug"
+                value={formState.slug}
+                onChange={handleInputChange}
+                disabled={isView}
+                required
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Mô tả"
+                name="description"
+                value={formState.description}
+                onChange={handleInputChange}
+                disabled={isView}
+                multiline
+                rows={4}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Giá"
+                name="price"
+                type="number"
+                value={formState?.items[0]?.price}
+                onChange={handleInputChange}
+                disabled={isView}
+                required
+                InputProps={{
+                  startAdornment: <Typography>₫</Typography>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Danh mục</InputLabel>
+                <Select
+                  name="categoryId"
+                  value={formState.categoryId || ''}
+                  onChange={handleSelectChange}
+                  disabled={isView}
+                  label="Danh mục"
+                >
+                  <MenuItem value="">Chọn danh mục</MenuItem>
+                  {categories.map(category => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Trạng thái</InputLabel>
+                <Select
+                  name="status"
+                  value={formState.status}
+                  onChange={handleSelectChange}
+                  disabled={isView}
+                  label="Trạng thái"
+                >
+                  <MenuItem value="active">Hoạt động</MenuItem>
+                  <MenuItem value="inactive">Không hoạt động</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} color="inherit">
+          Hủy
+        </Button>
+        {!isView && (
+          <Button onClick={handleSubmit} color="primary" variant="contained">
+            {formData.id ? 'Cập nhật' : 'Thêm mới'}
           </Button>
-          {!isView && (
-            <Button onClick={handleSubmit} color="primary" variant="contained">
-              {formData ? 'Cập nhật' : 'Thêm mới'}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
-    </>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 };
 

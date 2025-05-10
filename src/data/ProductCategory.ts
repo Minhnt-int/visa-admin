@@ -6,6 +6,5 @@ export interface ProductCategory {
   description: string;
   createdAt?: Date;
   updatedAt?: Date;
-  status: 'active' | 'inactive';
   avatarUrl: string;
 } 

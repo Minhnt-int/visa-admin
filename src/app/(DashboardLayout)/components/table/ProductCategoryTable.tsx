@@ -128,18 +128,15 @@ const ProductCategoryTable: React.FC = () => {
   };
   
   const handleSubmit = () => {
-    console.log('Chức năng xem chi tiết danh mục');
   };
 
   const handleDeleteCategory = async () => {
     if (formData && formData.id) {
       try {
         await deleteProductCategory(formData.id);
-        console.log(`Đã xóa danh mục: ${formData.name}`);
         fetchProductCategories();
       } catch (error) {
         console.error('Error deleting category:', error);
-        console.log(`Không thể xóa danh mục: ${formData.name}`);
       }
       setConfirmingPopup(false);
       setFormData(null);
@@ -176,6 +173,16 @@ const ProductCategoryTable: React.FC = () => {
     <Card>
       <CardContent>
         <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={4} >
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<IconPlus />}
+              onClick={handleAdd}
+            >
+              Thêm mới
+              </Button>
+          </Grid> 
           <Grid item xs={12} sm={6} md={4}>
             <TextField
               fullWidth
@@ -198,16 +205,6 @@ const ProductCategoryTable: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={4} sx={{ textAlign: 'right' }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<IconPlus />}
-              onClick={handleAdd}
-            >
-              Thêm mới
-            </Button>
-          </Grid>
         </Grid>
 
         <TableContainer>
@@ -216,22 +213,23 @@ const ProductCategoryTable: React.FC = () => {
               <TableRow>
                 <TableCell>ID</TableCell>
                 <TableCell>Tên</TableCell>
+                <TableCell>Danh mục cha</TableCell>
+                <TableCell>Slug</TableCell>
+                <TableCell>Hình ảnh</TableCell>
                 <TableCell>Trạng thái</TableCell>
-                <TableCell>Ngày tạo</TableCell>
-                <TableCell>Ngày cập nhật</TableCell>
                 <TableCell align="right">Thao tác</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography>Đang tải...</Typography>
                   </TableCell>
                 </TableRow>
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography>Không có dữ liệu</Typography>
                   </TableCell>
                 </TableRow>
@@ -241,17 +239,34 @@ const ProductCategoryTable: React.FC = () => {
                     <TableCell>{record.id}</TableCell>
                     <TableCell>{record.name}</TableCell>
                     <TableCell>
+                      {record.parentId 
+                        ? productCategories.find(c => c.id === record.parentId)?.name || `ID: ${record.parentId}` 
+                        : 'Không có'}
+                    </TableCell>
+                    <TableCell>{record.slug}</TableCell>
+                    <TableCell>
+                      {record.avatarUrl ? (
+                        <Box
+                          component="img"
+                          src={record.avatarUrl}
+                          alt={record.name}
+                          sx={{ 
+                            width: 50, 
+                            height: 50, 
+                            objectFit: 'cover',
+                            borderRadius: 1
+                          }}
+                        />
+                      ) : (
+                        <Box>-</Box>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Chip
                         label={getStatusLabel(record.status)}
                         color={getStatusColor(record.status)}
                         size="small"
                       />
-                    </TableCell>
-                    <TableCell>
-                      {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : ''}
-                    </TableCell>
-                    <TableCell>
-                      {record.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : ''}
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -322,7 +337,7 @@ const ProductCategoryTable: React.FC = () => {
           content={`Bạn có chắc chắn muốn xóa danh mục "${formData?.name}"?`}
         />
       </CardContent>
-    </Card>
+      </Card>
   );
 };
 

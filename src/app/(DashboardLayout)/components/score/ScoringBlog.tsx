@@ -3,22 +3,46 @@ import PickBlog from './PickBlog';
 import { BlogPostAttributes } from '@/data/BlogPost';
 import Scoring from './Scoring';
 import { Box, CircularProgress } from '@mui/material';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface ScoringBlogProps {
 }
 
 const ScoringBlog: React.FC<any> = ({ }) => {
-    const [selectedBlog, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
-    const [refreshKey, setRefreshKey] = useState(0); // State để force re-render Scoring
-    const [loading, setLoading] = useState(false); // State để quản lý loading
+    const { generateAIContent, fetchBlogBySlug, selectedBlog, clearSelectedBlog } = useAppContext();
+
+    const [selected, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [analysis, setAnalysis] = useState<string>('');
     
-    const onBlogSelect = (blog: BlogPostAttributes) => {
-        setLoading(true); // Bắt đầu loading khi chọn blog
-        setSelectedBlog(blog);
-        setRefreshKey(prevKey => prevKey + 1); // Tăng refreshKey để force re-render Scoring
+    // Reset state when component mounts
+    useEffect(() => {
+        setSelectedBlog(null);
+        setAnalysis('');
+        clearSelectedBlog();
+    }, [clearSelectedBlog]);
+    
+    const onBlogSelect = async (blog: BlogPostAttributes) => {
+        setLoading(true);
+        try {
+            await fetchBlogBySlug(blog.slug);
+            setSelectedBlog(selectedBlog);
+            
+            if (selectedBlog?.content) {
+                const result = await generateAIContent(selectedBlog.content, 'evaluate');
+                if (result.data?.result) {
+                    setAnalysis(result.data.result);
+                }
+            }
+        } catch (error) {
+            console.error('Error in blog selection process:', error);
+        } finally {
+            setLoading(false);
+            setRefreshKey(prevKey => prevKey + 1);
+        }
     };
 
-    // Hàm để cập nhật trạng thái loading từ component con
     const handleLoadingChange = (isLoading: boolean) => {
         setLoading(isLoading);
     };
@@ -27,10 +51,9 @@ const ScoringBlog: React.FC<any> = ({ }) => {
         <>
             <PickBlog 
                 onBlogSelect={onBlogSelect} 
-                disabled={loading} // Disable chọn blog khi đang loading
+                disabled={loading}
             />
             
-            {/* Hiển thị loading overlay nếu cần */}
             {loading && (
                 <Box 
                     sx={{ 
@@ -50,11 +73,11 @@ const ScoringBlog: React.FC<any> = ({ }) => {
                 </Box>
             )}
             
-            {/* Sử dụng key để force re-render Scoring khi blog thay đổi */}
             <Scoring 
                 key={refreshKey} 
-                blogContent={selectedBlog?.content || ''}
-                onLoadingChange={handleLoadingChange} // Truyền callback để cập nhật loading
+                blogContent={selected?.content || ''}
+                analysis={analysis}
+                onLoadingChange={handleLoadingChange}
             />
         </>
     );

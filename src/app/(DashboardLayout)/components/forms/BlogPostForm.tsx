@@ -20,13 +20,11 @@ import { Divider } from '@mui/material';
 import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import dayjs from 'dayjs';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes, initBlog } from '@/data/BlogPost';
 import { useAppContext } from '@/contexts/AppContext';
 import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
-import { initBlogCategory } from '@/data/blogCategory';
 import { useRouter } from 'next/navigation';
 
 interface BlogPostFormProps {
@@ -34,6 +32,7 @@ interface BlogPostFormProps {
   onChange: (data: { name: string; value: any }) => void;
   onCancel?: () => void;
   formData: BlogPostAttributes;
+  action?: string;
 }
 
 const BlogPostForm: React.FC<BlogPostFormProps> = ({
@@ -41,12 +40,14 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   onChange,
   onCancel,
   formData,
+  action
 }) => {
   const {
     selectedBlogPost,
     setSelectedBlogPost,
     updateBlogPost,
-    createBlogPost
+    createBlogPost,
+    generateAIContent
   } = useAppContext();
   const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
 
@@ -63,6 +64,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     message: '',
     severity: 'success'
   });
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     fetchBlogCategories();
@@ -74,10 +76,22 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     }
   }, [form]);
 
+  useEffect(() => {
+    // Nếu đang ở chế độ tạo mới, reset selectedBlogPost về null
+    if (action === 'create') {
+      setSelectedBlogPost(null);
+    }
+  }, [action, setSelectedBlogPost]);
+
   const handleEditorChange = (content: string) => {
     setEditorContent(content);
+    setForm(prev => ({
+      ...prev,
+      content: content
+    }));
     onChange({ name: 'content', value: content });
   };
+
 
   // Check if required fields are filled
   const isFormValid = () => {
@@ -96,27 +110,19 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const handleGetSuggestions = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/ai/suggestions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: form?.title || '',
-          content: form?.content || '',
-          type: 'blog'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI suggestions');
+      const result = await generateAIContent(form?.content || '', 'evaluate');
+      
+      if (result.data) {
+        setAiSuggestions(result.data);
+        setShowAiSuggestions(true);
       }
-
-      const suggestions = await response.json();
-      setAiSuggestions(suggestions);
-      setShowAiSuggestions(true);
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
+      setSnackbar({ 
+        open: true, 
+        message: 'Không thể lấy gợi ý AI. Vui lòng thử lại sau.', 
+        severity: 'error' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -125,21 +131,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const handleGenerateContent = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/api/ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + form?.title
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI content');
-      }
-
-      const result = await response.json();
+      const result = await generateAIContent(form?.title || '', 'write');
+      
       if (result.data) {
         setAiSuggestions(result.data);
         setShowAiSuggestions(true);
@@ -147,12 +140,16 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       }
     } catch (error) {
       console.error('Error getting AI content:', error);
+      setSnackbar({ 
+        open: true, 
+        message: 'Không thể tạo nội dung AI. Vui lòng thử lại sau.', 
+        severity: 'error' 
+      });
     } finally {
       setIsLoading(false);
     }
   };
   const handleInputChange = (field: string, value: any) => {
-    console.log(field, value);
     setForm(prev => ({
       ...prev,
       [field]: value
@@ -172,7 +169,9 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     setIsMediaPopupOpen(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(''); // Reset error message
     try {
       setIsLoading(true);
       
@@ -181,21 +180,72 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         
         if (result) {
           setSnackbar({ open: true, message: 'Blog post updated successfully', severity: 'success' });
-          router.push('/bai-viet');
           setForm(initBlog);
+          // Đợi một chút để đảm bảo state được cập nhật
+          setTimeout(() => {
+            router.refresh();
+            router.push('/bai-viet');
+          }, 100);
+        } else {
+          
+          throw new Error('Failed to update blog post');
         }
       } else {
         const result = await createBlogPost(form);
-        
-        if (result) {
+
+        // Kiểm tra response từ API
+        if (result && (result.success || result.data || (result.message && result.message.includes("success")))) {
           setSnackbar({ open: true, message: 'Blog post created successfully', severity: 'success' });
-          router.push('/bai-viet');
           setForm(initBlog);
+          // Đợi một chút để đảm bảo state được cập nhật
+          setTimeout(() => {
+            router.refresh();
+            router.push('/bai-viet');
+          }, 100);
+        } else {
+          throw new Error(result.message || 'Failed to create blog post');
         }
       }
-    } catch (error) {
-      console.error('Error saving blog post:', error);
-      setSnackbar({ open: true, message: 'Failed to save blog post', severity: 'error' });
+    } catch (error: any) {
+      console.log('Error response:', error);
+      
+      // Đơn giản hóa việc lấy message
+      let errorMsg;
+      
+      // Kiểm tra chi tiết cấu trúc lỗi
+      console.log('Error details:', {
+        responseData: error.response?.data,
+        responseStatus: error.response?.status,
+        message: error.message
+      });
+      
+      if (error.response?.data?.message) {
+        // Lấy message từ response API
+        errorMsg = error.response.data.message;
+      } else if (error.data?.message) {
+        // Trường hợp khác của response
+        errorMsg = error.data.message;
+      } else if (error.message && !error.message.includes('status code')) {
+        // Lấy từ error object, nhưng bỏ qua các message có "status code"
+        errorMsg = error.message;
+      } else if (typeof error === 'string') {
+        // Nếu error là string
+        errorMsg = error;
+      } else {
+        // Mặc định
+        errorMsg = 'Failed to save blog post. Please try again.';
+      }
+      
+      // Log để debug
+      console.log('Processed error message:', errorMsg);
+      
+      // Hiển thị lỗi
+      setErrorMessage(errorMsg);
+      setSnackbar({ 
+        open: true, 
+        message: errorMsg,
+        severity: 'error' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -283,9 +333,10 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           <div style={{ marginBottom: "16px" }}>
             <Typography variant="body2" gutterBottom>Danh mục bài viết</Typography>
             <Select
-              value={form?.blogCategoryId}
+              value={form?.blogCategoryId || ""}
+              label="Danh mục bài viết" 
               disabled={isView}
-              onChange={(value) => handleInputChange('blogCategoryId', value)}
+              onChange={(event) => handleInputChange('blogCategoryId', event.target.value)}
               style={{ width: "100%" }}
             >
               {blogCategories.map(category => (
@@ -299,7 +350,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           <div style={{ marginBottom: "16px" }}>
             <Typography variant="body2" gutterBottom>Nội dung</Typography>
             <Editor
-              disabled={isView}
+              disabled={false}
               value={editorContent}
               onChange={handleEditorChange}
               placeholder="Nội dung"
@@ -346,7 +397,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
                   value: date ? date.toISOString() : null,
                 });
               }}
-    format="yyyy-MM-dd HH:mm:ss"
+    format="yyyy-MM-dd"
     sx={{ width: "100%" }}
   />
             </LocalizationProvider>
@@ -365,7 +416,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
                     value: date ? date.toISOString() : null,
                   });
                 }}
-    format="yyyy-MM-dd HH:mm:ss"
+    format="yyyy-MM-dd"
     disabled={true}
     sx={{ width: "100%" }}
   />
@@ -383,7 +434,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
                     value: date ? date.toISOString() : null,
                   });
                 }}
-                format="yyyy-MM-dd HH:mm:ss"
+                format="yyyy-MM-dd"
                 disabled={true}
                 sx={{ width: "100%" }}
   />
@@ -420,6 +471,22 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
               </span>
             </Tooltip>
           </Box>
+
+          {errorMessage && (
+            <Typography 
+              color="error" 
+              variant="body2" 
+              sx={{ 
+                mt: 2, 
+                textAlign: 'center',
+                backgroundColor: '#ffebee',
+                padding: '8px',
+                borderRadius: '4px'
+              }}
+            >
+              {errorMessage}
+            </Typography>
+          )}
 
           {showAiSuggestions && aiSuggestions && (
             <>
@@ -458,7 +525,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         </Alert>
       </Snackbar>
     </>
-  );
+  );  
 };
 
 export default BlogPostForm;

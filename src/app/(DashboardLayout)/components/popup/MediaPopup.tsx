@@ -213,7 +213,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12}>
+              {/* <Grid item xs={12}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Button
                     component="label"
@@ -245,7 +245,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                     </Box>
                   )}
                 </Box>
-              </Grid>
+              </Grid> */}
               {formState.url && (
                 <Grid item xs={12}>
                   <Box sx={{ mt: 2, textAlign: 'center' }}>

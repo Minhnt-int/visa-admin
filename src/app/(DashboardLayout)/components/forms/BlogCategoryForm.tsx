@@ -66,7 +66,6 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   useEffect(() => {
     if (currentAction.type === ActionType.EDIT && selectedBlogCategory?.slug) {
       fetchBlogCategoryBySlug(selectedBlogCategory?.slug).then(() => {
-        console.log("selectedBlogCategory after fetch", selectedBlogCategory);
         setFormData(selectedBlogCategory);
       });
     }
@@ -249,7 +248,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
                   onChange={(date) => {
                     handleInputChange('createdAt', date ? date.toISOString() : null);
                   }}
-                  format="yyyy-MM-dd HH:mm:ss"
+                  format="yyyy-MM-dd"
                   disabled={true}
                   sx={{ width: "100%" }}
                 />
@@ -264,7 +263,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
                   onChange={(date) => {
                     handleInputChange('updatedAt', date ? date.toISOString() : null);
                   }}
-                  format="yyyy-MM-dd HH:mm:ss"
+                  format="yyyy-MM-dd"
                   disabled={true}
                   sx={{ width: "100%" }}
                 />

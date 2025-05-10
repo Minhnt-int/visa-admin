@@ -41,8 +41,9 @@ const Dashboard = () => {
               [name]: value,
             }))
             }
-
           } 
+          action={currentAction.type}
+
            formData={formData!} />
           <ConfirmPopup
             open={ConfirmingPopup}

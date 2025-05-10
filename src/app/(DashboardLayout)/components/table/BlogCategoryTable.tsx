@@ -19,16 +19,19 @@ import {
   Box,
   Typography,
   Snackbar,
-  Alert
+  Alert,
+  Stack,
+  IconButton
 } from '@/config/mui';
-import { IconEdit, IconTrash, IconEye } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconEye, IconCircleCheck, IconArrowBackUp } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/contexts/AppContext';
-import { BlogCategory } from '@/data/blogCategory';
+import { BlogCategory, BlogStatus } from '@/data/blogCategory';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import AddBlogCategoryFormPopup from '../popup/AddBlogCategoryFormPopup';
 import { ActionType } from '@/contexts/AppContext';
 import BlogCategoryService from '@/services/BlogCategoryService';
+import { IconPlus } from '@tabler/icons-react';
 
 interface BlogCategoryTableProps {
   data: BlogCategory[];
@@ -38,7 +41,7 @@ interface BlogCategoryTableProps {
 }
 
 interface ExtendedBlogCategory extends BlogCategory {
-  status: 'active' | 'inactive';
+  status: typeof BlogStatus[keyof typeof BlogStatus];
 }
 
 const BlogCategoryTable = () => {
@@ -81,10 +84,10 @@ const BlogCategoryTable = () => {
     setLoadingState,
     setErrorState,
     setCurrentAction,
+
+    // Thêm function này
+    changeBlogCategoryStatus
   } = useAppContext();
-  useEffect(() => {
-    fetchBlogCategories();
-  }, []);
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
   };
@@ -107,13 +110,110 @@ const BlogCategoryTable = () => {
 
   const handleDelete = async (record: BlogCategory) => {
     try {
-      setFormData(record);
-      setConfirmingPopup(true);
+    setFormData(record);
+    setConfirmingPopup(true);
     } catch (error) {
       console.error("Error deleting blog category:", error);
       setSnackbar({
         open: true,
         message: "Failed to delete blog category",
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleActivate = async (categoryId: number) => {
+    try {
+      await changeBlogCategoryStatus(categoryId, 'active');
+      setSnackbar({
+        open: true,
+        message: 'Kích hoạt danh mục thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error activating category:', error);
+      setSnackbar({
+        open: true,
+        message: 'Kích hoạt danh mục thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDeactivate = async (categoryId: number) => {
+    try {
+      await changeBlogCategoryStatus(categoryId, 'draft');
+      setSnackbar({
+        open: true,
+        message: 'Chuyển danh mục sang bản nháp thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error deactivating category:', error);
+      setSnackbar({
+        open: true,
+        message: 'Chuyển danh mục sang bản nháp thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleRestore = async (categoryId: number) => {
+    try {
+      await changeBlogCategoryStatus(categoryId, 'active');
+      setSnackbar({
+        open: true,
+        message: 'Khôi phục danh mục thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error restoring category:', error);
+      setSnackbar({
+        open: true,
+        message: 'Khôi phục danh mục thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleLevelUp = async (categoryId: number, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'deleted' ? 'draft' : 'active';
+      await changeBlogCategoryStatus(categoryId, newStatus);
+      setSnackbar({
+        open: true,
+        message: 'Cập nhật trạng thái thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating category status:', error);
+      setSnackbar({
+        open: true,
+        message: 'Cập nhật trạng thái thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleLevelDown = async (categoryId: number, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'draft' : 'deleted';
+      await changeBlogCategoryStatus(categoryId, newStatus);
+      setSnackbar({
+        open: true,
+        message: 'Cập nhật trạng thái thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating category status:', error);
+      setSnackbar({
+        open: true,
+        message: 'Cập nhật trạng thái thất bại',
         severity: 'error'
       });
     }
@@ -197,13 +297,19 @@ const BlogCategoryTable = () => {
     page?: number;
     limit?: number;
     name?: string;
+    status?: string;
     parentId?: number | null;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
   }) => {
     try {
       setLoadingState(true);
-      await fetchBlogCategories(params);
+      // Nếu statusFilter là 'all', không gửi tham số status
+      const statusParam = params?.status === 'all' ? undefined : params?.status;
+      await fetchBlogCategories({
+        ...params,
+        status: statusParam
+      });
       setLoadingState(false);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -215,27 +321,52 @@ const BlogCategoryTable = () => {
     fetchData({
       page: 1,
       limit: 10,
+      status: 'all',  
       sortBy: 'createdAt',
       sortOrder: 'DESC'
     });
   }, []);
 
+  useEffect(() => {
+    fetchData({
+      page: page + 1, // Chuyển từ zero-based sang one-based cho API
+      limit: rowsPerPage,
+      status: statusFilter,
+      name: searchTerm || undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC'
+    });
+  }, [statusFilter, page, rowsPerPage, searchTerm]);
+
   return (
     <Card>
       <CardContent>
-        <Button onClick={() => console.log(paginatedData, filteredData)}>Click me</Button>
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={4}>
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Stack direction="row" spacing={2}>
+                    <Button
+                      variant="contained"
+                      startIcon={<IconPlus />}
+                      onClick={handleAdd} 
+                    >
+                      Thêm danh mục bài viết
+              </Button>
+                  </Stack>
+                </Box>
+        </Grid>
+
+          <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="Tìm kiếm"
               variant="outlined"
-              value={searchTerm}
+              value={searchTerm}    
               onChange={(e) => setSearchTerm(e.target.value)}
               size="small"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4}>
             <FormControl fullWidth size="small">
               <InputLabel>Trạng thái</InputLabel>
               <Select
@@ -244,8 +375,11 @@ const BlogCategoryTable = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <MenuItem value="all">Tất cả</MenuItem>
-                <MenuItem value="active">Hoạt động</MenuItem>
-                <MenuItem value="inactive">Không hoạt động</MenuItem>
+                {Object.entries(BlogStatus).map(([key, value]) => (
+                  <MenuItem key={key} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
@@ -284,14 +418,20 @@ const BlogCategoryTable = () => {
                     <TableCell>{category.name}</TableCell>
                     <TableCell>{category.slug}</TableCell>
                     <TableCell>
-                      <Typography
-                        sx={{
-                          color: (category as ExtendedBlogCategory).status === 'active' ? 'success.main' : 'error.main',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {(category as ExtendedBlogCategory).status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography
+                          sx={{
+                            color: (category as ExtendedBlogCategory).status === 'active' ? 'success.main' : 
+                                   (category as ExtendedBlogCategory).status === 'draft' ? 'warning.main' : 'error.main',
+                            fontWeight: 'bold',
+                            minWidth: 90
+                          }}
+                        >
+                          {(category as ExtendedBlogCategory).status === 'active' ? 'Hoạt động' : 
+                           (category as ExtendedBlogCategory).status === 'draft' ? 'Bản nháp' : 
+                           (category as ExtendedBlogCategory).status === 'deleted' ? 'Đã xóa' : 'Không xác định'}
+                        </Typography>
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
@@ -313,15 +453,32 @@ const BlogCategoryTable = () => {
                         >
                           Sửa
                         </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          onClick={() => handleDelete(category)}
-                          startIcon={<IconTrash size={16} />}
-                        >
-                          Xóa
-                        </Button>
+                        
+                        {/* Nút Level Up - Tăng cấp trạng thái */}
+                        {(category as ExtendedBlogCategory).status !== 'active' && (
+                          <Button
+                            variant="outlined"
+                            color="success"
+                            size="small"
+                            onClick={() => handleLevelUp(category.id, (category as ExtendedBlogCategory).status)}
+                            startIcon={<IconCircleCheck size={16} />}
+                          >
+                            {(category as ExtendedBlogCategory).status === 'deleted' ? 'Nháp' : 'Kích hoạt'}
+                          </Button>
+                        )}
+                        
+                        {/* Nút Level Down - Giảm cấp trạng thái */}
+                        {(category as ExtendedBlogCategory).status !== 'deleted' && (
+                          <Button
+                            variant="outlined"
+                            color="warning"
+                            size="small"
+                            onClick={() => handleLevelDown(category.id, (category as ExtendedBlogCategory).status)}
+                            startIcon={<IconArrowBackUp size={16} />}
+                          >
+                            {(category as ExtendedBlogCategory).status === 'active' ? 'Nháp' : 'Xóa'}
+                          </Button>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -361,8 +518,8 @@ const BlogCategoryTable = () => {
         isView={true}
         formData={formData!}
         onSubmit={handleSubmit}
-      />
-    </Card>
+        />
+      </Card>
   );
 };
 

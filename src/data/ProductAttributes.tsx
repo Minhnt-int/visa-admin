@@ -3,19 +3,22 @@ export interface ProductItemAttributes {
   id: number;
   name: string;
   price: number;
-  salePrice: number;
-  status: 'active' | 'inactive';
+  originalPrice: number;
+  status: string;
   createdAt: string;
   updatedAt: string;
+  color: string;
 }
 
 export interface ProductMedia {
   id: number;
   url: string;
   type: 'image' | 'video';
-  isPrimary: boolean;
   createdAt: string;
   updatedAt: string;
+  productId: number;
+  altText?: string;
+  name?: string;
 }
 
 // ProductCategory Model
@@ -25,8 +28,6 @@ export interface ProductAttributes {
   slug: string;
   description: string;
   shortDescription: string;
-  price: number;
-  salePrice: number;
   status: 'active' | 'inactive' | 'draft';
   categoryId: number;
   avatarUrl: string;

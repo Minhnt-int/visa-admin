@@ -101,11 +101,11 @@ const AddBlogFormPopup: React.FC<AddBlogFormPopupProps> = ({
   
   const blogToDisplay = localFormData || formData;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | { target: { name: string; value: any } }) => {
     const { name, value } = e.target;
-    setFormState( (prev: any) => ({
+    setFormState(prev => ({
       ...prev,
-      [name as string]: value
+      [name]: value
     }));
   };
 
@@ -165,15 +165,12 @@ const AddBlogFormPopup: React.FC<AddBlogFormPopupProps> = ({
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Nội dung"
-                  name="content"
-                  value={formState.content}
-                  onChange={handleInputChange}
+                <Typography variant="body2" gutterBottom>Nội dung</Typography>
+                <Editor
                   disabled={isView}
-                  multiline
-                  rows={4}
+                  value={formState.content}
+                  onChange={(content) => handleInputChange({ target: { name: 'content', value: content } })}
+                  placeholder="Nội dung"
                 />
               </Grid>
               <Grid item xs={12}>

@@ -21,17 +21,15 @@ import {
   Alert,
   Typography,
   TablePagination,
-  Stack
+  Stack,
+  Grid,
+  Tooltip
 } from '@/config/mui';
 import { 
   IconEye,
   IconEdit,
   IconTrash,
   IconSearch,
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronsLeft,
-  IconChevronsRight,
   IconCircleCheck,
   IconArrowBackUp,
   IconPlus
@@ -48,8 +46,10 @@ const initialFormData: ProductAttributes = {
   id: 0,
   name: "",
   description: "",
+  shortDescription: "",
   categoryId: 0,
   slug: "",
+  avatarUrl: "https://example.com/image-main.jpg",
   metaTitle: "",
   metaDescription: "",
   metaKeywords: "",
@@ -64,27 +64,29 @@ const initialFormData: ProductAttributes = {
       type: "image",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      mediaId: 0,
-      altText: "",
-      name: ''
+      altText: ""
     }
   ],
   items: [
     {
       id: 0,
       name: "",
-      color: "",
       price: 0,
       originalPrice: 0,
-      status: "available"
+      status: "available",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      color: ""
     },
     {
       id: 1,
       name: "",
-      color: "",
       price: 0,
       originalPrice: 0,
-      status: "available"
+      status: "available",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      color: ""
     }
   ],
 };
@@ -108,7 +110,7 @@ const ProductsTable: React.FC = () => {
     fetchProducts,
     products: productsContext,
     productsPagination,
-    permanentlyDeleteProduct,
+    permanentlyDeleteProduct, 
     activateProduct,
     restoreProduct,
     selectedProduct,
@@ -148,11 +150,10 @@ const ProductsTable: React.FC = () => {
   };
 
   const handleLogSelected = () => {
-    console.log(`Selected Products: ${selectedRowKeys.join(', ')}`);
+      console.log(`Selected Products: ${selectedRowKeys.join(', ')}`);
   };
 
   const handleView = (row: ProductAttributes) => {
-    console.log(row);
     setCurrentSlug(row.slug);
     setFormData(row);
     setIsView(true);
@@ -271,7 +272,6 @@ const ProductsTable: React.FC = () => {
     setConfirmingPopup(false);
     setFormData(null);
     setCurrentSlug('');
-    setIsView(false);
   };
 
   const handleChange = (data: { name: string; value: any }) => {
@@ -332,74 +332,127 @@ const ProductsTable: React.FC = () => {
   }, [productsContext, productsPagination]);
 
   return (
-    <Card>
-      <CardContent>
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              startIcon={<IconPlus />}
-              onClick={handleAdd}
+    <Card sx={{ boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)', borderRadius: '12px', overflow: 'hidden' }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h5" gutterBottom sx={{ mb: 3, fontWeight: 600 }}>
+          Quản lý sản phẩm
+        </Typography>
+        
+        {/* Filter and Search Section */}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Button
+                variant="contained"
+                startIcon={<IconPlus />}
+                onClick={handleAdd}
+                sx={{
+                  background: (theme) => theme.palette.primary.main,
+                  '&:hover': {
+                    background: (theme) => theme.palette.primary.dark,
+                    boxShadow: '0 8px 25px -8px rgba(0, 0, 0, 0.1)'
+                  },
+                  borderRadius: '8px',
+                  px: 2
+                }}
+              >
+                Thêm sản phẩm mới
+              </Button>
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Trạng thái</InputLabel>
+                <Select
+                  value={productStatus}
+                  onChange={(e) => toggleProductStatus(e.target.value as 'draft' | 'active' | 'deleted')}
+                  label="Trạng thái"
+                  sx={{ borderRadius: '8px' }}
+                >
+                  <MenuItem value="draft">Sản phẩm bản nháp</MenuItem>
+                  <MenuItem value="active">Sản phẩm hoạt động</MenuItem>
+                  <MenuItem value="deleted">Sản phẩm đã xóa</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ justifyContent: { xs: 'flex-start', md: 'flex-end' } }}
             >
-              Thêm sản phẩm mới
-            </Button>
-            <FormControl sx={{ minWidth: 160 }}>
-              <InputLabel>Trạng thái</InputLabel>
-              <Select
-                value={productStatus}
-                onChange={(e) => toggleProductStatus(e.target.value as 'draft' | 'active' | 'deleted')}
-                label="Trạng thái"
-              >
-                <MenuItem value="draft">Sản phẩm bản nháp</MenuItem>
-                <MenuItem value="active">Sản phẩm hoạt động</MenuItem>
-                <MenuItem value="deleted">Sản phẩm đã xóa</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
-          <Stack direction="row" spacing={2}>
-            <TextField
-              placeholder="Tìm kiếm sản phẩm..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              size="small"
-              sx={{ width: 200 }}
-            />
-            <FormControl sx={{ minWidth: 120 }}>
-              <InputLabel>Sắp xếp theo</InputLabel>
-              <Select
-                value={sortField}
-                onChange={(e) => handleSortChange(e.target.value, sortOrder)}
-                label="Sắp xếp theo"
+              <TextField
+                placeholder="Tìm kiếm sản phẩm..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 size="small"
-              >
-                <MenuItem value="name">Tên sản phẩm</MenuItem>
-                <MenuItem value="price">Giá sản phẩm</MenuItem>
-                <MenuItem value="createdAt">Ngày tạo</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 120 }}>
-              <InputLabel>Thứ tự</InputLabel>
-              <Select
-                value={sortOrder}
-                onChange={(e) => handleSortChange(sortField, e.target.value)}
-                label="Thứ tự"
-                size="small"
-              >
-                <MenuItem value="ASC">Tăng dần</MenuItem>
-                <MenuItem value="DESC">Giảm dần</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
-        </Box>
-        <TableContainer component={Paper}>
+                sx={{ 
+                  width: { xs: '100%', sm: 200 },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px'
+                  }
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton size="small" onClick={handleSearch}>
+                      <IconSearch size={18} />
+                    </IconButton>
+                  ),
+                }}
+              />
+              <FormControl sx={{ minWidth: { xs: '100%', sm: 140 } }}>
+                <InputLabel>Sắp xếp theo</InputLabel>
+                <Select
+                  value={sortField}
+                  onChange={(e) => handleSortChange(e.target.value, sortOrder)}
+                  label="Sắp xếp theo"
+                  size="small"
+                  sx={{ borderRadius: '8px' }}
+                >
+                  <MenuItem value="name">Tên sản phẩm</MenuItem>
+                  <MenuItem value="price">Giá sản phẩm</MenuItem>
+                  <MenuItem value="createdAt">Ngày tạo</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: { xs: '100%', sm: 120 } }}>
+                <InputLabel>Thứ tự</InputLabel>
+                <Select
+                  value={sortOrder}
+                  onChange={(e) => handleSortChange(sortField, e.target.value)}
+                  label="Thứ tự"
+                  size="small"
+                  sx={{ borderRadius: '8px' }}
+                >
+                  <MenuItem value="ASC">Tăng dần</MenuItem>
+                  <MenuItem value="DESC">Giảm dần</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          </Grid>
+        </Grid>
+        
+        {/* Enhanced Table */}
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            boxShadow: 'none',
+            border: '1px solid #E0E0E0',
+            borderRadius: '10px',
+            overflowX: 'auto'
+          }}
+        >
           <Table>
             <TableHead>
-              <TableRow>
+              <TableRow sx={{ backgroundColor: '#F5F5F5' }}>
                 {columns.map((column) => (
                   <TableCell
                     key={column.id}
                     style={{ minWidth: column.minWidth }}
+                    sx={{ 
+                      fontWeight: 600,
+                      py: 2,
+                      color: '#333333'
+                    }}
                   >
                     {column.label}
                   </TableCell>
@@ -407,85 +460,196 @@ const ProductsTable: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {productsContext.map((row) => (
-                <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                  {columns.map((column) => {
-                    if (column.id === 'actions') {
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} align="center" sx={{ py: 5 }}>
+                    <Typography>Đang tải dữ liệu...</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : productsContext.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} align="center" sx={{ py: 5 }}>
+                    <Typography>Không có sản phẩm nào</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                productsContext.map((row) => (
+                  <TableRow 
+                    hover 
+                    role="checkbox" 
+                    tabIndex={-1} 
+                    key={row.id}
+                    sx={{ '&:hover': { backgroundColor: '#F9FAFC' } }}
+                  >
+                    {columns.map((column) => {
+                      if (column.id === 'actions') {
+                        return (
+                          <TableCell key={column.id}>
+                            <Stack direction="row" spacing={1}>
+                              <IconButton 
+                                onClick={() => handleView(row)}
+                                sx={{ 
+                                  color: 'info.main',
+                                  '&:hover': { backgroundColor: 'info.light', color: 'info.dark' }
+                                }}
+                              >
+                                <IconEye size={18} />
+                              </IconButton>
+                              
+                              {productStatus === 'active' && (
+                                <>
+                                  <IconButton 
+                                    onClick={() => handleEdit(row.slug)}
+                                    sx={{ 
+                                      color: 'primary.main',
+                                      '&:hover': { backgroundColor: 'primary.light', color: 'primary.dark' }
+                                    }}
+                                  >
+                                    <IconEdit size={18} />
+                                  </IconButton>
+                                  <IconButton 
+                                    onClick={() => handleDelete(row.id)} 
+                                    sx={{ 
+                                      color: 'error.main',
+                                      '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
+                                    }}
+                                  >
+                                    <IconTrash size={18} />
+                                  </IconButton>
+                                </>
+                              )}
+                              
+                              {productStatus === 'draft' && (
+                                <>
+                                  <IconButton 
+                                    onClick={() => handleEdit(row.slug)}
+                                    sx={{ 
+                                      color: 'primary.main',
+                                      '&:hover': { backgroundColor: 'primary.light', color: 'primary.dark' }
+                                    }}
+                                  >
+                                    <IconEdit size={18} />
+                                  </IconButton>
+                                  <IconButton 
+                                    onClick={() => handleActive(row.id)} 
+                                    sx={{ 
+                                      color: 'success.main',
+                                      '&:hover': { backgroundColor: 'success.light', color: 'success.dark' }
+                                    }}
+                                  >
+                                    <IconCircleCheck size={18} />
+                                  </IconButton>
+                                  <IconButton 
+                                    onClick={() => handleDelete(row.id)} 
+                                    sx={{ 
+                                      color: 'error.main',
+                                      '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
+                                    }}
+                                  >
+                                    <IconTrash size={18} />
+                                  </IconButton>
+                                </>
+                              )}
+                              
+                              {productStatus === 'deleted' && (
+                                <>
+                                  <IconButton 
+                                    onClick={() => handleRestore(row.id)} 
+                                    sx={{ 
+                                      color: 'info.main',
+                                      '&:hover': { backgroundColor: 'info.light', color: 'info.dark' }
+                                    }}
+                                  >
+                                    <IconArrowBackUp size={18} />
+                                  </IconButton>
+                                  <IconButton 
+                                    onClick={() => handleDelete(row.id)} 
+                                    sx={{ 
+                                      color: 'error.main',
+                                      '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
+                                    }}
+                                  >
+                                    <IconTrash size={18} />
+                                  </IconButton>
+                                </>
+                              )}
+                            </Stack>
+                          </TableCell>
+                        );
+                      }
+                      
+                      const value = row[column.id as keyof ProductAttributes];
                       return (
-                        <TableCell key={column.id}>
-                          <Stack direction="row" spacing={1}>
-                            <IconButton onClick={() => handleView(row)}>
-                              <IconEye size={16} />
-                            </IconButton>
-                            {productStatus === 'active' && (
-                              <>
-                                <IconButton onClick={() => handleEdit(row.slug)}>
-                                  <IconEdit size={16} />
-                                </IconButton>
-                                <IconButton onClick={() => handleDelete(row.id)} color="error">
-                                  <IconTrash size={16} />
-                                </IconButton>
-                              </>
-                            )}
-                            {productStatus === 'draft' && (
-                              <>
-                                <IconButton onClick={() => handleEdit(row.slug)}>
-                                  <IconEdit size={16} />
-                                </IconButton>
-                                <IconButton onClick={() => handleActive(row.id)} color="success">
-                                  <IconCircleCheck size={16} />
-                                </IconButton>
-                                <IconButton onClick={() => handleDelete(row.id)} color="error">
-                                  <IconTrash size={16} />
-                                </IconButton>
-                              </>
-                            )}
-                            {productStatus === 'deleted' && (
-                              <>
-                                <IconButton onClick={() => handleRestore(row.id)} color="info">
-                                  <IconArrowBackUp size={16} />
-                                </IconButton>
-                                <IconButton onClick={() => handleDelete(row.id)} color="error">
-                                  <IconTrash size={16} />
-                                </IconButton>
-                              </>
-                            )}
-                          </Stack>
+                        <TableCell 
+                          key={column.id}
+                          sx={{ 
+                            py: 2,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '300px'
+                          }}
+                        >
+                          {column.id === 'items' 
+                            ? (
+                              <Typography noWrap variant="body2">
+                                {(value as any[])?.map((item: any) => item.name).join(', ')}
+                              </Typography>
+                            )
+                            : column.id === 'itemsPrice'
+                            ? (
+                              <Typography variant="body2">
+                                {(value as any[])?.map((item: any) => 
+                                  `${Number(item.price).toLocaleString('vi-VN')}đ`
+                                ).join(', ')}
+                              </Typography>
+                            )
+                            : column.id === 'name' || column.id === 'shortDescription' 
+                            ? (
+                              <Tooltip title={String(value)}>
+                                <Typography noWrap variant="body2">
+                                  {String(value)}
+                                </Typography>
+                              </Tooltip>
+                            )
+                            : String(value)}
                         </TableCell>
                       );
-                    }
-                    const value = row[column.id as keyof ProductAttributes];
-                    return (
-                      <TableCell key={column.id}>
-                        {column.id === 'items' 
-                          ? (value as any[])?.map((item: any) => item.name).join(', ')
-                          : column.id === 'itemsPrice'
-                          ? (value as any[])?.map((item: any) => item.price).join(', ')
-                          : String(value)}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
+                    })}
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[10, 25, 100]}
-          component="div"
-          count={productsPagination.total}
-          rowsPerPage={pagination.pageSize}
-          page={pagination.current - 1}
-          onPageChange={(event, newPage) => {
-            setPagination({ ...pagination, current: newPage + 1 });
-            fetchData(newPage + 1, pagination.pageSize, searchText, sortField, sortOrder);
-          }}
-          onRowsPerPageChange={(event) => {
-            const newPageSize = parseInt(event.target.value, 10);
-            setPagination({ ...pagination, pageSize: newPageSize, current: 1 });
-            fetchData(1, newPageSize, searchText, sortField, sortOrder);
-          }}
-        />
+        
+        {/* Enhanced Pagination */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <TablePagination
+            rowsPerPageOptions={[10, 25, 100]}
+            component="div"
+            count={productsPagination.total}
+            rowsPerPage={pagination.pageSize}
+            page={pagination.current - 1}
+            onPageChange={(event, newPage) => {
+              setPagination({ ...pagination, current: newPage + 1 });
+              fetchData(newPage + 1, pagination.pageSize, searchText, sortField, sortOrder);
+            }}
+            onRowsPerPageChange={(event) => {
+              const newPageSize = parseInt(event.target.value, 10);
+              setPagination({ ...pagination, pageSize: newPageSize, current: 1 });
+              fetchData(1, newPageSize, searchText, sortField, sortOrder);
+            }}
+            labelRowsPerPage="Số hàng:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+            sx={{
+              '.MuiTablePagination-selectLabel, .MuiTablePagination-select, .MuiTablePagination-selectIcon, .MuiTablePagination-displayedRows': {
+                fontWeight: 500,
+              }
+            }}
+          />
+        </Box>
+        
+        {/* Keep the existing Snackbar and Popups */}
         <Snackbar
           open={snackbar.open}
           autoHideDuration={6000}
@@ -500,6 +664,8 @@ const ProductsTable: React.FC = () => {
           </Alert>
         </Snackbar>
       </CardContent>
+      
+      {/* Keep existing modals */}
       <AddProductFormPopup
         open={isModalOpen}
         onClose={handleModalClose}
@@ -508,6 +674,7 @@ const ProductsTable: React.FC = () => {
         onSubmit={handleSubmit}
         onChange={handleChange}
         categories={[]}
+        slug={currentSlug}
       />
 
       <ConfirmPopup
@@ -537,4 +704,5 @@ const ProductsTable: React.FC = () => {
     </Card>
   );
 };
+
 export default ProductsTable;

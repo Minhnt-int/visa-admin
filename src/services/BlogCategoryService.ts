@@ -23,6 +23,7 @@ const BlogCategoryService = {
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
         if (params.status) queryParams.append('status', params.status);
+          else queryParams.append('status', 'all'); // Mặc định là active
         if (params.name) queryParams.append('name', params.name);
         if (params.sortBy) queryParams.append('sortBy', params.sortBy);
         if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
@@ -79,6 +80,15 @@ const BlogCategoryService = {
     try {
       const response = await ApiService.delete(`${BLOG_CATEGORIES_URL}/${id}`);
       return ApiService.handleResponse<any>(response);
+    } catch (error) {
+      return ApiService.handleError(error);
+    }
+  },
+
+  async changeBlogCategoryStatus(id: number, status: string) {
+    try {
+      const response = await ApiService.put(`${BLOG_CATEGORIES_URL}/change-status`, {id,  status});
+      return ApiService.handleResponse<BlogCategory>(response);
     } catch (error) {
       return ApiService.handleError(error);
     }
