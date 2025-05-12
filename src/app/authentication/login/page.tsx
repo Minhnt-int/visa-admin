@@ -74,8 +74,9 @@ const Login = () => {
                         variant="h6"
                         fontWeight="500"
                       >
-                        Chưa có tài khoản?
+                        Chưa có tài khoản? Liên hệ bộ hỗ trợ để đăng ký tài khoản
                       </Typography>
+                      {/* uncomment để mở link đăng ký
                       <Typography
                         component={Link}
                         href="/authentication/register"
@@ -86,7 +87,7 @@ const Login = () => {
                         }}
                       >
                         Đăng ký
-                      </Typography>
+                      </Typography> */}
                     </Stack>
                   }
                 />

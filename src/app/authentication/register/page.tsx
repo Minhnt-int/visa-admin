@@ -98,7 +98,8 @@ const RegisterContent = () => {
 const Register = () => {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <RegisterContent />
+      {/* Uncomment để mở tính năng đăng ký
+      <RegisterContent /> */}
     </Suspense>
   );
 };
