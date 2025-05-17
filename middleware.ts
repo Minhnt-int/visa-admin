@@ -26,19 +26,27 @@ export async function middleware(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   
-  // Kiểm tra xem có bất kỳ token nào tồn tại không
+  // Xác thực chặt chẽ hơn
   const isAuthenticated = !!token || !!cookieToken || !!headerToken;
 
-  
+  // Log để debug
+  // console.log('Middleware running', {
+  //   path,
+  //   isPublicPath,
+  //   token: !!token,
+  //   cookieToken: !!cookieToken,
+  //   headerToken: !!headerToken,
+  //   isAuthenticated
+  // });
+
   // Nếu người dùng truy cập trang đăng nhập mà đã có token -> chuyển hướng đến trang dashboard
   if (isPublicPath && isAuthenticated) {
     return NextResponse.redirect(new URL('/', request.url));
   }
   
-  // Nếu người dùng truy cập trang cần xác thực mà không có token -> chuyển hướng đến trang đăng nhập
-  if (!isPublicPath && !isAuthenticated && !path.startsWith('/api')) {
-    const loginUrl = new URL('/authentication/login', request.url);
-    return NextResponse.redirect(loginUrl);
+  // Chuyển hướng nghiêm ngặt hơn
+  if (!isPublicPath && !isAuthenticated) {
+    return NextResponse.redirect(new URL('/authentication/login', request.url));
   }
   
   return NextResponse.next();
@@ -47,7 +55,14 @@ export async function middleware(request: NextRequest) {
 // Chỉ định những đường dẫn cần áp dụng middleware
 export const config = {
   matcher: [
-    // Loại trừ các đường dẫn tĩnh và API của NextAuth
-    '/((?!api/auth|_next/static|_next/image|public|favicon.ico).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (NextAuth routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     */
+    '/((?!api/auth|_next/static|_next/image|favicon\\.ico|public).*)'
   ],
 };

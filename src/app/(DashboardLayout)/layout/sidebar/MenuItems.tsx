@@ -71,6 +71,22 @@ const Menuitems = [
     icon: IconArticle,
     href: "/don-hang",
   },
+    {
+    navlabel: true,
+    subheader: "Quản lý thẻ Meta",
+  },
+  {
+    id: uniqueId(),
+    title: "Meta",
+    icon: IconArticle,
+    href: "/meta",
+  },
+    {
+    id: uniqueId(),
+    title: "MetaJson",
+    icon: IconArticle,
+    href: "/meta-json",
+  },
 ];
 
 export default Menuitems;
