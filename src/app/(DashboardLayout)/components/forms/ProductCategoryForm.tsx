@@ -122,13 +122,12 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
           {/* Danh mục cha */}
           <Grid item xs={12}>
             <FormControl fullWidth>
-              <InputLabel id="parent-category-label">Danh mục cha</InputLabel>
+              <InputLabel shrink style={{backgroundColor:'white'}} id="parent-category-label">Danh mục cha</InputLabel>
               <MuiSelect // Sử dụng tên mới
                 labelId="parent-category-label"
                 value={formData.parentId}
                 onChange={handleSelectChange}
                 disabled={isView}
-                label="Danh mục cha"
               >
                 <MenuItem value="">
                   <em>Không có</em>

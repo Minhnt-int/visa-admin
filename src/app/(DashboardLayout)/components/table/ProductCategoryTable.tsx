@@ -18,15 +18,18 @@ import {
   TablePagination,
   Box,
   Typography,
-  Chip
+  Chip,
+  Snackbar,
+  Alert
 } from '@/config/mui';
-import { IconEdit, IconTrash, IconEye, IconPlus } from '@tabler/icons-react';
+import { IconEdit, IconTrash, IconEye, IconPlus, IconCircleCheck, IconArrowBackUp } from '@tabler/icons-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { ProductCategory } from '@/data/ProductCategory';
 import { ActionType } from '@/contexts/AppContext';
 import { useRouter } from 'next/navigation';
 import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
 import ConfirmPopup from '../popup/ConfirmPopup';
+import { changeProductStatus } from '@/services/ProductCategoryService';
 
 const initialFormData: ProductCategory = {
   id: 0,
@@ -43,7 +46,7 @@ const initialFormData: ProductCategory = {
 const ProductCategoryTable: React.FC = () => {
   const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [ConfirmingPopup, setConfirmingPopup] = useState(false);
+  const [confirmingPopup, setConfirmingPopup] = useState(false);
   const [formData, setFormData] = useState<ProductCategory | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -51,6 +54,15 @@ const ProductCategoryTable: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const {
     // ProductCategory State
@@ -92,10 +104,6 @@ const ProductCategoryTable: React.FC = () => {
     setSelectedRowKeys(selectedKeys);
   };
 
-  const handleLogSelected = () => {
-    console.log(`Đã chọn danh mục: ${selectedRowKeys.join(', ')}`);
-  };
-
   const handleView = (record: ProductCategory) => {
     setFormData(record);
     setIsModalOpen(true);
@@ -130,40 +138,144 @@ const ProductCategoryTable: React.FC = () => {
   const handleSubmit = () => {
   };
 
+  // Xử lý trạng thái chuyển đổi
+  const handleActivate = async (categoryId: number) => {
+    try {
+      await changeProductStatus(categoryId, 'active');
+      setSnackbar({
+        open: true,
+        message: 'Kích hoạt danh mục thành công',
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error activating category:', error);
+      setSnackbar({
+        open: true,
+        message: 'Kích hoạt danh mục thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleChangeStatus = async (categoryId: number, newStatus: string) => {
+    try {
+      await changeProductStatus(categoryId, newStatus);
+      setSnackbar({
+        open: true,
+        message: `Cập nhật trạng thái thành ${newStatus === 'active' ? 'hoạt động' : 'đã xóa'} thành công`,
+        severity: 'success'
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating category status:', error);
+      setSnackbar({
+        open: true,
+        message: 'Cập nhật trạng thái thất bại',
+        severity: 'error'
+      });
+    }
+  };
+
   const handleDeleteCategory = async () => {
     if (formData && formData.id) {
       try {
-        await deleteProductCategory(formData.id);
-        fetchProductCategories();
+        // Nếu trạng thái là deleted, xóa hoàn toàn
+        if (formData.status === 'deleted') {
+          await deleteProductCategory(formData.id);
+          setSnackbar({
+            open: true,
+            message: `Đã xóa hoàn toàn danh mục "${formData.name}"`,
+            severity: 'success'
+          });
+        } else {
+          // Nếu không, chỉ chuyển trạng thái sang deleted
+          await changeProductStatus(formData.id, 'deleted');
+          setSnackbar({
+            open: true,
+            message: `Đã chuyển danh mục "${formData.name}" sang trạng thái đã xóa`,
+            severity: 'success'
+          });
+        }
+        fetchData();
       } catch (error) {
-        console.error('Error deleting category:', error);
+        console.error('Error deleting/changing status of category:', error);
+        setSnackbar({
+          open: true,
+          message: 'Đã xảy ra lỗi khi xử lý yêu cầu',
+          severity: 'error'
+        });
       }
       setConfirmingPopup(false);
       setFormData(null);
     }
   };
 
+  const fetchData = async (params?: {
+    page?: number;
+    limit?: number;
+    name?: string;
+    status?: string;
+    parentId?: number | null;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => {
+    try {
+      setLoadingState(true);
+      // Nếu statusFilter là 'all', không gửi tham số status
+      const statusParam = params?.status === 'all' ? undefined : params?.status;
+      await fetchProductCategories({
+        ...params,
+        parentId: params?.parentId ?? undefined, // Ensure parentId is number or undefined
+        status: statusParam
+      });
+      setLoadingState(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setErrorState(error instanceof Error ? error.message : 'An error occurred');
+    }
+  };
+
   useEffect(() => {
-    fetchProductCategories();
+    fetchData({
+      page: 1,
+      limit: 10,
+      status: 'all',  
+      sortBy: 'createdAt',
+      sortOrder: 'DESC'
+    });
   }, []);
 
+  useEffect(() => {
+    fetchData({
+      page: page + 1, // Chuyển từ zero-based sang one-based cho API
+      limit: rowsPerPage,
+      status: statusFilter,
+      name: searchTerm || undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC'
+    });
+  }, [statusFilter, page, rowsPerPage, searchTerm]);
+
+  // Cập nhật hàm getStatusColor - loại bỏ draft
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
         return 'success';
-      case 'inactive':
+      case 'deleted':
         return 'error';
       default:
         return 'default';
     }
   };
 
+  // Cập nhật hàm getStatusLabel - loại bỏ draft
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'active':
         return 'Hoạt động';
-      case 'inactive':
-        return 'Không hoạt động';
+      case 'deleted':
+        return 'Đã xóa';
       default:
         return status;
     }
@@ -201,7 +313,7 @@ const ProductCategoryTable: React.FC = () => {
               >
                 <MenuItem value="all">Tất cả</MenuItem>
                 <MenuItem value="active">Hoạt động</MenuItem>
-                <MenuItem value="inactive">Không hoạt động</MenuItem>
+                <MenuItem value="deleted">Đã xóa</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -262,11 +374,17 @@ const ProductCategoryTable: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        label={getStatusLabel(record.status)}
-                        color={getStatusColor(record.status)}
-                        size="small"
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography
+                          sx={{
+                            color: record.status === 'active' ? 'success.main' : 'error.main',
+                            fontWeight: 'bold',
+                            minWidth: 90
+                          }}
+                        >
+                          {getStatusLabel(record.status)}
+                        </Typography>
+                      </Box>
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -288,6 +406,21 @@ const ProductCategoryTable: React.FC = () => {
                         >
                           Sửa
                         </Button>
+                        
+                        {/* Nút kích hoạt cho danh mục đã xóa */}
+                        {record.status === 'deleted' && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="success"
+                            onClick={() => handleChangeStatus(record.id, 'active')}
+                            startIcon={<IconCircleCheck />}
+                          >
+                            Kích hoạt
+                          </Button>
+                        )}
+                        
+                        {/* Nút Xóa/Xóa vĩnh viễn */}
                         <Button
                           size="small"
                           variant="outlined"
@@ -295,7 +428,7 @@ const ProductCategoryTable: React.FC = () => {
                           onClick={() => handleDelete(record)}
                           startIcon={<IconTrash />}
                         >
-                          Xóa
+                          {record.status === 'deleted' ? 'Xóa vĩnh viễn' : 'Xóa'}
                         </Button>
                       </Box>
                     </TableCell>
@@ -330,14 +463,30 @@ const ProductCategoryTable: React.FC = () => {
           />
         )}
         <ConfirmPopup
-          open={ConfirmingPopup}
+          open={confirmingPopup}
           onClose={() => setConfirmingPopup(false)}
           onConfirm={handleDeleteCategory}
-          title="Xác nhận xóa"
-          content={`Bạn có chắc chắn muốn xóa danh mục "${formData?.name}"?`}
+          title={formData?.status === 'deleted' ? "Xác nhận xóa vĩnh viễn" : "Xác nhận chuyển sang trạng thái đã xóa"}
+          content={formData?.status === 'deleted' 
+            ? `Bạn có chắc chắn muốn xóa vĩnh viễn danh mục "${formData?.name}"? Hành động này không thể hoàn tác.`
+            : `Bạn có chắc chắn muốn chuyển danh mục "${formData?.name}" sang trạng thái đã xóa?`}
         />
+        
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </CardContent>
-      </Card>
+    </Card>
   );
 };
 

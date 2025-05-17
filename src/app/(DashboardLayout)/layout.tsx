@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Header from "@/app/(DashboardLayout)/layout/header/Header";
 import Sidebar from "@/app/(DashboardLayout)/layout/sidebar/Sidebar";
 import { AppProvider, useAppContext } from "@/contexts/AppContext";
-import Loading from "../loading";
 
 const MainWrapper = styled("div")(() => ({
   display: "flex",
@@ -24,18 +23,6 @@ const PageWrapper = styled("div")(() => ({
 interface Props {
   children: React.ReactNode;
 }
-
-// Tạo một component LoadingWrapper để sử dụng useAppContext
-const LoadingWrapper = ({ children }: { children: React.ReactNode }) => {
-  const { loading } = useAppContext();
-  
-  return (
-    <>
-      {loading && <Loading />}
-      {children}
-    </>
-  );
-};
 
 export default function RootLayout({
   children,
@@ -77,9 +64,8 @@ export default function RootLayout({
             {/* Page Route */}
             {/* ------------------------------------------- */}
             <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
-              <LoadingWrapper>
-                {children}
-              </LoadingWrapper>
+              {/* Bỏ LoadingWrapper, render trực tiếp children */}
+              {children}
             </Box>
             {/* ------------------------------------------- */}
             {/* End Page */}

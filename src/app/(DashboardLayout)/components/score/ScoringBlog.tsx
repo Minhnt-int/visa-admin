@@ -31,8 +31,9 @@ const ScoringBlog: React.FC<any> = ({ }) => {
             
             if (selectedBlog?.content) {
                 const result = await generateAIContent(selectedBlog.content, 'evaluate');
-                if (result.data?.result) {
-                    setAnalysis(result.data.result);
+                let data = result.data as any;
+                if (data.result) {
+                    setAnalysis(data.result);
                 }
             }
         } catch (error) {
