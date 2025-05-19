@@ -1,68 +1,54 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  // Danh sách các đường dẫn công khai (không cần xác thực)
+  
+  // Danh sách các đường dẫn không cần xác thực
   const publicPaths = [
     '/authentication/login',
     '/authentication/register',
-    '/authentication/forgot-password'
+    '/authentication/forgot-password',
+    '/api/auth',
+    '/_next',
+    '/favicon.ico',
+    '/public'
   ];
   
-  const isPublicPath = publicPaths.some(pp => path.startsWith(pp));
+  // Kiểm tra nếu đường dẫn hiện tại là public
+  const isPublicPath = publicPaths.some(pp => 
+    path === pp || path.startsWith(pp)
+  );
   
-  // Kiểm tra nextauth token
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET
-  });
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
   
-  // Kiểm tra token từ cookie (được lưu từ localStorage)
+  // Kiểm tra tất cả các token có thể
+  const nextAuthToken = request.cookies.get('next-auth.session-token')?.value || 
+                        request.cookies.get('__Secure-next-auth.session-token')?.value;
   const cookieToken = request.cookies.get('accessToken')?.value;
-  
-  // Kiểm tra token từ Authorization header (thêm vào từ client-side)
   const authHeader = request.headers.get('authorization');
   const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   
-  // Xác thực chặt chẽ hơn
-  const isAuthenticated = !!token || !!cookieToken || !!headerToken;
-
-  // Log để debug
-  // console.log('Middleware running', {
-  //   path,
-  //   isPublicPath,
-  //   token: !!token,
-  //   cookieToken: !!cookieToken,
-  //   headerToken: !!headerToken,
-  //   isAuthenticated
-  // });
-
-  // Nếu người dùng truy cập trang đăng nhập mà đã có token -> chuyển hướng đến trang dashboard
-  if (isPublicPath && isAuthenticated) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
+  const isAuthenticated = !!nextAuthToken || !!cookieToken || !!headerToken;
   
-  // Chuyển hướng nghiêm ngặt hơn
-  if (!isPublicPath && !isAuthenticated) {
+  console.log('Middleware check:', {
+    path,
+    isPublicPath,
+    hasToken: isAuthenticated,
+  });
+  
+  // Nếu không có token, chuyển hướng đến trang đăng nhập
+  if (!isAuthenticated) {
+    console.log('Redirecting to login, no valid token found');
     return NextResponse.redirect(new URL('/authentication/login', request.url));
   }
   
   return NextResponse.next();
 }
 
-// Chỉ định những đường dẫn cần áp dụng middleware
+// Cấu hình matcher đơn giản hơn để đảm bảo middleware chạy cho mọi route
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (NextAuth routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public (public files)
-     */
-    '/((?!api/auth|_next/static|_next/image|favicon\\.ico|public).*)'
-  ],
+  matcher: ['/((?!_next/static|_next/image).*)'],
 };

@@ -29,6 +29,7 @@ import { ActionType, useAppContext } from '@/contexts/AppContext';
 import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { useRouter } from 'next/navigation';
+import { convertToSlug } from "../function/TittleToSlug";
 
 interface BlogCategoryFormProps {
   isView?: boolean;
@@ -70,6 +71,24 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       });
     }
   }, [currentAction.type, selectedBlogCategory?.slug]);
+
+  useEffect(() => {
+    // Tự động cập nhật slug khi tên danh mục thay đổi
+    if (formData?.name) {
+      setFormData(prev => ({
+        ...prev,
+        slug: convertToSlug(formData.name)
+      }));
+      
+      // Nếu đang edit, cập nhật cả selectedBlogCategory
+      if (selectedBlogCategory) {
+        setSelectedBlogCategory({
+          ...selectedBlogCategory,
+          slug: convertToSlug(formData.name)
+        });
+      }
+    }
+  }, [formData?.name]);
 
   const formTitle = currentAction.type === ActionType.EDIT ? "Edit Blog Category" : "Add Blog Category";
 
@@ -199,7 +218,8 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
             value={formData?.slug || ""}
             disabled={isView || isLoading}
             onChange={(e) => handleInputChange('slug', e.target.value)}
-            style={{ marginBottom: "16px", width: "100%"   }}
+            style={{ marginBottom: "16px", width: "100%" }}
+            helperText="Tự động tạo từ tên danh mục. Thay đổi tên vẫn sẽ cập nhật slug."
           />
 
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>

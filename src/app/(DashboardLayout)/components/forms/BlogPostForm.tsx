@@ -26,6 +26,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { useRouter } from 'next/navigation';
+import { convertToSlug } from "../function/TittleToSlug";
 
 interface BlogPostFormProps {
   isView?: boolean;
@@ -82,6 +83,18 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       setSelectedBlogPost(null);
     }
   }, [action, setSelectedBlogPost]);
+
+  useEffect(() => {
+    // Tự động cập nhật slug khi tiêu đề bài viết thay đổi
+    if (form?.title) {
+      setForm(prev => ({
+        ...prev,
+        slug: convertToSlug(form.title)
+      }));
+      // Cập nhật cả onChange prop để đảm bảo parent component cũng nhận được thay đổi
+      onChange({ name: 'slug', value: convertToSlug(form.title) });
+    }
+  }, [form?.title]);
 
   const handleEditorChange = (content: string) => {
     setEditorContent(content);
@@ -289,6 +302,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             disabled={isView}
             onChange={(e) => handleInputChange('slug', e.target.value)}
             style={{ marginBottom: "16px", width: "100%" }}
+            helperText="Tự động tạo từ tiêu đề bài viết. Thay đổi tiêu đề vẫn sẽ cập nhật slug."
           />
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <TextField

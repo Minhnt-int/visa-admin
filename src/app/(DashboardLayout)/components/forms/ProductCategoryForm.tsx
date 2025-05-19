@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   TextField,
   FormControl,
@@ -22,6 +22,7 @@ import ConfirmPopup from '../popup/ConfirmPopup';
 import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { SelectChangeEvent } from '@mui/material';
+import { convertToSlug } from '../function/TittleToSlug';
 
 interface ProductCategoryFormProps {
   formData: ProductCategory;
@@ -44,12 +45,26 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
   
   const { productCategories, selectedProductCategory } = useAppContext();
 
+  // Reset form data và trạng thái khi selectedProductCategory hoặc initialFormData thay đổi
   useEffect(() => {
     setFormData(selectedProductCategory || initialFormData);
   }, [selectedProductCategory, initialFormData]);
 
+  // Theo dõi riêng khi tên thay đổi để cập nhật slug
+  useEffect(() => {
+    // Luôn cập nhật slug khi tên thay đổi, bất kể người dùng đã chỉnh sửa thủ công hay chưa
+    if (formData.name) {
+      setFormData(prev => ({
+        ...prev,
+        slug: convertToSlug(formData.name)
+      }));
+    }
+  }, [formData.name]); // Chỉ phụ thuộc vào formData.name
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Cập nhật giá trị cho trường tương ứng
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -57,7 +72,7 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
   };
   
   const handleSelectChange = (event: SelectChangeEvent<number | null>) => {
-    setFormData(prev => ({
+    setFormData((prev : any) => ({
       ...prev,
       parentId: event.target.value as number | null,
     }));
@@ -105,7 +120,7 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
             />
           </Grid>
           
-          {/* Slug */}
+          {/* Slug - với giải thích về tự động tạo */}
           <Grid item xs={12}>
             <TextField
               name="slug"
@@ -115,7 +130,7 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
               onChange={handleChange}
               disabled={isView}
               placeholder="Nhập slug (vd: danh-muc-moi)"
-              helperText="Định dạng URL thân thiện cho danh mục"
+              helperText="Tự động tạo từ tên danh mục. Nếu chỉnh sửa thủ công, thay đổi tên vẫn sẽ cập nhật slug."
             />
           </Grid>
           

@@ -39,6 +39,7 @@ import { convertToFormData } from "@/utils/productUtils";
 import ConfirmPopup from "../popup/ConfirmPopup";
 import { productMediaDelete } from "@/services/productService";
 import Image from "next/image";
+import { convertToSlug } from "../function/TittleToSlug";
 
 interface ProductFormProps {
   formData: ProductAttributes;
@@ -216,6 +217,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
   useEffect(() => {
     setSelectedMedia((formData.media as any) || []);
   }, [formData.media]);
+
+  // Thêm useEffect để cập nhật slug khi name thay đổi
+  useEffect(() => {
+    // Tự động cập nhật slug khi tên sản phẩm thay đổi
+    if (formData.name) {
+      setFormData(prev => ({
+        ...prev,
+        slug: convertToSlug(formData.name)
+      }));
+    }
+  }, [formData.name]);
 
   const handleInputChange = (field: keyof ProductAttributes, value: any) => {
     setFormData((prev: ProductAttributes) => ({
@@ -556,6 +568,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           onChange={(e) => handleInputChange("slug", e.target.value)}
           style={{ marginBottom: "16px", width: "100%", marginTop: "16px" }}
           label="Slug"
+          helperText="Tự động tạo từ tên sản phẩm. Thay đổi tên vẫn sẽ cập nhật slug."
         />
 
         <FormControl fullWidth margin="normal">
