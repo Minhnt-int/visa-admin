@@ -195,32 +195,149 @@ const MetaJsonTable: React.FC = () => {
   };
 
   // Đếm số lượng trường trong metaData
-  const countMetaDataFields = (metaData: Record<string, any>) => {
-    return Object.keys(metaData || {}).length;
+  const countMetaDataFields = (metaData: any) => {
+    if (!metaData) return 0;
+    
+    // Nếu là mảng, đếm số phần tử trong mảng
+    if (Array.isArray(metaData)) {
+      return metaData.length;
+    }
+    
+    // Nếu là đối tượng, đếm số trường (giữ nguyên logic hiện tại)
+    if (typeof metaData === 'object') {
+      return Object.keys(metaData).length;
+    }
+    
+    // Nếu là giá trị nguyên thủy (string, number, boolean), đếm là 1
+    return 1;
   };
 
-  // Hiển thị JSON có cấu trúc
-  const renderStructuredJson = (json: Record<string, any>) => {
+  // Đếm số phần tử trong mảng hoặc trả về 1
+  const countMetaDataItems = (metaData: any) => {
+    if (!metaData) return 0;
+    
+    // Nếu là mảng, đếm số phần tử trong mảng
+    if (Array.isArray(metaData)) {
+      return metaData.length;
+    }
+    
+    // Mọi kiểu dữ liệu khác đều đếm là 1
+    return 1;
+  };
+
+  // Hàm phân tích cấu trúc JSON
+  const renderJsonStructure = (obj: any, level = 0) => {
+    if (!obj || typeof obj !== 'object') {
+      return (
+        <Typography variant="body2" sx={{ color: 'text.primary' }}>
+          {String(obj)}
+        </Typography>
+      );
+    }
+
     return (
-      <Box sx={{ pl: 2 }}>
-        {Object.entries(json).map(([key, value]) => (
-          <Box key={key} sx={{ my: 0.5 }}>
-            <Typography component="span" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-              {key}:
-            </Typography>{' '}
-            <Typography 
-              component="span" 
-              sx={{ 
-                color: typeof value === 'string' ? 'success.main' : 'text.primary',
-                fontStyle: typeof value === 'string' ? 'italic' : 'normal'
-              }}
-            >
-              {typeof value === 'object' && value !== null 
-                ? 'Đối tượng lồng nhau'
-                : String(value)}
-            </Typography>
-          </Box>
-        ))}
+      <Box sx={{ pl: level > 0 ? 2 : 0 }}>
+        {Object.entries(obj).map(([fieldKey, fieldValue]) => {
+          // Xác định kiểu dữ liệu
+          const isString = typeof fieldValue === 'string';
+          const isNumber = typeof fieldValue === 'number';
+          const isBoolean = typeof fieldValue === 'boolean';
+          const isArray = Array.isArray(fieldValue);
+          const isObject = typeof fieldValue === 'object' && fieldValue !== null && !isArray;
+          
+          return (
+            <Box key={fieldKey} sx={{ 
+              mb: 1, 
+              pb: 1, 
+              borderBottom: level === 0 ? '1px dashed #e0e0e0' : 'none' 
+            }}>
+              <Typography variant="caption" sx={{ 
+                color: 'text.secondary',
+                fontWeight: 600,
+                display: 'block'
+              }}>
+                {fieldKey} {isArray ? `(${(fieldValue as any[]).length} items)` : ''} 
+                <Chip 
+                  size="small" 
+                  label={isString ? 'string' : isNumber ? 'number' : isBoolean ? 'boolean' : isArray ? 'array' : 'object'} 
+                  color={isString ? 'success' : isNumber ? 'info' : isBoolean ? 'warning' : 'primary'} 
+                  variant="outlined"
+                  sx={{ ml: 1, height: 20, '& .MuiChip-label': { px: 1, py: 0.25, fontSize: '0.6rem' } }}
+                />
+              </Typography>
+              
+              {isString && (
+                <TextField
+                  value={fieldValue as string}
+                  fullWidth
+                  size="small"
+                  margin="dense"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': { 
+                      fontSize: '0.875rem',
+                      backgroundColor: 'rgba(0,0,0,0.02)'
+                    } 
+                  }}
+                />
+              )}
+              
+              {isNumber && (
+                <TextField
+                  value={fieldValue as number}
+                  fullWidth
+                  size="small"
+                  margin="dense"
+                  type="number"
+                  InputProps={{ readOnly: true }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': { 
+                      fontSize: '0.875rem',
+                      backgroundColor: 'rgba(0,0,0,0.02)'
+                    } 
+                  }}
+                />
+              )}
+              
+              {isBoolean && (
+                <Box sx={{ mt: 1 }}>
+                  <Chip
+                    label={fieldValue ? 'True' : 'False'}
+                    color={fieldValue ? 'success' : 'default'}
+                    size="small"
+                  />
+                </Box>
+              )}
+              
+              {isArray && (
+                <Box sx={{ mt: 1, pl: 2, borderLeft: '2px solid #e0e0e0' }}>
+                  {(fieldValue as any[]).map((item, idx) => (
+                    <Box key={idx} sx={{ 
+                      mb: 1, 
+                      p: 1, 
+                      backgroundColor: 'rgba(0,0,0,0.02)', 
+                      borderRadius: 1 
+                    }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        Item {idx + 1}
+                      </Typography>
+                      {typeof item === 'object' && item !== null ? 
+                        renderJsonStructure(item, level + 1) : 
+                        <Typography variant="body2">{String(item)}</Typography>
+                      }
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              
+              {isObject && (
+                <Box sx={{ mt: 1, pl: 2, borderLeft: '2px solid #e0e0e0' }}>
+                  {renderJsonStructure(fieldValue, level + 1)}
+                </Box>
+              )}
+            </Box>
+          );
+        })}
       </Box>
     );
   };
@@ -382,7 +499,7 @@ const MetaJsonTable: React.FC = () => {
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Chip 
                             size="small" 
-                            label={`${countMetaDataFields(row.metaData)} trường`} 
+                            label={`${countMetaDataItems(row.metaData)} phần tử`} 
                             color="primary" 
                             variant="outlined"
                           />
@@ -464,36 +581,130 @@ const MetaJsonTable: React.FC = () => {
                             <Divider sx={{ mb: 2 }} />
                             
                             {/* Hiển thị các trường chính trong metaData */}
-                            <Grid container spacing={2}>
-                              <Grid item xs={12} md={4}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Title:</Typography>
-                                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                  {row.metaData?.title || '-'}
+                            <Box sx={{ mb: 2 }}>
+                              {row.metaData && Object.keys(row.metaData).length > 0 ? (
+                                <Grid container spacing={2}>
+                                  {Object.entries(row.metaData).map(([key, value]) => {
+                                    // Xử lý nếu value là mảng (như trong ví dụ banners)
+                                    if (Array.isArray(value)) {
+                                      return (
+                                        <Grid item xs={12} key={key}>
+                                          <Box sx={{ 
+                                            p: 1.5, 
+                                            bgcolor: 'background.paper', 
+                                            borderRadius: 1,
+                                            border: '1px solid #e0e0e0'
+                                          }}>
+                                            <Typography variant="caption" sx={{ 
+                                              color: 'text.secondary', 
+                                              display: 'block',
+                                              fontWeight: 600 
+                                            }}>
+                                              {key.charAt(0).toUpperCase() + key.slice(1)} ({value.length} items)
+                                            </Typography>
+                                            
+                                            {value.map((item, idx) => (
+                                              <Box key={idx} sx={{ 
+                                                mt: 1, 
+                                                p: 1.5, 
+                                                bgcolor: '#f5f5f5', 
+                                                borderRadius: 1,
+                                                border: '1px solid #e8e8e8'
+                                              }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                                  Item {idx + 1}
+                                                </Typography>
+                                                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                                                  {item && typeof item === 'object' && Object.entries(item).map(([itemKey, itemValue]) => (
+                                                    <Grid item xs={12} sm={6} md={4} key={itemKey}>
+                                                      <Box sx={{ p: 1, bgcolor: 'white', borderRadius: 1, height: '100%' }}>
+                                                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontWeight: 600 }}>
+                                                          {itemKey}
+                                                        </Typography>
+                                                        {itemKey === 'imgSrc' ? (
+                                                          <Box sx={{ mt: 1 }}>
+                                                            <Box 
+                                                              component="img" 
+                                                              src={String(itemValue)} 
+                                                              alt="Preview"
+                                                              sx={{ 
+                                                                maxWidth: '100%', 
+                                                                maxHeight: '80px',
+                                                                borderRadius: 1,
+                                                                display: 'block'
+                                                              }}
+                                                            />
+                                                            <Typography variant="caption" sx={{ 
+                                                              display: 'block',
+                                                              mt: 0.5,
+                                                              color: 'text.secondary',
+                                                              wordBreak: 'break-all'
+                                                            }}>
+                                                              {String(itemValue)}
+                                                            </Typography>
+                                                          </Box>
+                                                        ) : (
+                                                          <Typography variant="body2" sx={{ 
+                                                            wordBreak: 'break-word',
+                                                            color: typeof itemValue === 'string' ? 'success.main' : 'text.primary'
+                                                          }}>
+                                                            {typeof itemValue === 'string' 
+                                                              ? itemValue 
+                                                              : typeof itemValue === 'object' && itemValue !== null
+                                                                ? renderJsonStructure(itemValue)
+                                                                : String(itemValue)}
+                                                          </Typography>
+                                                        )}
+                                                      </Box>
+                                                    </Grid>
+                                                  ))}
+                                                </Grid>
+                                              </Box>
+                                            ))}
+                                          </Box>
+                                        </Grid>
+                                      );
+                                    }
+                                    
+                                    // Hiển thị các giá trị thông thường
+                                    return (
+                                      <Grid item xs={12} sm={6} md={4} key={key}>
+                                        <Box sx={{ 
+                                          p: 1.5, 
+                                          bgcolor: 'background.paper', 
+                                          borderRadius: 1,
+                                          border: '1px solid #e0e0e0',
+                                          height: '100%'
+                                        }}>
+                                          <Typography variant="caption" sx={{ 
+                                            color: 'text.secondary', 
+                                            display: 'block',
+                                            fontWeight: 600 
+                                          }}>
+                                            {key.charAt(0).toUpperCase() + key.slice(1)}
+                                          </Typography>
+                                          <Typography variant="body2" sx={{ 
+                                            wordBreak: 'break-word',
+                                            color: typeof value === 'string' ? 'success.main' : 'text.primary',
+                                            fontStyle: typeof value === 'string' ? 'normal' : 'italic'
+                                          }}>
+                                            {typeof value === 'string' 
+                                              ? value 
+                                              : typeof value === 'object' && value !== null
+                                                ? renderJsonStructure(value)
+                                                : String(value)}
+                                          </Typography>
+                                        </Box>
+                                      </Grid>
+                                    );
+                                  })}
+                                </Grid>
+                              ) : (
+                                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                                  Không có dữ liệu meta
                                 </Typography>
-                              </Grid>
-                              <Grid item xs={12} md={4}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Keywords:</Typography>
-                                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                  {row.metaData?.keywords || '-'}
-                                </Typography>
-                              </Grid>
-                              <Grid item xs={12} md={4}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                  Trường khác:
-                                </Typography>
-                                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                  {Object.keys(row.metaData || {})
-                                    .filter(key => !['title', 'description', 'keywords'].includes(key))
-                                    .join(', ') || 'Không có'}
-                                </Typography>
-                              </Grid>
-                              <Grid item xs={12}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Description:</Typography>
-                                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                  {row.metaData?.description || '-'}
-                                </Typography>
-                              </Grid>
-                            </Grid>
+                              )}
+                            </Box>
                             
                             {/* Hiển thị JSON đầy đủ */}
                             <Box sx={{ mt: 2 }}>

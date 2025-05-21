@@ -84,13 +84,23 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
   const [mediaPopupOpen, setMediaPopupOpen] = useState(false);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
+  // Sửa hàm handleTabChange
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    // Nếu ở chế độ view, cho phép xem tất cả các tab
     if (isView) {
       setActiveTab(newValue);
       return;
     }
 
-    // Tạo dữ liệu mới hoàn toàn dựa trên tab được chọn
+    // Nếu ở chế độ edit, chỉ cho phép chuyển đến tab JSON Editor (index 2)
+    if (isEdit) {
+      if (newValue === 2) { // Chỉ cho phép chuyển đến tab JSON Editor
+        setActiveTab(newValue);
+      }
+      return;
+    }
+
+    // Chế độ tạo mới - cho phép chuyển tab tự do
     let newData: any;
 
     if (newValue === 0) {
@@ -196,12 +206,40 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
   };
 
   const handleMediaSelect = (media: ProductMedia) => {
-    const slides = [...(form.metaData?.slides || [])];
-    if (!slides[currentBannerIndex]) {
-      slides[currentBannerIndex] = { alt: '', subheading: '' };
+    // Kiểm tra nếu metaData là mảng
+    if (Array.isArray(form.metaData)) {
+      const newMetaData = [...form.metaData];
+      // Nếu phần tử không tồn tại, tạo mới
+      if (!newMetaData[currentBannerIndex]) {
+        newMetaData[currentBannerIndex] = { alt: '', subheading: '' };
+      }
+      // Cập nhật imgSrc cho phần tử hiện tại
+      newMetaData[currentBannerIndex].imgSrc = media.url;
+      
+      // Cập nhật toàn bộ metaData
+      setForm(prev => ({
+        ...prev,
+        metaData: newMetaData
+      }));
+      setJsonContent(JSON.stringify(newMetaData, null, 2));
+    } 
+    // Nếu metaData là đối tượng có thuộc tính slides
+    else if (form.metaData?.slides) {
+      const slides = [...(form.metaData.slides || [])];
+      if (!slides[currentBannerIndex]) {
+        slides[currentBannerIndex] = { alt: '', subheading: '' };
+      }
+      slides[currentBannerIndex].imgSrc = media.url;
+      handleMetaDataChange('slides', slides);
     }
-    slides[currentBannerIndex].imgSrc = media.url;
-    handleMetaDataChange('slides', slides);
+    // Trường hợp metaData là đối tượng nhưng chưa có slides
+    else {
+      // Tạo slides mới
+      const newSlide = { alt: '', subheading: '', imgSrc: media.url };
+      const slides = [newSlide];
+      handleMetaDataChange('slides', slides);
+    }
+    
     setMediaPopupOpen(false);
   };
 
@@ -237,8 +275,14 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
 
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                   <Tabs value={activeTab} onChange={handleTabChange}>
-                    <Tab label="Banner" />
-                    <Tab label="Contact Info" />
+                    <Tab 
+                      label="Banner" 
+                      disabled={isEdit} // Vô hiệu hóa tab Banner khi ở chế độ edit
+                    />
+                    <Tab 
+                      label="Contact Info" 
+                      disabled={isEdit} // Vô hiệu hóa tab Contact Info khi ở chế độ edit
+                    />
                     <Tab label="JSON Editor" />
                   </Tabs>
                 </Box>
@@ -382,8 +426,7 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
                               setJsonContent(JSON.stringify(newSlides, null, 2));
                             }}
                             disabled={isView}
-                            required
-                            placeholder="Chào mừng đến với"
+                            placeholder="Tiêu đề phụ"
                             sx={{ mb: 2 }}
                           />
 
@@ -493,7 +536,6 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
                           handleMetaDataChange('address', e.target.value);
                         }}
                         disabled={isView}
-                        required
                         placeholder="123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh"
                         sx={{ mb: 2 }}
                       />
@@ -507,7 +549,6 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
                           handleMetaDataChange('email', e.target.value);
                         }}
                         disabled={isView}
-                        required
                         placeholder="info@example.com"
                         sx={{ mb: 2 }}
                       />
@@ -521,7 +562,6 @@ const MetaJsonForm: React.FC<MetaJsonFormProps> = ({
                           handleMetaDataChange('phone', e.target.value);
                         }}
                         disabled={isView}
-                        required
                         placeholder="0123 456 789"
                         sx={{ mb: 2 }}
                       />
