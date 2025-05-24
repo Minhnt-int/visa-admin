@@ -92,15 +92,25 @@ const ApiService = {
     let errorMessage = 'Đã xảy ra lỗi không xác định';
     
     if (error.response) {
-      // Lỗi response từ server
-      errorMessage = error.response.data.message || 'Lỗi từ server';
+      // Lỗi response từ server - kiểm tra nhiều cấu trúc lỗi phổ biến
+      if (error.response.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.response.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      } else {
+        errorMessage = `Lỗi từ server: ${error.response.status}`;
+      }
     } else if (error.request) {
       // Không nhận được response
       errorMessage = 'Không thể kết nối đến server';
     } else {
       // Lỗi trong quá trình thiết lập request
-      errorMessage = error.message;
+      errorMessage = error.message || errorMessage;
     }
+    
+    console.error('API Error:', errorMessage, error);
     
     return {
       data: [],
@@ -110,4 +120,4 @@ const ApiService = {
   }
 };
 
-export default ApiService; 
+export default ApiService;

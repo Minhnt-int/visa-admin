@@ -7,6 +7,7 @@ import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProductCategoryForm from '../../components/forms/ProductCategoryForm';
 import { Snackbar, Alert } from '@/config/mui';
+import ApiService from '@/services/ApiService';
 
 const initialFormData: ProductCategory = {
   id: 0,
@@ -69,20 +70,36 @@ const ProductCategoryActionContent = () => {
           message: 'Đã cập nhật danh mục thành công!',
           severity: 'success'
         });
+        // Chỉ chuyển hướng khi thành công
+        setTimeout(() => router.push('/danh-muc-san-pham'), 1500);
       } else {
-        await createProductCategory(data);
-        setSnackbar({
-          open: true,
-          message: 'Đã tạo danh mục mới thành công!',
-          severity: 'success'
-        });
+        const success = await createProductCategory(data);
+        if (success) {
+          setSnackbar({
+            open: true,
+            message: 'Đã tạo danh mục mới thành công!',
+            severity: 'success'
+          });
+          // Chỉ chuyển hướng khi thành công
+          setTimeout(() => router.push('/danh-muc-san-pham'), 1500);
+        } else {
+          // Xử lý khi không thành công
+          setSnackbar({
+            open: true,
+            message: 'Không thể tạo danh mục. Vui lòng thử lại',
+            severity: 'error'
+          });
+        }
       }
-      router.push('/danh-muc-san-pham');
     } catch (error) {
       console.error('Error saving category:', error);
+      
+      // Sử dụng ApiService.handleError để lấy thông báo lỗi
+      const errorResult = ApiService.handleError(error);
+      
       setSnackbar({
         open: true,
-        message: 'Không thể lưu danh mục. Vui lòng thử lại sau.',
+        message: errorResult.message,
         severity: 'error'
       });
     }
@@ -139,4 +156,4 @@ const ProductCategoryAction = () => {
   );
 };
 
-export default ProductCategoryAction; 
+export default ProductCategoryAction;

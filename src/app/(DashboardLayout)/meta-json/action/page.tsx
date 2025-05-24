@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import MetaJsonForm from '../../components/forms/MetaJsonForm';
 import { Snackbar, Alert } from '@/config/mui';
 import { getMetaJsonData, createMetaJsonData, updateMetaJsonData } from '@/services/SEOService';
+import ApiService from '@/services/ApiService';
 
 interface MetaJsonAttributes {
   id?: number;
@@ -90,7 +91,8 @@ export default function MetaJsonAction() {
           });
           setTimeout(() => router.push('/meta-json'), 1500);
         } else {
-          throw new Error(result.message || 'Failed to update meta JSON');
+          // Sử dụng thông báo lỗi trả về từ API
+          throw new Error(result.message || 'Không thể cập nhật meta JSON');
         }
       } else {
         const result = await createMetaJsonData(data);
@@ -102,14 +104,19 @@ export default function MetaJsonAction() {
           });
           setTimeout(() => router.push('/meta-json'), 1500);
         } else {
-          throw new Error(result.message || 'Failed to create meta JSON');
+          // Sử dụng thông báo lỗi trả về từ API
+          throw new Error(result.message || 'Không thể tạo meta JSON mới');
         }
       }
     } catch (error) {
       console.error('Error saving meta JSON:', error);
+      
+      // Sử dụng ApiService.handleError để lấy thông báo lỗi
+      const errorResult = ApiService.handleError(error);
+      
       setSnackbar({
         open: true,
-        message: 'Không thể lưu dữ liệu meta JSON. Vui lòng thử lại sau.',
+        message: errorResult.message,
         severity: 'error'
       });
     } finally {

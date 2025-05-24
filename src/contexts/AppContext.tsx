@@ -149,6 +149,7 @@ interface AppContextProps {
   createProductCategory: (category: ProductCategory) => Promise<boolean>;
   updateProductCategory: (id: number, category: ProductCategory) => Promise<boolean>;
   deleteProductCategory: (id: number) => Promise<boolean>;
+  changeProductCategoryStatus: (categoryId: number, status: string) => Promise<boolean>; // Thêm dòng này
   clearSelectedProductCategory: () => void;
   setSelectedProductCategory: (category: ProductCategory | null) => void;
   
@@ -315,34 +316,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ====================== BLOG CATEGORY METHODS ======================
   
   // Lấy tất cả danh mục blog
-  const fetchBlogCategories = useCallback(async (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    name?: string;
-    sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-  }) => {
-    try {
-      setLoading(true);
-      const result = await BlogCategoryService.getAllCategories(params);
-      
-      if (result.success) {
-        // Đảm bảo result.data là một mảng
-        const categories = result.data ? result.data : [];
-        setBlogCategories(categories.categories);
-        setError(null);
-      } else {
-        setError(result.message);
-        setBlogCategories([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      setBlogCategories([]);
-    } finally {
-      setLoading(false);
+const fetchBlogCategories = useCallback(async (params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  name?: string;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+}) => {
+  try {
+    setLoading(true);
+    const result = await BlogCategoryService.getAllCategories(params);
+    
+    if (result.success) {
+      // Đảm bảo result.data là một mảng
+      const categories = result.data ? result.data : [];
+      setBlogCategories(categories.categories);
+      setError(null);
+    } else {
+      setError(result.message);
+      showMessage(result.message || 'Không thể tải danh mục bài viết', 'error');
+      throw new Error(result.message || 'Không thể tải danh mục bài viết');
     }
-  }, []);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [showMessage]);
 
   // Lấy danh mục blog theo ID
   const fetchBlogCategoryBySlug = useCallback(async (slug: string) => {
@@ -379,15 +383,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return true;
       } else {
         setError(result.message);
-        return false;
+        showMessage(result.message || 'Không thể tạo danh mục', 'error');
+        throw new Error(result.message || 'Không thể tạo danh mục');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err; // Ném lại lỗi
     } finally {
       setLoading(false);
     }
-  }, [fetchBlogCategories, setCurrentAction]);
+  }, [fetchBlogCategories, setCurrentAction, showMessage]);
 
   // Cập nhật danh mục blog
   const updateBlogCategory = useCallback(async (category: BlogCategory) => {
@@ -399,69 +406,76 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       if (result.success) {
         await fetchBlogCategories();
+        showMessage('Đã cập nhật danh mục thành công!', 'success');
         setError(null);
         return true;
       } else {
         setError(result.message);
-        return false;
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchBlogCategories, setCurrentAction]);
-
-  // Xóa danh mục blog
-  const deleteBlogCategory = useCallback(async (id: number) => {
-    try {
-      setLoading(true);
-      setCurrentAction(ActionType.DELETE, 'blogCategory', id);
-      
-      const result = await BlogCategoryService.deleteCategory(id);
-      
-      if (result.success) {
-        await fetchBlogCategories();
-        setCurrentAction(ActionType.NONE, null);
-        setError(null);
-        return true;
-      } else {
-        setError(result.message);
-        return false;
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchBlogCategories, setCurrentAction]);
-
-  // Thay đổi trạng thái danh mục blog
-  const changeBlogCategoryStatus = useCallback(async (id: number, status: string) => {
-    try {
-      setLoading(true);
-      const result = await BlogCategoryService.changeBlogCategoryStatus(id, status);
-      
-      if (result.success) {
-        showMessage(`Đã cập nhật trạng thái danh mục thành ${status === 'active' ? 'hoạt động' : status === 'draft' ? 'bản nháp' : 'đã xóa'}`, 'success');
-        await fetchBlogCategories();
-        return true;
-      } else {
-        setError(result.message);
-        showMessage(result.message || 'Không thể cập nhật trạng thái danh mục', 'error');
-        return false;
+        showMessage(result.message || 'Không thể cập nhật danh mục', 'error');
+        throw new Error(result.message || 'Không thể cập nhật danh mục'); // ✅ Ném lỗi
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
       setError(errorMessage);
       showMessage(errorMessage, 'error');
-      return false;
+      throw err; // ✅ Ném lại lỗi
     } finally {
       setLoading(false);
     }
-  }, [fetchBlogCategories, showMessage]);
+  }, [fetchBlogCategories, setCurrentAction, showMessage]);
+
+  // Xóa danh mục blog
+const deleteBlogCategory = useCallback(async (id: number) => {
+  try {
+    setLoading(true);
+    setCurrentAction(ActionType.DELETE, 'blogCategory', id);
+    
+    const result = await BlogCategoryService.deleteCategory(id);
+    
+    if (result.success) {
+      await fetchBlogCategories();
+      setCurrentAction(ActionType.NONE, null);
+      setError(null);
+      return true;
+    } else {
+      setError(result.message);
+      showMessage(result.message || 'Không thể xóa danh mục', 'error');
+      throw new Error(result.message || 'Không thể xóa danh mục');
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error'); // Thêm dòng này
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [fetchBlogCategories, setCurrentAction, showMessage]);
+
+  // Thay đổi trạng thái danh mục blog
+const changeBlogCategoryStatus = useCallback(async (id: number, status: string) => {
+  try {
+    setLoading(true);
+    const result = await BlogCategoryService.changeBlogCategoryStatus(id, status);
+    
+    if (result.success) {
+      showMessage(`Đã cập nhật trạng thái danh mục thành ${status === 'active' ? 'hoạt động' : status === 'draft' ? 'bản nháp' : 'đã xóa'}`, 'success');
+      await fetchBlogCategories();
+      return true;
+    } else {
+      setError(result.message);
+      showMessage(result.message || 'Không thể cập nhật trạng thái danh mục', 'error');
+      throw new Error(result.message || 'Không thể cập nhật trạng thái danh mục');
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [fetchBlogCategories, showMessage]);
 
   // Clear selected blog category
   const clearSelectedBlogCategory = useCallback(() => {
@@ -493,11 +507,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setError(null);
       } else {
         setError(result.message);
-        setProducts([]);
-        setProductsPagination({
-          total: 0,
-          totalPages: 0
-        });
+        // ⚠️ Cần throw error ở đây để components có thể xử lý
+        throw new Error(result.message || 'Không thể tải danh sách sản phẩm');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
@@ -506,6 +517,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         total: 0,
         totalPages: 0
       });
+      // ⚠️ Cần throw err ở đây
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -543,26 +556,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Lấy sản phẩm theo slug
-  const fetchProductBySlug = useCallback(async (slug: string) => {
-    try {
-      setLoading(true);
-      const response = await fetchProductBySlugService(slug) as any;
-      
-      if (response && response.data && response.data.success) {
-        setSelectedProduct(response.data.data);
-        setCurrentAction(ActionType.VIEW, 'product', response.data.data.id);
+const fetchProductBySlug = useCallback(async (slug: string) => {
+  try {
+    setLoading(true);
+    const response = await fetchProductBySlugService(slug) as any;
+    
+    if (response && response.data && response.data.success) {
+      setSelectedProduct(response.data.data);
+      setCurrentAction(ActionType.VIEW, 'product', response.data.data.id);
       setError(null);
-      } else {
-        setError(response.data ? response.data.message : 'Failed to fetch product');
-        setSelectedProduct(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      setSelectedProduct(null);
-    } finally {
-      setLoading(false);
+    } else {
+      const errorMsg = response.data ? response.data.message : 'Không thể tải thông tin sản phẩm';
+      setError(errorMsg);
+      showMessage(errorMsg, 'error');
+      throw new Error(errorMsg);
     }
-  }, [setCurrentAction]);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [setCurrentAction, showMessage]);
 
   // Tạo sản phẩm mới
   const createProduct = useCallback(async (product: ProductAttributes) => {
@@ -572,19 +589,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const result = await createProductService(product) as ApiResponse;
       if (result.success) {
         await fetchProducts();
+        showMessage('Đã tạo sản phẩm mới thành công!', 'success');
         setError(null);
         return true;
       } else {
         setError(result.message);
-        return false;
+        showMessage(result.message || 'Không thể tạo sản phẩm mới', 'error');
+        throw new Error(result.message || 'Không thể tạo sản phẩm mới');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err; // Ném lại lỗi
     } finally {
       setLoading(false);
     }
-  }, [fetchProducts, setCurrentAction]);
+  }, [fetchProducts, setCurrentAction, showMessage]);
 
   // Cập nhật sản phẩm
   const updateProduct = useCallback(async (id: number, product: ProductAttributes) => {
@@ -752,74 +773,104 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       if (result.success) {
         await fetchProductCategories();
-        setError(null);
+        showMessage('Đã tạo danh mục mới thành công!', 'success');
         return true;
       } else {
         setError(result.message);
-        return false;
+        showMessage(result.message || 'Không thể tạo danh mục', 'error');
+        throw new Error(result.message); // ✅ Ném lỗi để component bắt được
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
+      throw err; // ✅ Ném lỗi để component bắt được
     } finally {
       setLoading(false);
     }
   }, [fetchProductCategories, setCurrentAction]);
 
   // Cập nhật danh mục sản phẩm
-  const updateProductCategory = useCallback(async (id: number, category: ProductCategory) => {
-    try {
-      setLoading(true);
-      setCurrentAction(ActionType.EDIT, 'productCategory', id);
-      
-      const result = await ProductCategoryService.updateCategory(id, category);
-      
-      if (result.success) {
-        await fetchProductCategories();
-        setError(null);
-        return true;
-      } else {
-        setError(result.message);
-        return false;
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
-    } finally {
-      setLoading(false);
+const updateProductCategory = useCallback(async (id: number, category: ProductCategory) => {
+  try {
+    setLoading(true);
+    setCurrentAction(ActionType.EDIT, 'productCategory', id);
+    
+    const result = await ProductCategoryService.updateCategory(id, category);
+    
+    if (result.success) {
+      await fetchProductCategories();
+      showMessage('Đã cập nhật danh mục thành công!', 'success');
+      setError(null);
+      return true;
+    } else {
+      setError(result.message);
+      showMessage(result.message || 'Không thể cập nhật danh mục', 'error');
+      throw new Error(result.message || 'Không thể cập nhật danh mục');
     }
-  }, [fetchProductCategories, setCurrentAction]);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [fetchProductCategories, setCurrentAction, showMessage]);
 
   // Xóa danh mục sản phẩm
   const deleteProductCategory = useCallback(async (id: number) => {
     try {
       setLoading(true);
-      setCurrentAction(ActionType.DELETE, 'productCategory', id);
+      setCurrentAction(ActionType.DELETE, 'productCategory');
       
       const result = await ProductCategoryService.deleteCategory(id);
       
       if (result.success) {
         await fetchProductCategories();
-        setCurrentAction(ActionType.NONE, null);
-        setError(null);
+        showMessage('Đã xóa danh mục thành công', 'success');
         return true;
       } else {
-        setError(result.message);
-        return false;
+        showMessage(result.message || 'Không thể xóa danh mục', 'error');
+        throw new Error(result.message || 'Không thể xóa danh mục');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi xóa danh mục';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err; // Đảm bảo lỗi được truyền ra ngoài
     } finally {
       setLoading(false);
     }
-  }, [fetchProductCategories, setCurrentAction]);
+  }, [fetchProductCategories, setCurrentAction, showMessage]);
 
   // Clear selected product category
   const clearSelectedProductCategory = useCallback(() => {
     setSelectedProductCategory(null);
     setCurrentAction(ActionType.NONE, null);
   }, [setCurrentAction]);
+
+const changeProductCategoryStatus = useCallback(async (categoryId: number, status: string) => {
+  try {
+    setLoading(true);
+    const result = await ProductCategoryService.changeProductCategoryStatus(categoryId, status);
+    
+    if (result.success) {
+      showMessage(`Đã cập nhật trạng thái danh mục thành ${status === 'active' ? 'hoạt động' : 'đã xóa'}`, 'success');
+      await fetchProductCategories();
+      return true;
+    } else {
+      setError(result.message);
+      showMessage(result.message || 'Không thể cập nhật trạng thái danh mục', 'error');
+      throw new Error(result.message || 'Không thể cập nhật trạng thái danh mục');
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [fetchProductCategories, showMessage]);
 
   // ====================== ORDER METHODS ======================
   
@@ -837,34 +888,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         data: OrderAttributes[],
         pagination: { total: number; page: number; limit: number; totalPages: number }
       };
+      
       if (result && result.data) {
         setOrders(result.data);
         return result;
+      } else {
+        const errorMsg = 'Không thể tải danh sách đơn hàng';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
-      return {
-        data: [],
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 0
-        }
-      };
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra');
-      return {
-        data: [],
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 0
-        }
-      };
+      const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showMessage]);
 
   // Lấy đơn hàng theo ID
   const fetchOrderById = useCallback(async (id: number) => {
@@ -898,40 +940,61 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [fetchOrders, setCurrentAction]);
 
   // Cập nhật đơn hàng
-  const updateOrderHandle = useCallback(async (id: number, order: OrderAttributes) => {
-    try {
-      setLoading(true);
-      setCurrentAction(ActionType.EDIT, 'order', id);
-      await updateOrder({ ...order, id });
+const updateOrderHandle = useCallback(async (id: number, order: OrderAttributes) => {
+  try {
+    setLoading(true);
+    setCurrentAction(ActionType.EDIT, 'order', id);
+    const result = await updateOrder({ ...order, id }) as any;
+    
+    if (result && result.success) {
       await fetchOrders();
+      showMessage('Đã cập nhật đơn hàng thành công!', 'success');
       setError(null);
       return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
-    } finally {
-      setLoading(false);
+    } else {
+      const errorMsg = result?.message || 'Không thể cập nhật đơn hàng';
+      setError(errorMsg);
+      showMessage(errorMsg, 'error');
+      throw new Error(errorMsg);
     }
-  }, [fetchOrders, setCurrentAction]);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [fetchOrders, setCurrentAction, showMessage]);
 
   // Xóa đơn hàng
-  const deleteOrderHandle = useCallback(async (id: number) => {
-    try {
-      setLoading(true);
-      setCurrentAction(ActionType.DELETE, 'order', id);
-      // TODO: Sử dụng OrderService
-      await deleteOrder(id);
+const deleteOrderHandle = useCallback(async (id: number) => {
+  try {
+    setLoading(true);
+    setCurrentAction(ActionType.DELETE, 'order', id);
+    const result = await deleteOrder(id) as any;
+    
+    if (result && result.success) {
       await fetchOrders();
+      showMessage('Đã xóa đơn hàng thành công!', 'success');
       setCurrentAction(ActionType.NONE, null);
       setError(null);
       return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
-    } finally {
-      setLoading(false);
+    } else {
+      const errorMsg = result?.message || 'Không thể xóa đơn hàng';
+      setError(errorMsg);
+      showMessage(errorMsg, 'error');
+      throw new Error(errorMsg);
     }
-  }, [fetchOrders, setCurrentAction]);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+    setError(errorMessage);
+    showMessage(errorMessage, 'error');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, [fetchOrders, setCurrentAction, showMessage]);
 
   // Clear selected order
   const clearSelectedOrder = useCallback(() => {
@@ -955,19 +1018,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       if (result && result.message) {
         await fetchBlogList();
+        showMessage('Đã cập nhật bài viết thành công!', 'success');
         setError(null);
         return true;
       } else {
-        setError('Đã xảy ra lỗi khi cập nhật bài viết');
-        return false;
+        const errorMsg = 'Đã xảy ra lỗi khi cập nhật bài viết';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      return false;
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, [fetchBlogList, setCurrentAction]);
+  }, [fetchBlogList, setCurrentAction, showMessage]);
 
   // Blog Actions
   const createBlogPost = useCallback(async (blog: BlogPostAttributes) => {
@@ -1065,16 +1133,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentAction(ActionType.VIEW, 'blog', response.data.id);
         setError(null);
       } else {
-        setError('Failed to fetch blog');
-        setSelectedBlog(null);
+        const errorMsg = 'Không thể tải thông tin bài viết';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
-      setSelectedBlog(null);
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
     } finally {
       setLoading(false);
     }
-  }, [setCurrentAction]);
+  }, [setCurrentAction, showMessage]);
 
   // Cập nhật object value
   const value = {
@@ -1145,6 +1217,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     createProductCategory,
     updateProductCategory,
     deleteProductCategory,
+    changeProductCategoryStatus, // Thêm dòng này
     clearSelectedProductCategory,
     setSelectedProductCategory,
     // Order Actions

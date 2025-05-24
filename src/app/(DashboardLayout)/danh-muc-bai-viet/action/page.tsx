@@ -7,6 +7,7 @@ import { ActionType, useAppContext } from '@/contexts/AppContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BlogCategoryForm from '../../components/forms/BlogCategoryForm';
 import { Snackbar, Alert } from '@/config/mui';
+import ApiService from '@/services/ApiService';
 
 const initialFormData: BlogCategory = {
   id: 0,
@@ -56,9 +57,13 @@ const BlogCategoryAction = () => {
         }
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu:', error);
+        
+        // Sử dụng ApiService.handleError để xử lý lỗi
+        const errorResult = ApiService.handleError(error);
+        
         setSnackbar({
           open: true,
-          message: 'Không thể tải dữ liệu danh mục',
+          message: errorResult.message,
           severity: 'error'
         });
       }
@@ -110,9 +115,13 @@ const BlogCategoryAction = () => {
       router.push('/danh-muc-bai-viet');
     } catch (error) {
       console.error('Error saving category:', error);
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      
       setSnackbar({
         open: true,
-        message: 'Không thể lưu danh mục. Vui lòng thử lại sau.',
+        message: errorResult.message,
         severity: 'error'
       });
     }

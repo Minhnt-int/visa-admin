@@ -30,6 +30,7 @@ import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { useRouter } from 'next/navigation';
 import { convertToSlug } from "../function/TittleToSlug";
+import ApiService from '@/services/ApiService';
 
 interface BlogCategoryFormProps {
   isView?: boolean;
@@ -116,32 +117,92 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       setIsLoading(true);
 
       if (formData.id) {
+        // Cần kiểm tra kết quả trả về
         const result = await updateBlogCategory(formData);
 
-        if (result) {
-          setSnackbar({ open: true, message: 'Blog category updated successfully', severity: 'success' });
+        // Kiểm tra kết quả trước khi tiếp tục
+        if (
+          !result ||
+          (typeof result === 'object' &&
+            result !== null &&
+            'success' in result &&
+            (result as { success?: boolean }).success === false)
+        ) {
+          throw new Error((result as any)?.message || 'Không thể cập nhật danh mục');
+        }
+
+        setSnackbar({ 
+          open: true, 
+          message: 'Blog category updated successfully', 
+          severity: 'success' 
+        });
+
+        // Di chuyển router.push xuống dưới để chỉ thực hiện khi thành công
+        setTimeout(() => {
           router.push('/danh-muc-bai-viet');
           setFormData(initBlogCategory);
+        }, 1000);
 
-          if (onSuccess) {
-            onSuccess();
-          }
+        if (onSuccess) {
+          onSuccess();
         }
       } else {
+        // Tương tự với createBlogCategory
         const result = await createBlogCategory(formData);
-        if (result) {
-          setSnackbar({ open: true, message: 'Blog category created successfully', severity: 'success' });
+
+        if (
+          !result ||
+          (typeof result === 'object' &&
+            result !== null &&
+            'success' in result &&
+            (result as { success?: boolean }).success === false)
+        ) {
+          throw new Error((result as any)?.message || 'Không thể tạo danh mục mới');
+        }
+
+        setSnackbar({ 
+          open: true, 
+          message: 'Blog category created successfully', 
+          severity: 'success' 
+        });
+
+        // Di chuyển router.push xuống dưới với setTimeout
+        setTimeout(() => {
           router.push('/danh-muc-bai-viet');
           setFormData(initBlogCategory);
+        }, 1000);
 
-          if (onSuccess) {
-            onSuccess();
-          }
+        if (onSuccess) {
+          onSuccess();
         }
       }
     } catch (error) {
       console.error('Error saving blog category:', error);
-      setSnackbar({ open: true, message: 'Failed to save blog category', severity: 'error' });
+      
+      // Kiểm tra chi tiết lỗi và ghi log
+      console.log('Error details:', {
+        type: typeof error,
+        hasResponse: typeof error === 'object' && error !== null && 'response' in error,
+        responseStatus: typeof error === 'object' && error !== null && 'response' in error
+          ? (error as any).response?.status
+          : undefined,
+        responseData: typeof error === 'object' && error !== null && 'response' in error
+          ? (error as any).response?.data
+          : undefined
+      });
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      console.log('Error result from ApiService:', errorResult);
+      
+      setSnackbar({ 
+        open: true, 
+        message: errorResult.message || 'Có lỗi khi lưu danh mục. Vui lòng thử lại sau.', 
+        severity: 'error' 
+      });
+      
+      // Ngăn chuyển router nếu có lỗi
+      return;
     } finally {
       setIsLoading(false);
     }
@@ -163,7 +224,14 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       }
     } catch (error) {
       console.error('Error deleting blog category:', error);
-      setSnackbar({ open: true, message: 'Failed to delete blog category', severity: 'error' });
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      setSnackbar({ 
+        open: true, 
+        message: errorResult.message, 
+        severity: 'error' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +249,14 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       router.push('/danh-muc-bai-viet');
     } catch (error) {
       console.error('Error saving category:', error);
-      setSnackbar({ open: true, message: 'Không thể lưu danh mục. Vui lòng thử lại sau.', severity: 'error' });
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      setSnackbar({ 
+        open: true, 
+        message: errorResult.message, 
+        severity: 'error' 
+      });
     }
     setConfirmingPopup(false);
   };

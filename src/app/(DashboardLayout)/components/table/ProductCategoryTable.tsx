@@ -27,7 +27,7 @@ import { ActionType } from '@/contexts/AppContext';
 import { useRouter } from 'next/navigation';
 import AddProductCategoryFormPopup from '../popup/AddProductCategoryFormPopup';
 import ConfirmPopup from '../popup/ConfirmPopup';
-import { changeProductStatus } from '@/services/ProductCategoryService';
+import ApiService from '@/services/ApiService';
 
 const initialFormData: ProductCategory = {
   id: 0,
@@ -73,6 +73,7 @@ const ProductCategoryTable: React.FC = () => {
     // ProductCategory Actions
     fetchProductCategories,
     deleteProductCategory,
+    changeProductCategoryStatus, // Thêm dòng này
     
     // Shared Actions
     setLoadingState,
@@ -145,13 +146,12 @@ const ProductCategoryTable: React.FC = () => {
 
   const handleChangeStatus = async (categoryId: number, newStatus: string) => {
     try {
-      await changeProductStatus(categoryId, newStatus);
-      setSnackbar({
-        open: true,
-        message: `Cập nhật trạng thái thành ${newStatus === 'active' ? 'hoạt động' : 'đã xóa'} thành công`,
-        severity: 'success'
-      });
-      // Gọi lại API để cập nhật dữ liệu
+      const success = await changeProductCategoryStatus(categoryId, newStatus);
+      if (!success) {
+        return;
+      }
+      
+      // Chỉ cần gọi lại API để cập nhật dữ liệu
       fetchData({
         page: page + 1,
         limit: rowsPerPage,
@@ -160,10 +160,11 @@ const ProductCategoryTable: React.FC = () => {
         sortOrder: 'DESC'
       });
     } catch (error) {
-      console.error('Error updating category status:', error);
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
       setSnackbar({
         open: true,
-        message: 'Cập nhật trạng thái thất bại',
+        message: errorResult.message,
         severity: 'error'
       });
     }
@@ -182,7 +183,7 @@ const ProductCategoryTable: React.FC = () => {
           });
         } else {
           // Nếu không, chỉ chuyển trạng thái sang deleted
-          await changeProductStatus(formData.id, 'deleted');
+          await changeProductCategoryStatus(formData.id, 'deleted');
           setSnackbar({
             open: true,
             message: `Đã chuyển danh mục "${formData.name}" sang trạng thái đã xóa`,
@@ -198,10 +199,11 @@ const ProductCategoryTable: React.FC = () => {
           sortOrder: 'DESC'
         });
       } catch (error) {
-        console.error('Error deleting/changing status of category:', error);
+        // Sử dụng ApiService.handleError để xử lý lỗi
+        const errorResult = ApiService.handleError(error);
         setSnackbar({
           open: true,
-          message: 'Đã xảy ra lỗi khi xử lý yêu cầu',
+          message: errorResult.message,
           severity: 'error'
         });
       }
@@ -232,11 +234,14 @@ const ProductCategoryTable: React.FC = () => {
       if (productsPagination && typeof productsPagination.total === 'number') {
         setTotalCount(productsPagination.total);
       }
-      
-      setLoadingState(false);
     } catch (error) {
-      console.error("Error fetching data:", error);
-      setErrorState(error instanceof Error ? error.message : 'An error occurred');
+      const errorResult = ApiService.handleError(error);
+      setSnackbar({
+        open: true,
+        message: errorResult.message,
+        severity: 'error'
+      });
+    } finally {
       setLoadingState(false);
     }
   };

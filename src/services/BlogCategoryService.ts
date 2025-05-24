@@ -78,7 +78,7 @@ const BlogCategoryService = {
    */
   async deleteCategory(id: number) {
     try {
-      const response = await ApiService.delete(`${BLOG_CATEGORIES_URL}/${id}`);
+      const response = await ApiService.delete(`${BLOG_CATEGORIES_URL}?id=${id}`);
       return ApiService.handleResponse<any>(response);
     } catch (error) {
       return ApiService.handleError(error);

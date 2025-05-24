@@ -32,6 +32,7 @@ import AddBlogCategoryFormPopup from '../popup/AddBlogCategoryFormPopup';
 import { ActionType } from '@/contexts/AppContext';
 import BlogCategoryService from '@/services/BlogCategoryService';
 import { IconPlus } from '@tabler/icons-react';
+import ApiService from '@/services/ApiService';
 
 interface BlogCategoryTableProps {
   data: BlogCategory[];
@@ -108,77 +109,6 @@ const BlogCategoryTable = () => {
     router.push(`/danh-muc-bai-viet/action?mode=create`);
   };
 
-  const handleDelete = async (record: BlogCategory) => {
-    try {
-    setFormData(record);
-    setConfirmingPopup(true);
-    } catch (error) {
-      console.error("Error deleting blog category:", error);
-      setSnackbar({
-        open: true,
-        message: "Failed to delete blog category",
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleActivate = async (categoryId: number) => {
-    try {
-      await changeBlogCategoryStatus(categoryId, 'active');
-      setSnackbar({
-        open: true,
-        message: 'Kích hoạt danh mục thành công',
-        severity: 'success'
-      });
-      fetchData();
-    } catch (error) {
-      console.error('Error activating category:', error);
-      setSnackbar({
-        open: true,
-        message: 'Kích hoạt danh mục thất bại',
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleDeactivate = async (categoryId: number) => {
-    try {
-      await changeBlogCategoryStatus(categoryId, 'draft');
-      setSnackbar({
-        open: true,
-        message: 'Chuyển danh mục sang bản nháp thành công',
-        severity: 'success'
-      });
-      fetchData();
-    } catch (error) {
-      console.error('Error deactivating category:', error);
-      setSnackbar({
-        open: true,
-        message: 'Chuyển danh mục sang bản nháp thất bại',
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleRestore = async (categoryId: number) => {
-    try {
-      await changeBlogCategoryStatus(categoryId, 'active');
-      setSnackbar({
-        open: true,
-        message: 'Khôi phục danh mục thành công',
-        severity: 'success'
-      });
-      fetchData();
-    } catch (error) {
-      console.error('Error restoring category:', error);
-      setSnackbar({
-        open: true,
-        message: 'Khôi phục danh mục thất bại',
-        severity: 'error'
-      });
-    }
-  };
-
   const handleLevelUp = async (categoryId: number, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'deleted' ? 'draft' : 'active';
@@ -191,9 +121,11 @@ const BlogCategoryTable = () => {
       fetchData();
     } catch (error) {
       console.error('Error updating category status:', error);
+      // Sử dụng ApiService.handleError
+      const errorResult = ApiService.handleError(error);
       setSnackbar({
         open: true,
-        message: 'Cập nhật trạng thái thất bại',
+        message: errorResult.message,
         severity: 'error'
       });
     }
@@ -211,9 +143,11 @@ const BlogCategoryTable = () => {
       fetchData();
     } catch (error) {
       console.error('Error updating category status:', error);
+      // Sử dụng ApiService.handleError
+      const errorResult = ApiService.handleError(error);
       setSnackbar({
         open: true,
-        message: 'Cập nhật trạng thái thất bại',
+        message: errorResult.message,
         severity: 'error'
       });
     }
@@ -276,15 +210,17 @@ const BlogCategoryTable = () => {
         await deleteBlogCategory(formData.id);
         setSnackbar({
           open: true,
-          message: `Deleted blog category: ${formData.name}`,
+          message: `Đã xóa danh mục: ${formData.name}`,
           severity: 'success'
         });
         fetchData();
       } catch (error) {
         console.error('Error deleting blog category:', error);
+        // Sử dụng ApiService.handleError để xử lý lỗi đồng nhất
+        const errorResult = ApiService.handleError(error);
         setSnackbar({
           open: true,
-          message: `Failed to delete blog category: ${formData.name}`,
+          message: errorResult.message,
           severity: 'error'
         });
       }
@@ -310,10 +246,16 @@ const BlogCategoryTable = () => {
         ...params,
         status: statusParam
       });
-      setLoadingState(false);
     } catch (error) {
-      console.error("Error fetching data:", error);
-      setErrorState(error instanceof Error ? error.message : 'An error occurred');
+      // Sử dụng ApiService.handleError
+      const errorResult = ApiService.handleError(error);
+      setSnackbar({
+        open: true,
+        message: errorResult.message,
+        severity: 'error'
+      });
+    } finally {
+      setLoadingState(false);
     }
   };
 
@@ -337,6 +279,12 @@ const BlogCategoryTable = () => {
       sortOrder: 'DESC'
     });
   }, [statusFilter, page, rowsPerPage, searchTerm]);
+
+  // Thêm hàm để mở popup xác nhận xóa
+  const handleDelete = (record: BlogCategory) => {
+    setFormData(record);
+    setConfirmingPopup(true);
+  };
 
   return (
     <Card>
@@ -479,6 +427,19 @@ const BlogCategoryTable = () => {
                             {(category as ExtendedBlogCategory).status === 'active' ? 'Nháp' : 'Xóa'}
                           </Button>
                         )}
+                                                
+                        {/* Nút Delete */}
+                        {(category as ExtendedBlogCategory).status === 'deleted' && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            onClick={() => handleDelete(category)}
+                            startIcon={<IconTrash size={16} />}
+                          >
+                            Xóa vĩnh viễn
+                          </Button>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -519,6 +480,13 @@ const BlogCategoryTable = () => {
         formData={formData!}
         onSubmit={handleSubmit}
         />
+      <ConfirmPopup
+        open={ConfirmingPopup}
+        onClose={() => setConfirmingPopup(false)}
+        onConfirm={handleDeleteCategory}
+        title="Xác nhận xóa vĩnh viễn"
+        content={`Bạn có chắc chắn muốn xóa vĩnh viễn danh mục "${formData?.name || ''}"? Hành động này không thể hoàn tác.`}
+      />
       </Card>
   );
 };
