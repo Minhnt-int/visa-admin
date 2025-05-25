@@ -4,7 +4,7 @@ export interface ProductItemAttributes {
   name: string;
   price: number;
   originalPrice: number;
-  status: string;
+  status: 'available' | 'out_of_stock' | 'discontinued';
   createdAt: string;
   updatedAt: string;
   color: string;

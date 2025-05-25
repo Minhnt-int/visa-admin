@@ -34,6 +34,7 @@ import {
 } from '@/services/productService';
 import { useRouter } from 'next/navigation';
 import { fetchOrderList, updateOrder, deleteOrder } from '@/services/orderService';
+import ApiService from '@/services/ApiService';
 
 // Enum cho các loại hành động
 export enum ActionType {
@@ -116,6 +117,7 @@ interface AppContextProps {
   setSelectedBlogCategory: (category: BlogCategory | null) => void;
   changeBlogCategoryStatus: (id: number, status: string) => Promise<any>;
   
+  
   // Product Actions
   fetchProducts: (params?: {
     page?: number;
@@ -192,7 +194,7 @@ interface AppContextProps {
   showMessage: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
 
   // AI Actions
-  generateAIContent: (title: string, mode?: 'write' | 'evaluate') => Promise<{ data: string }>;
+  generateAIContent: (title: string, mode?: 'blog' | 'product' | 'evaluate') => Promise<{ data: string }>;
   getAISuggestions: (content: string) => Promise<{ data: any }>;
 }
 
@@ -1067,18 +1069,31 @@ const deleteOrderHandle = useCallback(async (id: number) => {
   }, [fetchBlogList, setCurrentAction]);
 
   // AI Actions
-  const handleGenerateAIContent = useCallback(async (title: string, mode: 'write' | 'evaluate' = 'write'): Promise<{ data: string }> => {
+  const handleGenerateAIContent = useCallback(async (title: string, mode: 'product' | 'blog' | 'evaluate' = 'blog'): Promise<{ data: string }> => {
     try {
       setLoading(true);
-      const result = await generateAIContent(title, mode) as { data: string };
+      
+      // Gọi hàm generateAIContent đã được cập nhật với 3 mode
+      const result = await generateAIContent(title, mode) as any;
+      
+      if (!result || !result.data) {
+        throw new Error('Không nhận được kết quả từ AI');
+      }
+      
       return { data: result.data };
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
+      console.error('Error generating AI content:', err);
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(err);
+      setError(errorResult.message);
+      showMessage(errorResult.message, 'error');
+      
       throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showMessage]);
 
   const handleGetAISuggestions = useCallback(async (content: string): Promise<{ data: any }> => {
     try {

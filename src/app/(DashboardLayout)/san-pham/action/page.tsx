@@ -30,7 +30,7 @@ const initialFormData: ProductAttributes = {
 export default function ProductAction() { 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = searchParams?.get('mode') || 'create';
+  const mode = searchParams?.get('action') || 'create';
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
   
@@ -106,19 +106,14 @@ export default function ProductAction() {
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-                Đang tải dữ liệu...
-              </div>
-            ) : (
-              <ProductForm
-                formData={formData}
-                isView={isView}
-                isEdit={isEdit}
-                onSubmit={(data) => handleSubmit(data, isEdit)}
-                onCancel={handleCancel}
-              />
-            )}
+            <ProductForm
+              formData={formData}
+              isView={isView}
+              isEdit={isEdit}
+              onSubmit={(data) => handleSubmit(data, isEdit)}
+              onCancel={handleCancel}
+              isLoading={loading}
+            />
           </Grid>
         </Grid>
       </Box>

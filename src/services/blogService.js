@@ -285,16 +285,28 @@ export const changeBlogCategoryStatus = async (categoryId, status) => {
 };
 
 /**
- * Generate AI content for blog post
- * @param {string} title - Title of the blog post
- * @param {string} mode - Mode of AI content generation (write or evaluate)
+ * Generate AI content for blog post with different modes
+ * @param {string} title - Title or content for AI processing
+ * @param {string} mode - Mode of AI content generation ('product', 'blog', 'evaluate')
  * @returns {Promise<Object>} - Promise returns AI generated content
  */
-export const generateAIContent = async (title, mode = 'write') => {
+export const generateAIContent = async (title, mode = 'evaluate') => {
   try {
-    const prompt = mode === 'write' 
-      ? "Hãy viết một bài tin tức chuẩn SEO theo tiêu chí Google về: " + title
-      : "Hãy giúp tôi đánh giá SEO của bài viết này với các tiêu chí của Google theo thang điểm 100, gợi ý và gửi lại một bản hoàn thiện để tăng điểm SEO.\n" + title;
+    let prompt;
+    
+    switch (mode) {
+      case 'product':
+        prompt = "Hãy viết một bài giới thiệu sản phẩm chuẩn SEO theo tiêu chí Google, tối ưu cho mục đích bán hàng về: " + title;
+        break;
+      case 'blog':
+        prompt = "Hãy viết một bài blog chuyên nghiệp chuẩn SEO theo tiêu chí Google với nội dung phong phú về: " + title;
+        break;
+      case 'evaluate':
+        prompt = "Hãy giúp tôi đánh giá SEO của bài viết này với các tiêu chí của Google theo thang điểm 100, gợi ý và gửi lại một bản hoàn thiện để tăng điểm SEO.\n" + title;
+        break;
+      default:
+        prompt = "Hãy viết một bài blog chuyên nghiệp chuẩn SEO theo tiêu chí Google về: " + title;
+    }
 
     const response = await axioss.post(`${API_BASE_URL}/api/ai`, {
       content: prompt
@@ -310,6 +322,10 @@ export const generateAIContent = async (title, mode = 'write') => {
     return response.data;
   } catch (error) {
     console.error('Error generating AI content:', error);
+    // Sử dụng ApiService.handleError để xử lý lỗi
+    if (typeof ApiService !== 'undefined' && ApiService.handleError) {
+      return ApiService.handleError(error);
+    }
     throw error;
   }
 };

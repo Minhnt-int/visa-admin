@@ -27,6 +27,7 @@ import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { useRouter } from 'next/navigation';
 import { convertToSlug } from "../function/TittleToSlug";
+import ApiService from '@/services/ApiService';
 
 interface BlogPostFormProps {
   isView?: boolean;
@@ -128,12 +129,21 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       if (result.data) {
         setAiSuggestions(result.data);
         setShowAiSuggestions(true);
+                setSnackbar({
+          open: true,
+          message: 'Gợi ý AI đã được tạo thành công',
+          severity: 'success'
+        });
       }
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      
       setSnackbar({ 
         open: true, 
-        message: 'Không thể lấy gợi ý AI. Vui lòng thử lại sau.', 
+        message: errorResult.message, 
         severity: 'error' 
       });
     } finally {
@@ -144,18 +154,27 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const handleGenerateContent = async () => {
     try {
       setIsLoading(true);
-      const result = await generateAIContent(form?.title || '', 'write');
+      const result = await generateAIContent(form?.title || '', 'blog');
       
       if (result.data) {
         setAiSuggestions(result.data);
         setShowAiSuggestions(true);
         onChange({ name: 'content', value: result.data });
+        setSnackbar({
+          open: true,
+          message: 'Tạo nội dung bằng AI thành công',
+          severity: 'success'
+        });
       }
     } catch (error) {
       console.error('Error getting AI content:', error);
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      
       setSnackbar({ 
         open: true, 
-        message: 'Không thể tạo nội dung AI. Vui lòng thử lại sau.', 
+        message: errorResult.message, 
         severity: 'error' 
       });
     } finally {
@@ -194,23 +213,19 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         if (result) {
           setSnackbar({ open: true, message: 'Blog post updated successfully', severity: 'success' });
           setForm(initBlog);
-          // Đợi một chút để đảm bảo state được cập nhật
           setTimeout(() => {
             router.refresh();
             router.push('/bai-viet');
           }, 100);
         } else {
-          
           throw new Error('Failed to update blog post');
         }
       } else {
         const result = await createBlogPost(form);
-
-        // Kiểm tra response từ API
+        
         if (result && (result.success || result.data || (result.message && result.message.includes("success")))) {
           setSnackbar({ open: true, message: 'Blog post created successfully', severity: 'success' });
           setForm(initBlog);
-          // Đợi một chút để đảm bảo state được cập nhật
           setTimeout(() => {
             router.refresh();
             router.push('/bai-viet');
@@ -220,43 +235,15 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         }
       }
     } catch (error: any) {
-      console.log('Error response:', error);
+      console.error('Error saving blog post:', error);
       
-      // Đơn giản hóa việc lấy message
-      let errorMsg;
+      // Sử dụng ApiService.handleError để xử lý lỗi đồng bộ
+      const errorResult = ApiService.handleError(error);
       
-      // Kiểm tra chi tiết cấu trúc lỗi
-      console.log('Error details:', {
-        responseData: error.response?.data,
-        responseStatus: error.response?.status,
-        message: error.message
-      });
-      
-      if (error.response?.data?.message) {
-        // Lấy message từ response API
-        errorMsg = error.response.data.message;
-      } else if (error.data?.message) {
-        // Trường hợp khác của response
-        errorMsg = error.data.message;
-      } else if (error.message && !error.message.includes('status code')) {
-        // Lấy từ error object, nhưng bỏ qua các message có "status code"
-        errorMsg = error.message;
-      } else if (typeof error === 'string') {
-        // Nếu error là string
-        errorMsg = error;
-      } else {
-        // Mặc định
-        errorMsg = 'Failed to save blog post. Please try again.';
-      }
-      
-      // Log để debug
-      console.log('Processed error message:', errorMsg);
-      
-      // Hiển thị lỗi
-      setErrorMessage(errorMsg);
+      setErrorMessage(errorResult.message);
       setSnackbar({ 
         open: true, 
-        message: errorMsg,
+        message: errorResult.message, 
         severity: 'error' 
       });
     } finally {

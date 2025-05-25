@@ -40,6 +40,8 @@ import ConfirmPopup from "../popup/ConfirmPopup";
 import { productMediaDelete } from "@/services/productService";
 import Image from "next/image";
 import { convertToSlug } from "../function/TittleToSlug";
+import ApiService from "@/services/ApiService";
+import { Divider } from "@mui/material";
 
 interface ProductFormProps {
   formData: ProductAttributes;
@@ -52,11 +54,7 @@ interface ProductFormProps {
 
 interface AiSuggestionResponse {
   success: boolean;
-  data: {
-    title: string;
-    description: string;
-    keywords: string;
-  };
+  data: string;
   message?: string;
 }
 
@@ -89,29 +87,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
   onCancel,
   isLoading = false,
 }) => {
-  const {
-    productCategories,
-    fetchProductCategories,
-    fetchProductBySlug,
-    createProduct,
-    updateProduct,
-    selectedProduct,
-    setSelectedProduct,
-  } = useAppContext();
+const {
+  productCategories,
+  fetchProductCategories,
+  fetchProductBySlug,
+  createProduct,
+  updateProduct,
+  selectedProduct,
+  setSelectedProduct,
+  generateAIContent, // Thêm dòng này
+} = useAppContext();
 
   const [formData, setFormData] = useState<ProductAttributes>(initialFormData);
   const [editorContent, setEditorContent] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<ProductMedia[]>([]);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
-  const [aiSuggestions, setAiSuggestions] = useState<{
-    title: string;
-    description: string;
-    keywords: string;
-  }>({
-    title: "",
-    description: "",
-    keywords: "",
-  });
+  const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
@@ -287,7 +278,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       name: "",
       price: 0,
       originalPrice: 0,
-      status: "active",
+      status: "available",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       color: "",
@@ -358,33 +349,69 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleGetSuggestions = async () => {
     try {
       setIsLoadingAi(true);
-      const response = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: formData.name,
-          description: formData.description,
-        }),
-      });
-      const data: AiSuggestionResponse = await response.json();
-      if (data.success) {
-        setAiSuggestions({
-          title: data.data.title || "",
-          description: data.data.description || "",
-          keywords: data.data.keywords || "",
-        });
+      
+      // Sử dụng generateAIContent với mode 'product'
+      const result = await generateAIContent(formData.name, 'product');
+      
+      if (result.data) {
+        setAiSuggestions(result.data);
         setShowAiSuggestions(true);
-      } else {
-        throw new Error(data.message || "Failed to get AI suggestions");
+        setSnackbar({
+          open: true,
+          message: 'Gợi ý AI đã được tạo thành công',
+          severity: 'success'
+        });
       }
     } catch (error) {
-      showError("Failed to get AI suggestions");
+      console.error('Error getting AI suggestions:', error);
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      
+      setSnackbar({ 
+        open: true, 
+        message: errorResult.message, 
+        severity: 'error' 
+      });
     } finally {
       setIsLoadingAi(false);
     }
   };
+
+  const handleGenerateContent = async () => {
+    try {
+      setIsLoadingAi(true);
+      const result = await generateAIContent(formData.name, 'product') as any;
+      console.log("AI Content Result:", result);
+      
+      if (result.data && result.data.result) {
+        // setAiSuggestions(result.data);
+        setAiSuggestions(result.data);
+        setShowAiSuggestions(true);
+        handleInputChange("description", result.data.result);
+        handleEditorChange(result.data.result);
+        setSnackbar({
+          open: true,
+          message: 'Tạo nội dung bằng AI thành công',
+          severity: 'success'
+        });
+      }
+    } catch (error) {
+      console.error('Error getting AI content:', error);
+      
+      // Sử dụng ApiService.handleError để xử lý lỗi
+      const errorResult = ApiService.handleError(error);
+      
+      setSnackbar({ 
+        open: true, 
+        message: errorResult.message, 
+        severity: 'error' 
+      });
+    } finally {
+      setIsLoadingAi(false);
+    }
+  };
+
   const getYoutubeVideoId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
@@ -525,7 +552,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         <Typography variant="h5" component="h2" gutterBottom>
           {isEdit ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
         </Typography>
-
         {/* Basic Information */}
         <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
           Thông tin sản phẩm
@@ -543,11 +569,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
           <Button
             variant="outlined"
             color="primary"
-            onClick={handleGetSuggestions}
+            onClick={handleGenerateContent}
             disabled={isView || !formData.name || isLoadingAi}
             startIcon={isLoadingAi ? <CircularProgress size={20} /> : null}
           >
-            Gợi Ý (AI)
+            Viết mô tả (AI)
           </Button>
         </Box>
 
@@ -870,8 +896,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     label="Giá gốc"
                     type="number"
                     placeholder="Nhập giá gốc"
-                    value={item.price}
-                    onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
+                    value={item.originalPrice}
+                    onChange={(e) => handleItemChange(index, "originalPrice", Number(e.target.value))}
                     disabled={isView}
                     InputProps={{
                       startAdornment: <Typography>₫</Typography>,
@@ -884,8 +910,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
                     label="Giá khuyến mãi"
                     type="number"
                     placeholder="Nhập giá khuyến mãi"
-                    value={item.originalPrice}
-                    onChange={(e) => handleItemChange(index, "originalPrice", Number(e.target.value))}
+                    value={item.price}
+                    onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
                     disabled={isView}
                     InputProps={{
                       startAdornment: <Typography>₫</Typography>,
@@ -901,8 +927,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       disabled={isView}
                     >
                       <MenuItem value="active">Hoạt động</MenuItem>
-                      <MenuItem value="inactive">Không hoạt động</MenuItem>
-                      <MenuItem value="outofstock">Hết hàng</MenuItem>
+                      <MenuItem value="discontinued">Không hoạt động</MenuItem>
+                      <MenuItem value="out_of_stock">Hết hàng</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -1011,7 +1037,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               >
                 {isLoading ? (
                   <CircularProgress size={24} color="inherit" />
-                ) : "Thêm mới"}
+                ) : isEdit ? "Cập nhật" : "Thêm mới"}
               </Button>
             )}
           </Stack>
@@ -1022,74 +1048,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
           onClose={() => setConfirmPopupOpen(false)}
           content="Bạn có chắc chắn muốn lưu thông tin sản phẩm?"
           onConfirm={handleConfirmSubmit}
-          title="Thêm sản phẩm mới"
+          title={isEdit ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}
         />
-
-        {showAiSuggestions && (
-          <Paper sx={{ p: 2, mt: 2, mb: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              AI Suggestions
-            </Typography>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <TextField
-                placeholder="Tiêu đề SEO được đề xuất"
-                value={aiSuggestions.title}
-                onChange={(e) =>
-                  setAiSuggestions((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
-                }
-              />
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Mô tả SEO được đề xuất"
-                value={aiSuggestions.description}
-                onChange={(e) =>
-                  setAiSuggestions((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-              />
-              <TextField
-                placeholder="Từ khóa SEO được đề xuất"
-                value={aiSuggestions.keywords}
-                onChange={(e) =>
-                  setAiSuggestions((prev) => ({
-                    ...prev,
-                    keywords: e.target.value,
-                  }))
-                }
-              />
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    handleInputChange("metaTitle", aiSuggestions.title);
-                    handleInputChange(
-                      "metaDescription",
-                      aiSuggestions.description
-                    );
-                    handleInputChange("metaKeywords", aiSuggestions.keywords);
-                    setShowAiSuggestions(false);
-                  }}
-                >
-                  Áp dụng gợi ý
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowAiSuggestions(false)}
-                >
-                  Hủy
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
-        )}
+          {showAiSuggestions && aiSuggestions && (
+            <>
+              <Divider sx={{ my: 3 }} />
+              <Typography variant="h6" gutterBottom>
+                Gợi ý AI
+              </Typography>
+              <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                  {aiSuggestions.result}
+                </Typography>
+              </Paper>
+            </>
+          )}
 
         {/* Add MUI Snackbar for notifications */}
         <Snackbar
