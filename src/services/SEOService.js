@@ -120,7 +120,6 @@ export const deleteMetaData = async (pageKey) => {
  * @returns {Promise<MetaJsonData|null>} Đối tượng metadata JSON hoặc null nếu không tìm thấy
  */
 export async function getMetaJsonData(pageKey) {
-  console.log("Tạm khóa chức năng getMetaJsonData");
   
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/meta-json?pageKey=${pageKey}`, {
@@ -143,7 +142,6 @@ export async function getMetaJsonData(pageKey) {
  * @returns {Promise<MetaJsonData[]>} Đối tượng metadata JSON hoặc null nếu không tìm thấy
  */
 export async function getAllMetaJsonData() {
-  console.log("Tạm khóa chức năng getMetaJsonData");
   
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/meta-json`, {

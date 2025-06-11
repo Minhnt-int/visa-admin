@@ -926,7 +926,7 @@ const {
                       onChange={(e) => handleItemChange(index, "status", e.target.value)}
                       disabled={isView}
                     >
-                      <MenuItem value="active">Hoạt động</MenuItem>
+                      <MenuItem value="available">Hoạt động</MenuItem>
                       <MenuItem value="discontinued">Không hoạt động</MenuItem>
                       <MenuItem value="out_of_stock">Hết hàng</MenuItem>
                     </Select>

@@ -20,6 +20,8 @@ import {
   Select,
   MenuItem
 } from '@/config/mui';
+import { SelectChangeEvent } from '@mui/material/Select';
+
 import { 
   IconEye,
   IconEdit,
@@ -36,6 +38,8 @@ const OrderTableContent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderAttributes[]>([]);
+  // Add status filter state
+  const [statusFilter, setStatusFilter] = useState<string>('');
 
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -54,7 +58,15 @@ const OrderTableContent = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetchOrderList({ page, limit: pageSize });
+      // Add status to API call params
+      const params: { page: number; limit: number; status?: string } = { 
+        page, 
+        limit: pageSize 
+      };
+      if (statusFilter) {
+        params.status = statusFilter;
+      }
+      const response = await fetchOrderList(params);
       const result = response as unknown as {
         data: OrderAttributes[],
         pagination: { total: number }
@@ -72,10 +84,22 @@ const OrderTableContent = () => {
 
   useEffect(() => {
     fetchData();
-  }, [page, pageSize]);
+  }, [page, pageSize, statusFilter]); // Add statusFilter to dependencies
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage + 1);
+  };
+
+  // Add handler for status filter changes
+  const handleStatusFilterChange = (event: SelectChangeEvent) => {
+    setStatusFilter(event.target.value as string);
+    setPage(1); // Reset to first page when filter changes
+  };
+
+  // Also add proper page size options
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPageSize(parseInt(event.target.value, 10));
+    setPage(1);
   };
 
   const handleStatusChange = async (orderId: number, status: string) => {
@@ -134,6 +158,26 @@ const OrderTableContent = () => {
 
   return (
     <>
+      {/* Add status filter UI */}
+      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+        <Typography variant="body1" sx={{ mr: 2 }}>
+          Lọc theo trạng thái:
+        </Typography>
+        <Select
+          value={statusFilter}
+          onChange={handleStatusFilterChange}
+          displayEmpty
+          size="small"
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value="">Tất cả</MenuItem>
+          <MenuItem value="pending">Đang chờ</MenuItem>
+          <MenuItem value="processing">Đang xử lý</MenuItem>
+          <MenuItem value="delivered">Hoàn thành</MenuItem>
+          <MenuItem value="cancelled">Đã hủy</MenuItem>
+        </Select>
+      </Box>
+      
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -210,15 +254,17 @@ const OrderTableContent = () => {
             )}
           </TableBody>
         </Table>
-        <TablePagination
-          component="div"
-          count={total}
-          page={page - 1}
-          onPageChange={handleChangePage}
-          rowsPerPage={pageSize}
-          rowsPerPageOptions={[pageSize]}
-        />
       </TableContainer>
+
+      <TablePagination
+        component="div"
+        count={total}
+        page={page - 1}
+        onPageChange={handleChangePage}
+        rowsPerPage={pageSize}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+      />
 
       <Snackbar
         open={snackbar.open}

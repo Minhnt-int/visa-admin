@@ -24,7 +24,7 @@ import {
 } from '@/config/mui';
 import { SelectChangeEvent } from '@mui/material';
 import { ProductMedia } from '@/data/ProductAttributes';
-import { IconTrash, IconUpload, IconX } from '@tabler/icons-react';
+import { IconTrash, IconUpload, IconX, IconEdit } from '@tabler/icons-react';
 
 interface MediaResponse {
   success: boolean;
@@ -68,6 +68,10 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     url: ''
   });
 
+  // Thêm state để quản lý việc chỉnh sửa altText
+  const [editingAltTextId, setEditingAltTextId] = useState<number | null>(null);
+  const [editingAltTextValue, setEditingAltTextValue] = useState('');
+
   const fetchMedia = async () => {
     try {
       setLoading(true);
@@ -88,12 +92,21 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     }
   };
 
+  // Cập nhật hàm handleUpload để đảm bảo luôn có altText
   const handleUpload = async (file: File) => {
     try {
       setUploading(true);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('altText', altText);
+      
+      // Sử dụng altText hiện tại nếu có, nếu không thì tạo từ tên file
+      let finalAltText = altText;
+      if (!finalAltText || finalAltText.trim() === '') {
+        const fileName = file.name.replace(/\.[^/.]+$/, "");
+        finalAltText = fileName.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+      
+      formData.append('altText', finalAltText);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media`, {
         method: 'POST',
@@ -103,14 +116,14 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
       const data = await response.json();
       
       if (data.success) {
-        setSnackbar({ open: true, message: 'Upload successful', severity: 'success' });
+        setSnackbar({ open: true, message: 'Tải lên thành công', severity: 'success' });
         fetchMedia();
       } else {
-        setSnackbar({ open: true, message: 'Upload failed', severity: 'error' });
+        setSnackbar({ open: true, message: 'Tải lên thất bại', severity: 'error' });
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      setSnackbar({ open: true, message: 'Error uploading file', severity: 'error' });
+      setSnackbar({ open: true, message: 'Lỗi khi tải file lên', severity: 'error' });
     } finally {
       setUploading(false);
     }
@@ -140,6 +153,41 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     }
   };
 
+  // Thêm function để cập nhật altText
+  const handleUpdateAltText = async (id: number, newAltText: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          altText: newAltText
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Cập nhật state local
+        setMedia(prevMedia => 
+          prevMedia.map(item => 
+            item.id === id ? { ...item, altText: newAltText } : item
+          )
+        );
+        setSnackbar({ open: true, message: 'Cập nhật mô tả thành công', severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: 'Cập nhật mô tả thất bại', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Error updating altText:', error);
+      setSnackbar({ open: true, message: 'Lỗi khi cập nhật mô tả', severity: 'error' });
+    } finally {
+      setEditingAltTextId(null);
+      setEditingAltTextValue('');
+    }
+  };
+
   useEffect(() => {
     if (open) {
       fetchMedia();
@@ -157,6 +205,13 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Tự động tạo alt text từ tên file
+      const fileName = file.name.replace(/\.[^/.]+$/, ""); // Bỏ phần mở rộng
+      const formattedName = fileName
+        .replace(/[-_]/g, " ") // Thay thế dấu - và _ bằng khoảng trắng
+        .replace(/\b\w/g, (c) => c.toUpperCase()); // Viết hoa chữ cái đầu tiên của mỗi từ
+    
+      setAltText(formattedName);
       handleUpload(file);
     }
   };
@@ -282,7 +337,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                   placeholder="Alt Text"
                   value={altText}
                   onChange={(e) => setAltText(e.target.value)}
-                  fullWidth
+                  fullWidth   
                   size="small"
                 />
               </Box>
@@ -299,7 +354,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                     variant="outlined"
                     component="span"
                     startIcon={<IconUpload />}
-                    disabled={uploading || altText === ''}
+                    disabled={uploading}
                     fullWidth
                   >
                     {uploading ? <CircularProgress size={20} /> : 'Upload Media'}
@@ -394,6 +449,49 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                             <Typography variant="body2" color="text.secondary">
                               {item.name}
                             </Typography>
+                            {/* Thêm phần chỉnh sửa altText */}
+                            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {editingAltTextId === item.id ? (
+                                <>
+                                  <TextField
+                                    size="small"
+                                    value={editingAltTextValue}
+                                    onChange={(e) => setEditingAltTextValue(e.target.value)}
+                                    placeholder="Nhập alt text mới"
+                                    fullWidth
+                                  />
+                                  <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={() => handleUpdateAltText(item.id, editingAltTextValue)}
+                                  >
+                                    Lưu
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => setEditingAltTextId(null)}
+                                  >
+                                    Hủy
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                                    {item.altText}
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      setEditingAltTextId(item.id);
+                                      setEditingAltTextValue(item.altText ?? '');
+                                    }}
+                                  >
+                                    <IconEdit size={16} />
+                                  </IconButton>
+                                </>
+                              )}
+                            </Box>
                           </CardContent>
                         </Card>
                       </Grid>
@@ -474,4 +572,4 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
   );
 };
 
-export default MediaPopup; 
+export default MediaPopup;
