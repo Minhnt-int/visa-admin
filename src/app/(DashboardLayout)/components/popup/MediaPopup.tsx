@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -22,7 +22,7 @@ import {
   Select,
   MenuItem
 } from '@/config/mui';
-import { SelectChangeEvent } from '@mui/material';
+import { SelectChangeEvent, LinearProgress } from '@mui/material';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { IconTrash, IconUpload, IconX, IconEdit } from '@tabler/icons-react';
 
@@ -71,6 +71,13 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
   // Thêm state để quản lý việc chỉnh sửa altText
   const [editingAltTextId, setEditingAltTextId] = useState<number | null>(null);
   const [editingAltTextValue, setEditingAltTextValue] = useState('');
+
+  // Thêm states mới
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
+  const [batchUploading, setBatchUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMedia = async () => {
     try {
@@ -243,6 +250,130 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     }
   };
 
+  // Thêm function xử lý upload nhiều file
+  const handleMultipleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      // Chuyển FileList thành mảng
+      const filesArray = Array.from(event.target.files);
+      
+      // Lọc ra các file hợp lệ (chỉ chấp nhận ảnh)
+      const validFiles = filesArray.filter(file => 
+        file.type.startsWith('image/') && file.size <= 5 * 1024 * 1024 // Tối đa 5MB
+      );
+      
+      // Nếu có file không hợp lệ
+      if (validFiles.length < filesArray.length) {
+        setSnackbar({
+          open: true,
+          message: `${filesArray.length - validFiles.length} file không hợp lệ đã bị loại bỏ. Chỉ chấp nhận ảnh dưới 5MB.`,
+          severity: 'error'
+        });
+      }
+      
+      // Cập nhật state
+      setSelectedFiles(validFiles);
+      
+      // Log kích thước để debug
+      validFiles.forEach(file => {
+        console.log(`File: ${file.name}, Size: ${file.size} bytes`);
+      });
+    }
+  };
+
+  const handleBatchUpload = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    setBatchUploading(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      
+      // Cập nhật tiến trình
+      setUploadProgress(prev => ({
+        ...prev,
+        [file.name]: 0
+      }));
+      
+      try {
+        // Giả lập tiến trình upload
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const currentProgress = prev[file.name] || 0;
+            if (currentProgress < 90) {
+              return { ...prev, [file.name]: currentProgress + 10 };
+            }
+            return prev;
+          });
+        }, 200);
+
+        // Xử lý upload
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Tạo alt text từ tên file
+        const fileName = file.name.replace(/\.[^/.]+$/, "");
+        const formattedName = fileName
+          .replace(/[-_]/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+        
+        formData.append('altText', formattedName);
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        clearInterval(progressInterval);
+        
+        if (data.success) {
+          successCount++;
+          setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+        } else {
+          failCount++;
+          setUploadProgress(prev => ({ ...prev, [file.name]: -1 }));
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        failCount++;
+        setUploadProgress(prev => ({ ...prev, [file.name]: -1 }));
+      }
+    }
+    
+    // Hiển thị kết quả
+    setSnackbar({ 
+      open: true, 
+      message: `Đã tải lên ${successCount} trong ${selectedFiles.length} ảnh${failCount > 0 ? `, ${failCount} thất bại` : ''}`, 
+      severity: failCount > 0 ? 'error' : 'success'
+    });
+    
+    // Cập nhật danh sách media
+    fetchMedia();
+    
+    // Reset state
+    setBatchUploading(false);
+    setSelectedFiles([]);
+    setUploadProgress({});
+    
+    // Reset input để có thể chọn lại file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Thêm hàm này vào component của bạn
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -268,39 +399,6 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                   </Select>
                 </FormControl>
               </Grid>
-              {/* <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<IconUpload />}
-                    disabled={isView}
-                  >
-                    Tải lên
-                    <input
-                      type="file"
-                      hidden
-                      accept="image/*,video/*,.pdf,.doc,.docx"
-                      onChange={handleFileUpload}
-                    />
-                  </Button>
-                  {formState.url && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {formState.url.substring(0, 30)}...
-                      </Typography>
-                      {!isView && (
-                        <IconButton
-                          size="small"
-                          onClick={() => setFormState(prev => ({ ...prev, url: '' }))}
-                        >
-                          <IconX size={16} />
-                        </IconButton>
-                      )}
-                    </Box>
-                  )}
-                </Box>
-              </Grid> */}
               {formState.url && (
                 <Grid item xs={12}>
                   <Box sx={{ mt: 2, textAlign: 'center' }}>
@@ -360,6 +458,70 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                     {uploading ? <CircularProgress size={20} /> : 'Upload Media'}
                   </Button>
                 </label>
+              </Box>
+            </Box>
+
+            {/* Phần upload nhiều file */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Upload nhiều file
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="batch-upload-button"
+                  type="file"
+                  multiple
+                  onChange={handleMultipleFileSelect}
+                  ref={fileInputRef}
+                />
+                <label htmlFor="batch-upload-button">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<IconUpload />}
+                    disabled={batchUploading}
+                    fullWidth
+                  >
+                    {batchUploading ? <CircularProgress size={20} /> : 'Chọn file'}
+                  </Button>
+                </label>
+                <Button
+                  variant="contained"
+                  onClick={handleBatchUpload}
+                  disabled={batchUploading || selectedFiles.length === 0}
+                  fullWidth
+                >
+                  {batchUploading ? <CircularProgress size={20} /> : 'Tải lên tất cả'}
+                </Button>
+              </Box>
+
+              {/* Hiển thị tiến trình tải lên từng file */}
+              <Box sx={{ mt: 2 }}>
+                {selectedFiles.map((file) => (
+                  <Box key={file.name} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {file.name} ({formatFileSize(file.size)})
+                    </Typography>
+                    <Box sx={{ width: '100px', mr: 1 }}>
+                      <LinearProgress variant="determinate" value={uploadProgress[file.name] || 0} />
+                    </Box>
+                    <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right' }}>
+                      {uploadProgress[file.name] === 100 ? 'Hoàn thành' : uploadProgress[file.name] === -1 ? 'Thất bại' : `${uploadProgress[file.name] || 0}%`}
+                    </Typography>
+                    {!batchUploading && (
+                      <IconButton 
+                        size="small" 
+                        onClick={() => {
+                          setSelectedFiles(prev => prev.filter(f => f !== file));
+                        }}
+                      >
+                        <IconX size={16} />
+                      </IconButton>
+                    )}
+                  </Box>
+                ))}
               </Box>
             </Box>
 

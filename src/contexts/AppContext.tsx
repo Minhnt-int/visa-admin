@@ -194,7 +194,7 @@ interface AppContextProps {
   showMessage: (message: string, severity: 'success' | 'error' | 'info' | 'warning') => void;
 
   // AI Actions
-  generateAIContent: (title: string, mode?: 'blog' | 'product' | 'evaluate') => Promise<{ data: string }>;
+  generateAIContent: (title: string, mode?: 'blog' | 'product' | 'category' | 'evaluate' ) => Promise<{ data: string }>;
   getAISuggestions: (content: string) => Promise<{ data: any }>;
 }
 
@@ -1069,7 +1069,7 @@ const deleteOrderHandle = useCallback(async (id: number) => {
   }, [fetchBlogList, setCurrentAction]);
 
   // AI Actions
-  const handleGenerateAIContent = useCallback(async (title: string, mode: 'product' | 'blog' | 'evaluate' = 'blog'): Promise<{ data: string }> => {
+  const handleGenerateAIContent = useCallback(async (title: string, mode: 'product' | 'blog' | 'category' | 'evaluate' = 'blog'): Promise<{ data: string }> => {
     try {
       setLoading(true);
       

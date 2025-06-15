@@ -304,6 +304,10 @@ export const generateAIContent = async (title, mode = 'evaluate') => {
       case 'evaluate':
         prompt = "Hãy giúp tôi đánh giá SEO của bài viết này với các tiêu chí của Google theo thang điểm 100, gợi ý và gửi lại một bản hoàn thiện để tăng điểm SEO.\n" + title;
         break;
+      case 'category':
+        prompt = "Hãy viết một bài giới thiệu về danh mục sản phẩm chuẩn SEO theo tiêu chí Google, tối ưu cho mục đích bán hàng: " + title;
+        break;
+        
       default:
         prompt = "Hãy viết một bài blog chuyên nghiệp chuẩn SEO theo tiêu chí Google về: " + title;
     }

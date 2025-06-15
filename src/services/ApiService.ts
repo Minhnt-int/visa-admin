@@ -88,34 +88,82 @@ const ApiService = {
   /**
    * Xử lý lỗi từ API
    */
-  handleError(error: any): { data: any, success: boolean, message: string } {
+  handleError(error: any): { data: any, success: boolean, message: string, errors?: any[] } {
     let errorMessage = 'Đã xảy ra lỗi không xác định';
+    let errorDetails = null;
     
-    if (error.response) {
-      // Lỗi response từ server - kiểm tra nhiều cấu trúc lỗi phổ biến
-      if (error.response.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      } else if (error.response.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (typeof error.response.data === 'string') {
-        errorMessage = error.response.data;
+    try {
+      if (error?.response) {
+        // Xử lý đặc biệt cho lỗi 500
+        if (error.response.status === 500) {
+          errorMessage = 'Lỗi máy chủ nội bộ (500). Vui lòng thử lại sau hoặc liên hệ quản trị viên.';
+          
+          // Thử lấy thông tin chi tiết từ response
+          if (error.response.data) {
+            if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+              // Nếu có mảng errors, lấy thông tin chi tiết
+              errorDetails = error.response.data.errors;
+              errorMessage = 'Đã xảy ra các lỗi sau:';
+            } else if (error.response.data.error?.message) {
+              errorMessage = error.response.data.error.message;
+            } else if (error.response.data.message) {
+              errorMessage = error.response.data.message;
+            } else if (typeof error.response.data === 'string') {
+              errorMessage = error.response.data;
+            } else if (error.response.data.stack) {
+              // Có stack trace? Rất hữu ích cho debugging
+              console.error('Server stack trace:', error.response.data.stack);
+            }
+          }
+        } else {
+          // Lỗi response từ server - kiểm tra nhiều cấu trúc lỗi phổ biến
+          if (error.response.data?.errors && Array.isArray(error.response.data.errors)) {
+            // Nếu có mảng errors, lấy thông tin chi tiết
+            errorDetails = error.response.data.errors;
+            errorMessage = 'Đã xảy ra các lỗi sau:';
+          } else if (error.response.data?.error?.message) {
+            errorMessage = error.response.data.error.message;
+          } else if (error.response.data?.message) {
+            errorMessage = error.response.data.message;
+          } else if (typeof error.response.data === 'string') {
+            errorMessage = error.response.data;
+          } else {
+            errorMessage = `Lỗi từ server: ${error.response.status}`;
+          }
+        }
+      } else if (error?.request) {
+        // Không nhận được response
+        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng của bạn.';
       } else {
-        errorMessage = `Lỗi từ server: ${error.response.status}`;
+        // Lỗi trong quá trình thiết lập request
+        errorMessage = error?.message || errorMessage;
       }
-    } else if (error.request) {
-      // Không nhận được response
-      errorMessage = 'Không thể kết nối đến server';
-    } else {
-      // Lỗi trong quá trình thiết lập request
-      errorMessage = error.message || errorMessage;
+      
+      // Log thông tin chi tiết hơn cho debugging - tránh circular references
+      try {
+        console.error('API Error:', {
+          message: errorMessage || 'Unknown error',
+          details: errorDetails,
+          status: error?.response?.status,
+          url: error?.config?.url,
+          method: error?.config?.method,
+          // Không log toàn bộ error object để tránh circular references
+          errorName: error?.name,
+          errorCode: error?.code
+        });
+      } catch (logError) {
+        console.error('Lỗi khi ghi log API error:', logError);
+      }
+    } catch (handlingError) {
+      console.error('Lỗi khi xử lý API error:', handlingError);
+      errorMessage = 'Đã xảy ra lỗi khi xử lý phản hồi từ server';
     }
-    
-    console.error('API Error:', errorMessage, error);
     
     return {
       data: [],
       success: false,
       message: errorMessage,
+      errors: errorDetails
     };
   }
 };

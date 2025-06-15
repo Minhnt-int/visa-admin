@@ -23,8 +23,10 @@ import {
   DialogContent,
   DialogActions,
   Stack,
-  Paper
+  Paper,
+  Chip
 } from '@/config/mui';
+import { Rating } from '@mui/material';
 import { IconUpload, IconTrash, IconEdit, IconPlus } from '@tabler/icons-react';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -120,20 +122,22 @@ const {
     fileObj: undefined,
   });
   const [mediaPopupOpen, setMediaPopupOpen] = useState(false);
-
-  const searchParams = useSearchParams();
-  const slug = searchParams?.get("slug") || "";
-  const router = useRouter();
-
+  const [contentScore, setContentScore] = useState<number | null>(null);
+  const [seoScore, setSeoScore] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
-    message: string;
+    message: React.ReactNode;
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({
     open: false,
     message: '',
     severity: 'info'
   });
+  
+  // Thêm vào sau khai báo tất cả các state
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const slug = searchParams?.get('slug');
 
   const showError = (msg: string) => {
     setSnackbar({
@@ -173,9 +177,10 @@ const {
   useEffect(() => {
     if (isEdit && slug) {
       fetchProductBySlug(slug).then(() => {
+        // Xử lý sau khi fetch hoàn tất
       });
     }
-  }, [isEdit, slug]);
+  }, [isEdit, slug, fetchProductBySlug]);
 
   useEffect(() => {
     if (selectedProduct) {
@@ -233,24 +238,28 @@ const {
   };
 
   const handleMediaSelect = (media: ProductMedia) => {
-
-    const newProductMedia: ProductMedia = {
-      id: 0,
-      url: media.url,
-      type: mediaType,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      productId: 0,
-    };
-
-    const newMedia = [...formData.media, newProductMedia];
-
-    setFormData((prev: ProductAttributes) => ({
-      ...prev,
-      media: newMedia
-    }));
-
+  const newProductMedia: ProductMedia = {
+    id: 0,
+    url: media.url,
+    type: mediaType,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    productId: 0,
   };
+
+  const newMedia = [...formData.media, newProductMedia];
+
+  // If this is the first media or no avatar is set yet, set it as avatar
+  const newAvatarUrl = (!formData.avatarUrl && newMedia.length === 1) 
+    ? media.url 
+    : formData.avatarUrl;
+
+  setFormData((prev: ProductAttributes) => ({
+    ...prev,
+    media: newMedia,
+    avatarUrl: newAvatarUrl
+  }));
+};
 
   const handleRemoveMedia = async (index: number) => {
     await productMediaDelete(formData.media[index].id)
@@ -261,12 +270,18 @@ const {
         console.error("Lỗi khi xóa media:", error);
       });
     const newMedia = [...formData.media];
-    newMedia.splice(index, 1);
+    const removedMedia = newMedia.splice(index, 1)[0];
 
+    // If we're removing the current avatar, set a new one or clear it
+    let newAvatarUrl = formData.avatarUrl;
+    if (removedMedia.url === formData.avatarUrl) {
+      newAvatarUrl = newMedia.length > 0 ? newMedia[0].url : "";
+    }
 
     setFormData((prev: ProductAttributes) => ({
       ...prev,
-      media: newMedia
+      media: newMedia,
+      avatarUrl: newAvatarUrl
     }));
 
   };
@@ -346,12 +361,21 @@ const {
     setConfirmPopupOpen(false);
   };
 
+  // Thêm hàm kiểm tra form hợp lệ
+const isFormValid = () => {
+  return Boolean(
+    formData?.name &&
+    formData?.description
+  );
+};
+
+  // Thêm hàm lấy gợi ý AI dựa trên nội dung hiện tại
   const handleGetSuggestions = async () => {
     try {
       setIsLoadingAi(true);
       
-      // Sử dụng generateAIContent với mode 'product'
-      const result = await generateAIContent(formData.name, 'product');
+      // Sử dụng generateAIContent với mode 'evaluate' giống BlogPostForm
+      const result = await generateAIContent(formData.description || '', 'evaluate');
       
       if (result.data) {
         setAiSuggestions(result.data);
@@ -382,10 +406,8 @@ const {
     try {
       setIsLoadingAi(true);
       const result = await generateAIContent(formData.name, 'product') as any;
-      console.log("AI Content Result:", result);
       
       if (result.data && result.data.result) {
-        // setAiSuggestions(result.data);
         setAiSuggestions(result.data);
         setShowAiSuggestions(true);
         handleInputChange("description", result.data.result);
@@ -407,6 +429,104 @@ const {
         message: errorResult.message, 
         severity: 'error' 
       });
+    } finally {
+      setIsLoadingAi(false);
+    }
+  };
+
+  const handleScoreContent = async () => {
+    try {
+      setIsLoadingAi(true);
+      
+      // Sử dụng API để chấm điểm nội dung
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ai/score-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: formData.description,
+          type: 'product',
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.data && data.data.score) {
+        setContentScore(data.data.score);
+        showSuccess('Đã chấm điểm nội dung thành công');
+      } else {
+        showError('Không thể chấm điểm nội dung');
+      }
+    } catch (error) {
+      console.error('Error scoring content:', error);
+      handleErrorDisplay(error);
+    } finally {
+      setIsLoadingAi(false);
+    }
+  };
+
+  const handleAnalyzeSEO = async () => {
+    try {
+      setIsLoadingAi(true);
+      
+      // Tạo dữ liệu gửi đi
+      const seoData = {
+        title: formData.metaTitle || formData.name,
+        description: formData.metaDescription || formData.shortDescription,
+        keywords: formData.metaKeywords,
+        content: formData.description,
+        type: 'product'
+      };
+      
+      // Gọi API đánh giá SEO
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ai/analyze-seo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(seoData),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        try {
+          // Cố gắng parse kết quả từ API nếu trả về dạng string
+          const analysisData = typeof data.data.analysis === 'string' 
+            ? JSON.parse(data.data.analysis)
+            : data.data.analysis;
+          
+          // Lưu kết quả đã parse vào state
+          setAiSuggestions({
+            seoAnalysis: {
+              strengths: analysisData.strengths || [],
+              improvements: analysisData.improvements || [],
+              keywords: analysisData.keywords || []
+            },
+            analysis: data.data.rawAnalysis || data.data.analysis
+          });
+          
+          if (analysisData.score) {
+            setSeoScore(analysisData.score);
+          }
+          
+          setShowAiSuggestions(true);
+          showSuccess('Đã phân tích SEO thành công');
+        } catch (parseError) {
+          // Nếu không parse được JSON, lưu nguyên dạng kết quả
+          setAiSuggestions({
+            analysis: data.data.analysis
+          });
+          setShowAiSuggestions(true);
+          showSuccess('Đã phân tích SEO thành công');
+        }
+      } else {
+        showError('Không thể phân tích SEO');
+      }
+    } catch (error) {
+      console.error('Error analyzing SEO:', error);
+      handleErrorDisplay(error);
     } finally {
       setIsLoadingAi(false);
     }
@@ -545,6 +665,45 @@ const {
     }
   };
 
+  // Thêm hàm xử lý hiển thị lỗi từ response API
+const handleErrorDisplay = (error: any) => {
+  console.error('Error:', error);
+
+  // Kiểm tra nếu có response data và là mảng
+  if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+    const errorMessages = error.response.data.errors.map((err: any) => {
+      if (typeof err === 'string') return err;
+      if (err.message) return err.message;
+      return JSON.stringify(err);
+    });
+    
+    // Hiển thị danh sách lỗi
+    setSnackbar({
+      open: true,
+      message: (
+        <Box>
+          <Typography variant="body2" fontWeight="bold" gutterBottom>
+            Đã xảy ra các lỗi sau:
+          </Typography>
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            {errorMessages.map((msg: string, index: number) => (
+              <li key={index}>
+                <Typography variant="body2">{msg}</Typography>
+              </li>
+            ))}
+          </ul>
+        </Box>
+      ),
+      severity: 'error'
+    });
+    return;
+  }
+
+  // Xử lý trường hợp khác
+  const errorMessage = error?.response?.data?.message || error?.message || 'Đã xảy ra lỗi không xác định';
+  showError(errorMessage);
+};
+
   return (
     <Suspense fallback={<p>Loading</p>}>
     <Card>
@@ -557,14 +716,15 @@ const {
           Thông tin sản phẩm
         </Typography>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 2, marginTop: "16px" }}>
+        <Box sx={{ display: "flex", gap: 1, width: '100%', mb: 2 }}>
           <TextField
+            label="Tên sản phẩm"
             placeholder="Nhập tên sản phẩm"
-            value={formData.name}
+            value={formData.name || ""}
             disabled={isView}
             onChange={(e) => handleInputChange("name", e.target.value)}
-            style={{ flex: 1}}
-            label="Tên sản phẩm"
+            fullWidth
+            required
           />
           <Button
             variant="outlined"
@@ -666,6 +826,37 @@ const {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
+                  border: formData.avatarUrl === media.url ? "2px solid #1976d2" : "1px solid #e0e0e0",
+                  borderRadius: "4px",
+                  padding: "4px",
+                  transition: "all 0.3s ease",
+                  cursor: !isView ? "pointer" : "default",
+                  "&:hover": !isView ? {
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                    transform: "translateY(-2px)",
+                    borderColor: "#1976d2",
+                    "::after": {
+                      content: "'Chọn làm ảnh đại diện'",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: "rgba(25, 118, 210, 0.7)",
+                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "10px",
+                      fontWeight: "bold",
+                      opacity: formData.avatarUrl === media.url ? 0 : 0.8,
+                    }
+                  } : {}
+                }}
+                onClick={() => {
+                  if (!isView) {
+                    handleInputChange("avatarUrl", media.url);
+                  }
                 }}
               >
                 {media.type === "image" ? (
@@ -689,12 +880,16 @@ const {
                       top: 0, 
                       right: 0, 
                       display: "flex", 
-                      gap: "5px" 
+                      gap: "5px",
+                      zIndex: 2
                     }}>
                       {/* Nút Update */}
                       <IconButton
                         color="primary"
-                        onClick={() => handleOpenUpdateMediaPopup(media, index)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering the parent onClick
+                          handleOpenUpdateMediaPopup(media, index);
+                        }}
                         style={{
                           backgroundColor: "white",
                           borderColor: "#1890ff",
@@ -730,7 +925,10 @@ const {
                       {/* Nút Delete */}
                       <IconButton
                         color="error"
-                        onClick={() => handleRemoveMedia(index)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering the parent onClick
+                          handleRemoveMedia(index);
+                        }}
                         style={{
                           backgroundColor: "white",
                           borderColor: "red",
@@ -763,9 +961,22 @@ const {
                         <IconTrash />
                       </IconButton>
                     </div>
-               
-                  
                   </>
+                )}
+                {formData.avatarUrl === media.url && (
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      bgcolor: 'primary.main', 
+                      color: 'white',
+                      px: 1, 
+                      borderRadius: 1,
+                      mt: 1,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Avatar
+                  </Typography>
                 )}
               </Box>
             ))}
@@ -972,30 +1183,37 @@ const {
           Thông tin SEO
         </Typography>
         <TextField
+          label="Meta Title"
           placeholder="Nhập tiêu đề cho SEO (Meta Title)"
           value={formData?.metaTitle || ""}
           disabled={isView}
           onChange={(e) => handleInputChange("metaTitle", e.target.value)}
-          style={{ marginBottom: "16px" }}
-          sx={{ width: "100%" }}
+          fullWidth
+          sx={{ mb: 2 }}
+          helperText={`${(formData.metaTitle || '').length}/60 ký tự`}
         />
 
         <TextField
+          label="Meta Description"
           placeholder="Nhập mô tả cho SEO (Meta Description)"
           value={formData?.metaDescription || ""}
           disabled={isView}
           onChange={(e) => handleInputChange("metaDescription", e.target.value)}
-          style={{ marginBottom: "16px" }}
-          sx={{ width: "100%" }}
+          fullWidth
+          multiline
+          rows={2}
+          sx={{ mb: 2 }}
+          helperText={`${(formData.metaDescription || '').length}/160 ký tự`}
         />
 
         <TextField
-          placeholder="Nhập từ khóa cho SEO, phân cách bằng dấu phẩy (Meta Keywords)"
+          label="Meta Keywords"
+          placeholder="Nhập từ khóa cho SEO, phân cách bằng dấu phẩy"
           value={formData?.metaKeywords || ""}
           disabled={isView}
           onChange={(e) => handleInputChange("metaKeywords", e.target.value)}
-          style={{ marginBottom: "16px" }}
-          sx={{ width: "100%" }}
+          fullWidth
+          sx={{ mb: 2 }}
         />
 
         {/* Dates */}
@@ -1021,11 +1239,44 @@ const {
           </Stack>
         </LocalizationProvider>
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3 }}>
+          {/* Nút Gợi ý AI bên trái */}
+          <Box>
+            <Tooltip title={!isFormValid() && !isLoadingAi ? "Vui lòng điền đầy đủ các trường thông tin trước khi sử dụng gợi ý AI" : ""}>
+              <span>
+                <Button
+                  disabled={isView || !isFormValid() || isLoadingAi}
+                  onClick={handleGetSuggestions}
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={isLoadingAi ? <CircularProgress size={20} /> : null}
+                  sx={{ 
+                    borderRadius: '4px',
+                    textTransform: 'none',
+                    fontWeight: 'medium',
+                    borderWidth: '1.5px',
+                    '&:hover': {
+                      borderWidth: '1.5px',
+                      backgroundColor: 'rgba(156, 39, 176, 0.04)'
+                    }
+                  }}
+                >
+                  {isLoadingAi ? "Đang phân tích..." : "Gợi ý (AI)"}
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
+          
+          {/* Nút Hủy/Thêm mới bên phải */}
           <Stack direction="row" spacing={2}>
             <Button
               variant="outlined"
               onClick={onCancel}
+              sx={{ 
+                minWidth: '100px',
+                textTransform: 'none',
+                fontWeight: 'medium' 
+              }}
             >
               {isView ? "Quay lại" : "Hủy"}
             </Button>
@@ -1034,6 +1285,12 @@ const {
                 variant="contained"
                 onClick={handleSubmit}
                 disabled={isLoading}
+                sx={{ 
+                  minWidth: '120px',
+                  textTransform: 'none',
+                  fontWeight: 'medium',
+                  boxShadow: 2 
+                }}
               >
                 {isLoading ? (
                   <CircularProgress size={24} color="inherit" />
@@ -1054,13 +1311,167 @@ const {
             <>
               <Divider sx={{ my: 3 }} />
               <Typography variant="h6" gutterBottom>
-                Gợi ý AI
+                Gợi ý và Phân tích từ AI
               </Typography>
-              <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                  {aiSuggestions.result}
-                </Typography>
-              </Paper>
+              
+              {/* Phân tích SEO nếu có */}
+              {aiSuggestions.seoAnalysis && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+                    Phân tích SEO
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}>
+                      <Paper 
+                        elevation={3} 
+                        sx={{ 
+                          p: 2, 
+                          height: '100%',
+                          bgcolor: '#f8f9fa',
+                          borderTop: '4px solid #4caf50'
+                        }}
+                      >
+                        <Typography variant="h6" fontWeight="bold" gutterBottom color="success.main">
+                          Điểm mạnh
+                        </Typography>
+                        <Divider sx={{ mb: 2 }} />
+                        {Array.isArray(aiSuggestions.seoAnalysis.strengths) ? (
+                          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                            {aiSuggestions.seoAnalysis.strengths.map((item: string, index: number) => (
+                              <li key={index}>
+                                <Typography variant="body2" sx={{ mb: 1 }}>
+                                  {item}
+                                </Typography>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <Typography variant="body2">
+                            {aiSuggestions.seoAnalysis.strengths || 'Không có thông tin'}
+                          </Typography>
+                        )}
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={4}>
+                      <Paper 
+                        elevation={3} 
+                        sx={{ 
+                          p: 2, 
+                          height: '100%',
+                          bgcolor: '#f8f9fa',
+                          borderTop: '4px solid #ff9800'
+                        }}
+                      >
+                        <Typography variant="h6" fontWeight="bold" gutterBottom color="warning.main">
+                          Cần cải thiện
+                        </Typography>
+                        <Divider sx={{ mb: 2 }} />
+                        {Array.isArray(aiSuggestions.seoAnalysis.improvements) ? (
+                          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                            {aiSuggestions.seoAnalysis.improvements.map((item: string, index: number) => (
+                              <li key={index}>
+                                <Typography variant="body2" sx={{ mb: 1 }}>
+                                  {item}
+                                </Typography>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <Typography variant="body2">
+                            {aiSuggestions.seoAnalysis.improvements || 'Không có thông tin'}
+                          </Typography>
+                        )}
+                      </Paper>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={4}>
+                      <Paper 
+                        elevation={3} 
+                        sx={{ 
+                          p: 2, 
+                          height: '100%',
+                          bgcolor: '#f8f9fa',
+                          borderTop: '4px solid #2196f3'
+                        }}
+                      >
+                        <Typography variant="h6" fontWeight="bold" gutterBottom color="info.main">
+                          Gợi ý từ khóa
+                        </Typography>
+                        <Divider sx={{ mb: 2 }} />
+                        {Array.isArray(aiSuggestions.seoAnalysis.keywords) ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {aiSuggestions.seoAnalysis.keywords.map((keyword: string, index: number) => (
+                              <Chip 
+                                key={index} 
+                                label={keyword} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined" 
+                                sx={{ margin: '2px' }}
+                              />
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2">
+                            {aiSuggestions.seoAnalysis.keywords || 'Không có từ khóa được gợi ý'}
+                          </Typography>
+                        )}
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+              
+              {/* Hiển thị kết quả gợi ý nội dung */}
+              {aiSuggestions.result && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+                    Gợi ý nội dung
+                  </Typography>
+                  <Paper 
+                    sx={{ 
+                      p: 2, 
+                      mb: 2, 
+                      bgcolor: '#f5f5f5',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                      {aiSuggestions.result}
+                    </Typography>
+                    
+                    {/* Thêm nút để áp dụng gợi ý */}
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        onClick={() => {
+                          handleInputChange("description", aiSuggestions.result);
+                          showSuccess('Đã áp dụng gợi ý vào mô tả');
+                        }}
+                      >
+                        Áp dụng gợi ý này
+                      </Button>
+                    </Box>
+                  </Paper>
+                </Box>
+              )}
+              
+              {/* Phân tích chung */}
+              {aiSuggestions.analysis && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+                    Phân tích chung
+                  </Typography>
+                  <Paper sx={{ p: 2, bgcolor: '#f8f9fa' }}>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                      {aiSuggestions.analysis}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
             </>
           )}
 

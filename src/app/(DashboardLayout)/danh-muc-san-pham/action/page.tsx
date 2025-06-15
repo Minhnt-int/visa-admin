@@ -115,19 +115,13 @@ const ProductCategoryActionContent = () => {
       <Box>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-                Đang tải dữ liệu...
-              </div>
-            ) : (
-              <ProductCategoryForm
+            <ProductCategoryForm
                 formData={formData}
                 isView={isView}
                 isEdit={isEdit}
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
               />
-            )}
           </Grid>
         </Grid>
       </Box>
