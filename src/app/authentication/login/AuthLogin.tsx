@@ -52,8 +52,6 @@ const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
         password
       });
 
-      console.log('Login response:', response.data);
-
       // Kiểm tra response
       if (response.data.success) {
         const accessToken = response.data.accessToken;

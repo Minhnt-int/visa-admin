@@ -164,7 +164,6 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
         showSuccess('Tạo nội dung bằng AI thành công');
       }
     } catch (error) {
-      console.error('Error getting AI content:', error);
 
       // Thay thế đoạn code xử lý lỗi hiện tại
       handleErrorDisplay(error);
@@ -183,8 +182,10 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
 
   // Thêm hàm xử lý hiển thị lỗi từ response API
   const handleErrorDisplay = (error: any) => {
-    console.error('Error:', error);
-
+    const errorMessage = error?.response?.data?.message ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Đã xảy ra lỗi không xác định';
     // Kiểm tra nếu có response data và là mảng
     if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
       const errorMessages = error.response.data.errors.map((err: any) => {
@@ -207,17 +208,18 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
                   <Typography variant="body2">{msg}</Typography>
                 </li>
               ))}
+              <li key={`0`}>
+                <Typography variant="body2">{errorMessage}</Typography>
+              </li>
             </ul>
           </Box>
         ),
         severity: 'error'
       });
       return;
+    } else {
+      showError(errorMessage);  // Hiển thị thông báo lỗi đầu tiên
     }
-
-    // Xử lý trường hợp khác
-    const errorMessage = error?.response?.data?.message || error?.message || 'Đã xảy ra lỗi không xác định';
-    showError(errorMessage);
   };
 
   // 1. Thêm hàm kiểm tra form hợp lệ để sử dụng với nút gợi ý AI
@@ -328,8 +330,8 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
               <Typography variant="subtitle1" gutterBottom>
                 Mô tả
               </Typography>
-              <Editor 
-                value={formData.description || ''} 
+              <Editor
+                value={formData.description || ''}
                 onChange={handleEditorChange}
                 disabled={isView}
                 placeholder="Nhập mô tả cho danh mục này"
@@ -682,6 +684,8 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        style={{ marginTop: '60px' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}

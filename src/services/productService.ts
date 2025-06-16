@@ -5,7 +5,9 @@
 import axios, { AxiosResponse } from 'axios';
 import { ProductAttributes } from '@/data/ProductAttributes';
 import { ProductCategory } from '@/data/ProductCategory';
+import ApiService from './ApiService';
 
+const PRODUCT_CATEGORIES_URL = '/api/product-category';
 // Tạo axios instance với cấu hình cơ bản
 const axioss = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
@@ -217,28 +219,11 @@ export const fetchProductCategories = async (page = 1, limit = 10,  search = '',
 
 export const createProduct = async (productData: ProductAttributes) => {
   try {
-    const response = await axioss.post(`${API_BASE_URL}/api/product/create`, productData, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      validateStatus: function (status) {
-        // Chấp nhận mã trạng thái 200 và 201 là thành công
-        return status >= 200 && status < 300;
-      }
-    });
+    const response = await ApiService.post(`${API_BASE_URL}/api/product/create`, productData);
     
-    return {
-      success: response.status >= 200 && response.status < 300,
-      data: response.data?.data || null,
-      message: response.data?.message || 'Product created successfully'
-    };
+    return ApiService.handleResponse<ProductCategory>(response);
   } catch (error) {
-    console.error('Lỗi khi tạo sản phẩm:', error);
-    return {
-      success: false,
-      data: null,
-      message: error instanceof Error ? error.message : 'Failed to create product'
-    };
+    return ApiService.handleError(error);
   }
 };
 

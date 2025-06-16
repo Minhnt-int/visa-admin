@@ -94,10 +94,6 @@ const BlogsTable = ({
     setSelectedRowKeys(selectedKeys);
   };
 
-  const handleLogSelected = () => {
-    console.log(`Selected blogCategory: ${selectedRowKeys.join(', ')}`);
-  };
-
   const handleView = (record: BlogPostAttributes) => {
     setIsView(true);
     setFormData(record);

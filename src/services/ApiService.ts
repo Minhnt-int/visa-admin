@@ -139,18 +139,20 @@ const ApiService = {
         errorMessage = error?.message || errorMessage;
       }
       
-      // Log thông tin chi tiết hơn cho debugging - tránh circular references
+      // Log thông tin chi tiết hơn cho debugging - theo cách an toàn
       try {
-        console.error('API Error:', {
-          message: errorMessage || 'Unknown error',
-          details: errorDetails,
-          status: error?.response?.status,
-          url: error?.config?.url,
-          method: error?.config?.method,
-          // Không log toàn bộ error object để tránh circular references
-          errorName: error?.name,
-          errorCode: error?.code
-        });
+        // Log từng phần riêng biệt
+        console.error('API Error message:', errorMessage || 'Unknown error');
+        
+        if (errorDetails) {
+          console.error('API Error details:', typeof errorDetails === 'object' 
+            ? JSON.stringify(errorDetails, null, 2) 
+            : errorDetails);
+        }
+        
+        console.error('API Error status:', error?.response?.status);
+        console.error('API Error URL:', error?.config?.url);
+        console.error('API Error method:', error?.config?.method);
       } catch (logError) {
         console.error('Lỗi khi ghi log API error:', logError);
       }
@@ -160,7 +162,7 @@ const ApiService = {
     }
     
     return {
-      data: [],
+      data:  error?.response?.data?.error?.data  || [],
       success: false,
       message: errorMessage,
       errors: errorDetails

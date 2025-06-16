@@ -80,7 +80,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         ...prev,
         slug: convertToSlug(formData.name)
       }));
-      
+
       // Nếu đang edit, cập nhật cả selectedBlogCategory
       if (selectedBlogCategory) {
         setSelectedBlogCategory({
@@ -112,99 +112,23 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     setIsMediaPopupOpen(false);
   };
 
-  const handleSubmit = async () => {
+  const handleConfirmSubmit = async () => {
     try {
-      setIsLoading(true);
-
-      if (formData.id) {
-        // Cần kiểm tra kết quả trả về
-        const result = await updateBlogCategory(formData);
-
-        // Kiểm tra kết quả trước khi tiếp tục
-        if (
-          !result ||
-          (typeof result === 'object' &&
-            result !== null &&
-            'success' in result &&
-            (result as { success?: boolean }).success === false)
-        ) {
-          throw new Error((result as any)?.message || 'Không thể cập nhật danh mục');
-        }
-
-        setSnackbar({ 
-          open: true, 
-          message: 'Blog category updated successfully', 
-          severity: 'success' 
-        });
-
-        // Di chuyển router.push xuống dưới để chỉ thực hiện khi thành công
-        setTimeout(() => {
-          router.push('/danh-muc-bai-viet');
-          setFormData(initBlogCategory);
-        }, 1000);
-
-        if (onSuccess) {
-          onSuccess();
-        }
+      if (currentAction.type === ActionType.EDIT) {
+        await updateBlogCategory(formData);
+        showSuccess("Cập nhật danh mục thành công");
+        if (onSuccess) onSuccess();
       } else {
-        // Tương tự với createBlogCategory
-        const result = await createBlogCategory(formData);
-
-        if (
-          !result ||
-          (typeof result === 'object' &&
-            result !== null &&
-            'success' in result &&
-            (result as { success?: boolean }).success === false)
-        ) {
-          throw new Error((result as any)?.message || 'Không thể tạo danh mục mới');
-        }
-
-        setSnackbar({ 
-          open: true, 
-          message: 'Blog category created successfully', 
-          severity: 'success' 
-        });
-
-        // Di chuyển router.push xuống dưới với setTimeout
-        setTimeout(() => {
-          router.push('/danh-muc-bai-viet');
-          setFormData(initBlogCategory);
-        }, 1000);
-
-        if (onSuccess) {
-          onSuccess();
-        }
+        await createBlogCategory(formData);
+        showSuccess("Thêm danh mục thành công");
+        if (onSuccess) onSuccess();
       }
+      setConfirmingPopup(false);
     } catch (error) {
-      console.error('Error saving blog category:', error);
-      
-      // Kiểm tra chi tiết lỗi và ghi log
-      console.log('Error details:', {
-        type: typeof error,
-        hasResponse: typeof error === 'object' && error !== null && 'response' in error,
-        responseStatus: typeof error === 'object' && error !== null && 'response' in error
-          ? (error as any).response?.status
-          : undefined,
-        responseData: typeof error === 'object' && error !== null && 'response' in error
-          ? (error as any).response?.data
-          : undefined
-      });
-      
-      // Sử dụng ApiService.handleError để xử lý lỗi
-      const errorResult = ApiService.handleError(error);
-      console.log('Error result from ApiService:', errorResult);
-      
-      setSnackbar({ 
-        open: true, 
-        message: errorResult.message || 'Có lỗi khi lưu danh mục. Vui lòng thử lại sau.', 
-        severity: 'error' 
-      });
-      
-      // Ngăn chuyển router nếu có lỗi
-      return;
-    } finally {
-      setIsLoading(false);
+      // Xử lý lỗi chi tiết
+      handleErrorDisplay(error);
+      // Không đóng popup khi có lỗi để người dùng có thể sửa và thử lại
+      setConfirmingPopup(false);
     }
   };
 
@@ -223,14 +147,13 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error deleting blog category:', error);
-      
+
       // Sử dụng ApiService.handleError để xử lý lỗi
       const errorResult = ApiService.handleError(error);
-      setSnackbar({ 
-        open: true, 
-        message: errorResult.message, 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: errorResult.message,
+        severity: 'error'
       });
     } finally {
       setIsLoading(false);
@@ -248,24 +171,88 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       }
       router.push('/danh-muc-bai-viet');
     } catch (error) {
-      console.error('Error saving category:', error);
-      
+
       // Sử dụng ApiService.handleError để xử lý lỗi
       const errorResult = ApiService.handleError(error);
-      setSnackbar({ 
-        open: true, 
-        message: errorResult.message, 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: errorResult.message,
+        severity: 'error'
       });
     }
     setConfirmingPopup(false);
   };
-
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: React.ReactNode;
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
     open: false,
     message: '',
-    severity: 'success'
+    severity: 'info'
   });
+
+  // 2. Thêm các hàm trợ giúp để hiển thị thông báo
+  const showError = (msg: string) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: 'error'
+    });
+  };
+
+  const showSuccess = (msg: string) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: 'success'
+    });
+  };
+
+  // 3. Thêm hàm xử lý lỗi chi tiết
+  const handleErrorDisplay = (error: any) => {
+    // Trích xuất thông báo lỗi cơ bản
+    const errorMessage = error?.response?.data?.message ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Đã xảy ra lỗi không xác định';
+
+    // Kiểm tra lỗi có cấu trúc mảng
+    if (error?.data && Array.isArray(error.data) && error.data.length > 0) {
+      const errorMessages = error.data.map((err: any) => {
+        if (typeof err === 'string') return err;
+        if (err.message) return err.message;
+        return JSON.stringify(err);
+      });
+
+      // Hiển thị danh sách lỗi
+      setSnackbar({
+        open: true,
+        message: (
+          <Box>
+            <Typography variant="body2" fontWeight="bold" gutterBottom>
+              Đã xảy ra các lỗi sau:
+            </Typography>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              {errorMessages.map((msg: string, index: number) => (
+                <li key={index}>
+                  <Typography variant="body2">{msg}</Typography>
+                </li>
+              ))}
+              <li key={`general`}>
+                <Typography variant="body2">{errorMessage}</Typography>
+              </li>
+            </ul>
+          </Box>
+        ),
+        severity: 'error'
+      });
+      return;
+    } else {
+      // Hiển thị thông báo lỗi đơn giản
+      showError(errorMessage);
+    }
+  };
 
   return (
     <>
@@ -391,7 +378,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
               )}
               {!isView && (
                 <Button
-                  onClick={handleSubmit}
+                  onClick={handleConfirmSubmit}
                   variant="contained"
                   color="primary"
                   disabled={isLoading}
@@ -417,41 +404,13 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         listMedia={[]}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={isDeleteConfirmOpen}
-        onClose={() => setIsDeleteConfirmOpen(false)}
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete the category {formData?.name}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setIsDeleteConfirmOpen(false)}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDelete}
-            color="error"
-            variant="contained"
-            disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-          >
-            {isLoading ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        style={{ marginTop: '60px' }} // Để tránh bị che bởi navigation
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}

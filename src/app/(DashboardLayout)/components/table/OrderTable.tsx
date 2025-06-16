@@ -234,12 +234,6 @@ const OrderTableContent = () => {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1}>
-                      {/* <IconButton onClick={() => console.log('View:', row)} size="small" color="primary">
-                        <IconEye size={18} />
-                      </IconButton>
-                      <IconButton onClick={() => console.log('Edit:', row)} size="small" color="primary">
-                        <IconEdit size={18} />
-                      </IconButton> */}
                       <IconButton 
                         onClick={() => row.id && handleDeleteOrder(row.id)} 
                         size="small" 

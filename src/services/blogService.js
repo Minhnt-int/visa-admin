@@ -3,6 +3,8 @@
  */
 
 import axioss from '../../axiosConfig'; // Import axios từ thư viện axios
+import ApiService from './ApiService';
+import { BlogPostAttributes } from '@/data/BlogPost'; // Import các kiểu dữ liệu cần thiết
 // Thêm kiểm tra và fallback cho API URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -155,21 +157,11 @@ export const fetchPopularBlogs = async (
 
 export const createBlog = async (blogData) => {
   try {
-    const response = await axioss.post(`${API_BASE_URL}/api/blog/create-blog`,blogData , {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      validateStatus: function (status) {
-        // Chấp nhận mã trạng thái 200 và 201 là thành công
-        return status >= 200 && status < 300;
-      }
-
-    });
+    const response = await ApiService.post(`${API_BASE_URL}/api/blog/create-blog`,blogData);
     
-    return response.data;
+    return ApiService.handleResponse<BlogPostAttributes>(response);
   } catch (error) {
-    console.error('Lỗi khi tạo sản phẩm:', error);
-    throw error;
+    return ApiService.handleError(error);
   }
 };
 
@@ -180,7 +172,6 @@ export const createBlog = async (blogData) => {
  */
 export const updateBlog = async (blogData) => {
   try {
-    console.log('Updating blog with data:', blogData); // Debug log
     
     const response = await axioss.put(`${API_BASE_URL}/api/blog/update-blog`, blogData, {
       headers: {
@@ -192,7 +183,6 @@ export const updateBlog = async (blogData) => {
       }
     });
     
-    console.log('Update response:', response.data); // Debug log
     return response.data;
   } catch (error) {
     console.error('Lỗi khi cập nhật bài viết:', error);

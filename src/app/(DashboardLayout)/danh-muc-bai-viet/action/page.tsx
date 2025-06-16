@@ -88,7 +88,6 @@ const BlogCategoryAction = () => {
       ...prev,
       [data.name]: data.value,
     }));
-    console.log(data, formData);
   };
 
   const handleSubmit = () => {

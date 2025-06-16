@@ -148,11 +148,6 @@ const ProductsTable: React.FC = () => {
   const handleSelectChange = (selectedKeys: React.Key[]) => {
     setSelectedRowKeys(selectedKeys);
   };
-
-  const handleLogSelected = () => {
-      console.log(`Selected Products: ${selectedRowKeys.join(', ')}`);
-  };
-
   const handleView = (row: ProductAttributes) => {
     setCurrentSlug(row.slug);
     setFormData(row);

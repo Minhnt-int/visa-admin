@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   TextField,
   FormControl,
   InputLabel,
@@ -28,7 +28,7 @@ import { ProductMedia } from '@/data/ProductAttributes';
 import { useRouter } from 'next/navigation';
 import { convertToSlug } from "../function/TittleToSlug";
 import ApiService from '@/services/ApiService';
-
+import ConfirmPopup from "../popup/ConfirmPopup";
 interface BlogPostFormProps {
   isView?: boolean;
   onChange: (data: { name: string; value: any }) => void;
@@ -52,7 +52,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     generateAIContent
   } = useAppContext();
   const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
-
+  const [confirmPopupOpen, setConfirmPopupOpen] = useState(false);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
@@ -61,10 +61,14 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const [form, setForm] = useState<BlogPostAttributes>(formData);
   const { blogCategories, fetchBlogCategories } = useAppContext();
   const router = useRouter();
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: React.ReactNode; // Thay đổi từ string sang ReactNode
+    severity: 'success' | 'error' | 'info' | 'warning';
+  }>({
     open: false,
     message: '',
-    severity: 'success'
+    severity: 'info'
   });
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -97,13 +101,22 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     }
   }, [form?.title]);
 
-  const handleEditorChange = (content: string) => {
-    setEditorContent(content);
+  // Hàm xử lý thay đổi cho tất cả các trường input thông thường
+  const handleInputChange = (field: string, value: any) => {
     setForm(prev => ({
       ...prev,
-      content: content
+      [field]: value
     }));
-    onChange({ name: 'content', value: content });
+
+    // Nếu cần callback cho component cha
+    if (typeof onChange === 'function') {
+      onChange({ name: field, value: value });
+    }
+  };
+
+  // Hàm xử lý riêng cho editor nếu cần
+  const handleEditorChange = (content: string) => {
+    handleInputChange('content', content);
   };
 
 
@@ -125,11 +138,11 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     try {
       setIsLoading(true);
       const result = await generateAIContent(form?.content || '', 'evaluate');
-      
-      if (result.data) {
+
+      if (result?.data) {
         setAiSuggestions(result.data);
         setShowAiSuggestions(true);
-                setSnackbar({
+        setSnackbar({
           open: true,
           message: 'Gợi ý AI đã được tạo thành công',
           severity: 'success'
@@ -137,14 +150,14 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       }
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
-      
+
       // Sử dụng ApiService.handleError để xử lý lỗi
       const errorResult = ApiService.handleError(error);
-      
-      setSnackbar({ 
-        open: true, 
-        message: errorResult.message, 
-        severity: 'error' 
+
+      setSnackbar({
+        open: true,
+        message: errorResult.message,
+        severity: 'error'
       });
     } finally {
       setIsLoading(false);
@@ -155,8 +168,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     try {
       setIsLoading(true);
       const result = await generateAIContent(form?.title || '', 'blog');
-      
-      if (result.data) {
+
+      if (result?.data) {
         setAiSuggestions(result.data);
         setShowAiSuggestions(true);
         onChange({ name: 'content', value: result.data });
@@ -168,31 +181,17 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       }
     } catch (error) {
       console.error('Error getting AI content:', error);
-      
+
       // Sử dụng ApiService.handleError để xử lý lỗi
       const errorResult = ApiService.handleError(error);
-      
-      setSnackbar({ 
-        open: true, 
-        message: errorResult.message, 
-        severity: 'error' 
+
+      setSnackbar({
+        open: true,
+        message: errorResult.message,
+        severity: 'error'
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-  const handleInputChange = (field: string, value: any) => {
-    setForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Update context if editing existing category
-    if (selectedBlogPost && field in selectedBlogPost) {
-      setSelectedBlogPost({
-        ...selectedBlogPost,
-        [field]: value
-      });
     }
   };
 
@@ -201,53 +200,80 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     setIsMediaPopupOpen(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(''); // Reset error message
+
+  const showError = (msg: string) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: 'error'
+    });
+  };
+
+  const showSuccess = (msg: string) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: 'success'
+    });
+  };
+
+  const handleConfirmSubmit = async () => {
+
     try {
-      setIsLoading(true);
-      
-      if (form.id) {
-        const result = await updateBlogPost(form);
-        
-        if (result) {
-          setSnackbar({ open: true, message: 'Blog post updated successfully', severity: 'success' });
-          setForm(initBlog);
-          setTimeout(() => {
-            router.refresh();
-            router.push('/bai-viet');
-          }, 100);
-        } else {
-          throw new Error('Failed to update blog post');
-        }
+      if (action === 'edit') {
+        // Xử lý cập nhật bài viết
+        await updateBlogPost(formData);
+        showSuccess("Cập nhật bài viết thành công");
+        router.push("/bai-viet");
       } else {
-        const result = await createBlogPost(form);
-        
-        if (result && (result.success || result.data || (result.message && result.message.includes("success")))) {
-          setSnackbar({ open: true, message: 'Blog post created successfully', severity: 'success' });
-          setForm(initBlog);
-          setTimeout(() => {
-            router.refresh();
-            router.push('/bai-viet');
-          }, 100);
-        } else {
-          throw new Error(result.message || 'Failed to create blog post');
-        }
+        // Xử lý thêm mới bài viết
+        await createBlogPost(formData);
+        showSuccess("Thêm bài viết thành công");
+        router.push("/bai-viet");
       }
-    } catch (error: any) {
-      console.error('Error saving blog post:', error);
-      
-      // Sử dụng ApiService.handleError để xử lý lỗi đồng bộ
-      const errorResult = ApiService.handleError(error);
-      
-      setErrorMessage(errorResult.message);
-      setSnackbar({ 
-        open: true, 
-        message: errorResult.message, 
-        severity: 'error' 
+
+      // Đóng popup xác nhận nếu thành công
+      setConfirmPopupOpen(false);
+    } catch (error) {
+
+      // Re-throw lỗi để xử lý ở phần gọi
+      throw error;
+    }
+  };
+  const handleErrorDisplay = (error: any) => {
+
+    if (error?.message) {
+      showError(error.message);
+    }
+    const errorMessage = error?.response?.data?.message ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Đã xảy ra lỗi không xác định';
+    // Kiểm tra và hiển thị lỗi validation chi tiết nếu có
+    if (error?.data && Array.isArray(error?.data)) {
+      setSnackbar({
+        open: true,
+        message: (
+          <Box>
+            <Typography variant="body2" fontWeight="bold" gutterBottom>
+              {error?.message || 'Đã xảy ra các lỗi sau:'}
+            </Typography>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              {error?.data.map((msg: string, index: number) => (
+                <li key={index}>
+                  <Typography variant="body2">{msg}</Typography>
+                </li>
+              ))}
+              <li key={`0`}>
+                <Typography variant="body2">{errorMessage}</Typography>
+              </li>
+            </ul>
+          </Box>
+        ),
+        severity: 'error'
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      showError(errorMessage);
     }
   };
 
@@ -335,7 +361,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             <Typography variant="body2" gutterBottom>Danh mục bài viết</Typography>
             <Select
               value={form?.blogCategoryId || ""}
-              label="Danh mục bài viết" 
+              label="Danh mục bài viết"
               disabled={isView}
               onChange={(event) => handleInputChange('blogCategoryId', event.target.value)}
               style={{ width: "100%" }}
@@ -390,17 +416,17 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           <div style={{ marginBottom: "16px" }}>
             <Typography variant="body2" gutterBottom>Ngày xuất bản</Typography>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              value={form?.publishedAt ? new Date(form?.publishedAt) : null}
-              onChange={(date) => {
-                onChange({
-                  name: 'publishedAt',
-                  value: date ? date.toISOString() : null,
-                });
-              }}
-    format="yyyy-MM-dd"
-    sx={{ width: "100%" }}
-  />
+              <DatePicker
+                value={form?.publishedAt ? new Date(form?.publishedAt) : null}
+                onChange={(date) => {
+                  onChange({
+                    name: 'publishedAt',
+                    value: date ? date.toISOString() : null,
+                  });
+                }}
+                format="yyyy-MM-dd"
+                sx={{ width: "100%" }}
+              />
             </LocalizationProvider>
 
           </div>
@@ -409,36 +435,36 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             <div style={{ width: "50%" }}>
               <Typography variant="body2" gutterBottom>Ngày tạo</Typography>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                value={form?.createdAt ? new Date(form?.createdAt) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: 'createdAt',
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-    format="yyyy-MM-dd"
-    disabled={true}
-    sx={{ width: "100%" }}
-  />
+                <DatePicker
+                  value={form?.createdAt ? new Date(form?.createdAt) : null}
+                  onChange={(date) => {
+                    onChange({
+                      name: 'createdAt',
+                      value: date ? date.toISOString() : null,
+                    });
+                  }}
+                  format="yyyy-MM-dd"
+                  disabled={true}
+                  sx={{ width: "100%" }}
+                />
               </LocalizationProvider>
             </div>
 
             <div style={{ width: "50%" }}>
               <Typography variant="body2" gutterBottom>Ngày cập nhật</Typography>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                value={form?.updatedAt ? new Date(form?.updatedAt) : null}
-                onChange={(date) => {
-                  onChange({
-                    name: 'updatedAt',
-                    value: date ? date.toISOString() : null,
-                  });
-                }}
-                format="yyyy-MM-dd"
-                disabled={true}
-                sx={{ width: "100%" }}
-  />
+                <DatePicker
+                  value={form?.updatedAt ? new Date(form?.updatedAt) : null}
+                  onChange={(date) => {
+                    onChange({
+                      name: 'updatedAt',
+                      value: date ? date.toISOString() : null,
+                    });
+                  }}
+                  format="yyyy-MM-dd"
+                  disabled={true}
+                  sx={{ width: "100%" }}
+                />
               </LocalizationProvider>
             </div>
           </div>
@@ -450,13 +476,12 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
               </Button>
             )}
             <Button
-              disabled={isView}
-              onClick={handleSubmit}
               variant="contained"
               color="primary"
-              sx={{ mr: 1 }}
+              onClick={() => setConfirmPopupOpen(true)} // Thay vì gọi hàm submit trực tiếp
+              disabled={isLoading}
             >
-              Submit
+              {isLoading ? <CircularProgress size={24} /> : action === 'edit' ? 'Cập nhật' : 'Đăng bài'}
             </Button>
             <Tooltip title={!isFormValid() && !isLoading ? "Vui lòng điền đầy đủ các trường thông tin trước khi sử dụng gợi ý AI" : ""}>
               <span>
@@ -473,12 +498,12 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             </Tooltip>
           </Box>
 
-          {errorMessage && (
-            <Typography 
-              color="error" 
-              variant="body2" 
-              sx={{ 
-                mt: 2, 
+          {/* {errorMessage && (
+            <Typography
+              color="error"
+              variant="body2"
+              sx={{
+                mt: 2,
                 textAlign: 'center',
                 backgroundColor: '#ffebee',
                 padding: '8px',
@@ -487,7 +512,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             >
               {errorMessage}
             </Typography>
-          )}
+          )} */}
 
           {showAiSuggestions && aiSuggestions && (
             <>
@@ -507,7 +532,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
             open={isMediaPopupOpen}
             onClose={() => setIsMediaPopupOpen(false)}
             onSelect={handleMediaSelect}
-            onSubmit={() => {}}
+            onSubmit={() => { }}
             listMedia={[]}
           />
         </CardContent>
@@ -516,6 +541,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
+        style={{ marginTop: '60px' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
@@ -525,8 +552,24 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <ConfirmPopup
+        open={confirmPopupOpen}
+        onClose={() => setConfirmPopupOpen(false)}
+        content={`Bạn có chắc chắn muốn ${action === 'edit' ? 'cập nhật' : 'đăng'} bài viết này?`}
+        onConfirm={async () => {
+          try {
+            await handleConfirmSubmit();
+            // Thành công đã được xử lý trong handleConfirmSubmit
+          } catch (error) {
+            // Xử lý lỗi
+            handleErrorDisplay(error);
+            setConfirmPopupOpen(false); // Đóng popup khi có lỗi
+          }
+        }}
+        title={action === 'edit' ? "Cập nhật bài viết" : "Đăng bài viết mới"}
+      />
     </>
-  );  
+  );
 };
 
 export default BlogPostForm;
