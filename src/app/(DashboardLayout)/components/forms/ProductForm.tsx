@@ -7,7 +7,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Box,
   Typography,
   Snackbar,
   Alert,
@@ -24,9 +23,10 @@ import {
   DialogActions,
   Stack,
   Paper,
-  Chip
+  Chip,
+  Box 
 } from '@/config/mui';
-import { Rating } from '@mui/material';
+import { Rating, FormControlLabel, Checkbox} from '@mui/material';
 import { IconUpload, IconTrash, IconEdit, IconPlus } from '@tabler/icons-react';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -1047,7 +1047,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       disabled={isView}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={12}>
                     <TextField
                       fullWidth
                       label="Giá gốc"
@@ -1061,19 +1061,41 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Giá khuyến mãi"
-                      type="number"
-                      placeholder="Nhập giá khuyến mãi"
-                      value={item.price}
-                      onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
-                      disabled={isView}
-                      InputProps={{
-                        startAdornment: <Typography>₫</Typography>,
-                      }}
-                    />
+                  <Grid item xs={12} sm={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={item.price === -1}
+                            onChange={(e) => {
+                              handleItemChange(index, "price", e.target.checked ? -1 : 0);
+                            }}
+                            disabled={isView}
+                          />
+                        }
+                        label="Liên hệ báo giá"
+                        sx={{ minWidth: '150px', m: 0 }}
+                      />
+                      
+                      {item.price !== -1 ? (
+                        <TextField
+                          fullWidth
+                          label="Giá khuyến mãi"
+                          type="number"
+                          placeholder="Nhập giá khuyến mãi"
+                          value={item.price || ''}
+                          onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
+                          disabled={isView}
+                          InputProps={{
+                            startAdornment: <Typography>₫</Typography>,
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                          Đã chọn liên hệ báo giá
+                        </Typography>
+                      )}
+                    </Box>
                   </Grid>
                   <Grid item xs={12}>
                     <FormControl fullWidth>

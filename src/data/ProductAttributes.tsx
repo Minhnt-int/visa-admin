@@ -2,7 +2,7 @@
 export interface ProductItemAttributes {
   id: number;
   name: string;
-  price: number;
+  price: number | null;
   originalPrice: number;
   status: 'available' | 'out_of_stock' | 'discontinued';
   createdAt: string;
