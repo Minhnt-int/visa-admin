@@ -47,12 +47,6 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   initialData,
   afterDelete,
 }) => {
-  const [formData, setFormData] = useState<BlogCategory>(initialData || initBlogCategory);
-  const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [confirmingPopup, setConfirmingPopup] = useState(false);
-  const router = useRouter();
   const {
     currentAction,
     selectedBlogCategory,
@@ -64,6 +58,27 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     deleteBlogCategory,
     fetchBlogCategoryBySlug,
   } = useAppContext();
+  console.log('BlogCategoryForm initialized with initialData:', initialData);
+  // Cập nhật initialFormData
+  const [formData, setFormData] = useState<BlogCategory>(() => {
+    // Nếu đang edit, sử dụng initialData, nếu không tạo form trống
+    if (currentAction.type === ActionType.EDIT && initialData) {
+      console.log('Initializing form with data:', initialData);
+      return {
+        ...initialData,
+        // Đảm bảo các trường không bị undefined/null
+        // Các trường khác...
+      };
+    }
+    
+    return initBlogCategory;
+  });
+  const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [confirmingPopup, setConfirmingPopup] = useState(false);
+  const router = useRouter();
+
 
   useEffect(() => {
     if (currentAction.type === ActionType.EDIT && selectedBlogCategory?.slug) {
@@ -80,14 +95,6 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         ...prev,
         slug: convertToSlug(formData.name)
       }));
-
-      // Nếu đang edit, cập nhật cả selectedBlogCategory
-      if (selectedBlogCategory) {
-        setSelectedBlogCategory({
-          ...selectedBlogCategory,
-          slug: convertToSlug(formData.name)
-        });
-      }
     }
   }, [formData?.name]);
 
@@ -124,6 +131,7 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
         if (onSuccess) onSuccess();
       }
       setConfirmingPopup(false);
+      router.push('/danh-muc-bai-viet');
     } catch (error) {
       // Xử lý lỗi chi tiết
       handleErrorDisplay(error);
@@ -253,6 +261,18 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
       showError(errorMessage);
     }
   };
+
+  // Quan trọng: cập nhật formData khi initialData thay đổi (ví dụ: sau khi tải từ API)
+  useEffect(() => {
+    if (currentAction.type === ActionType.EDIT && initialData && initialData.id) {
+      console.log('Updating form data from initialData:', initialData);
+      
+      setFormData(prev => ({
+        ...initialData,
+      }));
+
+    }
+  }, [currentAction, initialData]);
 
   return (
     <>

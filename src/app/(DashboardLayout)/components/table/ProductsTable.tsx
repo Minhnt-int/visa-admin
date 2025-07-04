@@ -96,6 +96,7 @@ const columns = [
   { id: 'name', label: 'Name', minWidth: 150 },
   { id: 'shortDescription', label: 'Short Description', minWidth: 200 },
   { id: 'categoryId', label: 'Category ID', minWidth: 120 },
+  { id: 'categoryName', label: 'Category', minWidth: 120 },
   { id: 'slug', label: 'Slug', minWidth: 150 },
   { id: 'items', label: 'Items', minWidth: 300 },
   { id: 'itemsPrice', label: 'Items Price', minWidth: 150 },

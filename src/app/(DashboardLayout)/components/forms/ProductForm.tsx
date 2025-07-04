@@ -24,9 +24,9 @@ import {
   Stack,
   Paper,
   Chip,
-  Box 
+  Box
 } from '@/config/mui';
-import { Rating, FormControlLabel, Checkbox} from '@mui/material';
+import { Rating, FormControlLabel, Checkbox } from '@mui/material';
 import { IconUpload, IconTrash, IconEdit, IconPlus } from '@tabler/icons-react';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -225,6 +225,36 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [formData.name]);
 
+  // Khởi tạo state
+  const [shortDescriptionContent, setShortDescriptionContent] = useState('');
+  const [descriptionContent, setDescriptionContent] = useState('');
+
+  // Sử dụng useEffect để đồng bộ khi formData thay đổi
+  useEffect(() => {
+    // Cập nhật giá trị editor khi formData thay đổi (khi tải dữ liệu từ API)
+    setShortDescriptionContent(formData?.shortDescription || '');
+    setDescriptionContent(formData?.description || '');
+  }, [formData?.id, formData?.shortDescription, formData?.description]);
+
+  // Nếu formData được tải sau khi component mount
+  // hoặc nếu có sự thay đổi trong formData
+  useEffect(() => {
+    if (formData) {
+      // Cập nhật giá trị editor từ formData
+      // Sử dụng || '' để tránh giá trị null/undefined
+      setShortDescriptionContent(formData.shortDescription || '');
+      setDescriptionContent(formData.description || '');
+    }
+  }, [formData]);
+
+  // Trong trường hợp initialData được truyền vào qua props
+  useEffect(() => {
+    if (initialFormData && isEdit) {
+      setShortDescriptionContent(initialFormData.shortDescription || '');
+      setDescriptionContent(initialFormData.description || '');
+    }
+  }, [initialFormData, isEdit]);
+
   const handleInputChange = (field: keyof ProductAttributes, value: any) => {
     setFormData((prev: ProductAttributes) => ({
       ...prev,
@@ -316,11 +346,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleItemChange = (index: number, field: string, value: any) => {
+
     const newItems = [...formData.items];
     newItems[index] = {
       ...newItems[index],
       [field]: value,
     };
+
 
     setFormData((prev: ProductAttributes) => ({
       ...prev,
@@ -683,15 +715,37 @@ const ProductForm: React.FC<ProductFormProps> = ({
             </Button>
           </Box>
 
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Mô tả ngắn"
-            value={formData.shortDescription}
-            onChange={(e) => handleInputChange("shortDescription", e.target.value)}
-            disabled={isView}
-          />
+          {/* Editor cho shortDescription */}
+          <div style={{ marginBottom: "16px" }}>
+            <Typography variant="body2" gutterBottom>
+              Mô tả ngắn
+            </Typography>
+            <Editor
+              disabled={isView}
+              value={shortDescriptionContent}
+              onChange={(content) => {
+                handleInputChange("shortDescription", content);
+                setShortDescriptionContent(content);
+              }}
+              placeholder="Nhập mô tả ngắn về sản phẩm"
+            />
+          </div>
+
+          {/* Editor cho description */}
+          <div style={{ marginBottom: "16px" }}>
+            <Typography variant="body2" gutterBottom>
+              Mô tả chi tiết
+            </Typography>
+            <Editor
+              disabled={isView}
+              value={descriptionContent}
+              onChange={(content) => {
+                handleInputChange("description", content);
+                setDescriptionContent(content);
+              }}
+              placeholder="Nhập mô tả chi tiết về sản phẩm"
+            />
+          </div>
 
           <TextField
             placeholder="Nhập đường dẫn slug (vd: san-pham-moi)"
@@ -720,21 +774,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 : null}
             </Select>
           </FormControl>
-
-          <div style={{ marginBottom: "16px" }}>
-            <Typography variant="body2" gutterBottom>
-              Mô tả chi tiết
-            </Typography>
-            <Editor
-              disabled={isView}
-              value={editorContent}
-              onChange={(content) => {
-                handleInputChange("description", content);
-                setEditorContent(content);
-              }}
-              placeholder="Nhập mô tả chi tiết về sản phẩm"
-            />
-          </div>
 
           {/* Media Section */}
           <Typography variant="h6" gutterBottom>
@@ -1047,36 +1086,78 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       disabled={isView}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={12}>
-                    <TextField
-                      fullWidth
-                      label="Giá gốc"
-                      type="number"
-                      placeholder="Nhập giá gốc"
-                      value={item.originalPrice}
-                      onChange={(e) => handleItemChange(index, "originalPrice", Number(e.target.value))}
-                      disabled={isView}
-                      InputProps={{
-                        startAdornment: <Typography>₫</Typography>,
-                      }}
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={item.price === -1}
+                          onChange={(e) => {
+
+                            if (e.target.checked) {
+                              // Chọn "Liên hệ báo giá" - set CẢ HAI giá trị thành -1
+                              const newItems = [...formData.items];
+                              newItems[index] = {
+                                ...newItems[index],
+                                price: -1,
+                                originalPrice: -1
+                              };
+
+                              setFormData((prev: ProductAttributes) => ({
+                                ...prev,
+                                items: newItems
+                              }));
+
+                            } else {
+                              // Bỏ chọn "Liên hệ báo giá" - reset CẢ HAI về 0
+                              const newItems = [...formData.items];
+                              newItems[index] = {
+                                ...newItems[index],
+                                price: 0,
+                                originalPrice: 0
+                              };
+
+                              setFormData((prev: ProductAttributes) => ({
+                                ...prev,
+                                items: newItems
+                              }));
+
+                            }
+                          }}
+                          disabled={isView}
+                        />
+                      }
+                      label="Liên hệ báo giá"
+                      sx={{ minWidth: '150px', m: 0 }}
                     />
+                  </Grid>
+
+                  <Grid item xs={12} sm={12}>
+                    {item.originalPrice !== -1 ? (
+                      <TextField
+                        fullWidth
+                        label="Giá gốc"
+                        type="number"
+                        placeholder="Nhập giá gốc"
+                        value={item.originalPrice || ''}
+                        onChange={(e) => handleItemChange(index, "originalPrice", Number(e.target.value))}
+                        disabled={isView}
+                        InputProps={{
+                          endAdornment: <Typography>₫</Typography>
+                        }}
+                      />
+                    ) : (
+                      <TextField
+                        fullWidth
+                        label="Giá gốc"
+                        type="text"
+                        value={'Đã chọn liên hệ báo giá'}
+                        disabled={true}
+                      />
+
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={item.price === -1}
-                            onChange={(e) => {
-                              handleItemChange(index, "price", e.target.checked ? -1 : 0);
-                            }}
-                            disabled={isView}
-                          />
-                        }
-                        label="Liên hệ báo giá"
-                        sx={{ minWidth: '150px', m: 0 }}
-                      />
-                      
                       {item.price !== -1 ? (
                         <TextField
                           fullWidth
@@ -1087,13 +1168,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           onChange={(e) => handleItemChange(index, "price", Number(e.target.value))}
                           disabled={isView}
                           InputProps={{
-                            startAdornment: <Typography>₫</Typography>,
+                            endAdornment: <Typography>₫</Typography>
                           }}
                         />
                       ) : (
-                        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                          Đã chọn liên hệ báo giá
-                        </Typography>
+                      <TextField
+                        fullWidth
+                        label="Giá gốc"
+                        type="text"
+                        value={'Đã chọn liên hệ báo giá'}
+                        disabled={true}
+                      />
                       )}
                     </Box>
                   </Grid>
