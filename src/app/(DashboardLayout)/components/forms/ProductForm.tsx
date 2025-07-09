@@ -134,6 +134,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
     severity: 'info'
   });
 
+  const [itemMediaPopupOpen, setItemMediaPopupOpen] = useState(false);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
+
   // Thêm vào sau khai báo tất cả các state
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -184,10 +187,65 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   useEffect(() => {
     if (selectedProduct) {
-      setFormData(selectedProduct);
+      // Đầu tiên, set media vào formData
+      const productMedias = selectedProduct.media || [];
+      
+      // Sau đó, xử lý items với mediaIndex
+      const itemsWithMediaIndex = selectedProduct.items.map(item => {
+        let mediaIds: number[] = [];
+        
+        // Parse mediaIds từ string hoặc array
+        if (item.mediaIds) {
+          if (typeof item.mediaIds === 'string') {
+            try {
+              // Parse string "[74,75]" thành array [74,75]
+              mediaIds = JSON.parse(item.mediaIds);
+            } catch (error) {
+              console.error('Error parsing mediaIds:', error);
+              mediaIds = [];
+            }
+          } else if (Array.isArray(item.mediaIds)) {
+            mediaIds = item.mediaIds;
+          }
+        }
+        
+        console.log('Item mediaIds after parsing:', mediaIds);
+        
+        if (mediaIds && Array.isArray(mediaIds) && mediaIds.length > 0) {
+          // Tìm index của từng mediaId trong danh sách media
+          const mediaIndex = mediaIds.map(mediaId => {
+            const foundIndex = productMedias.findIndex(media => media.id === mediaId);
+            console.log(`Looking for mediaId ${mediaId}, found at index:`, foundIndex);
+            return foundIndex !== -1 ? foundIndex : -1; // -1 nếu không tìm thấy
+          }).filter(index => index !== -1); // Loại bỏ index -1
+          
+          console.log('Final mediaIndex for item:', mediaIndex);
+          
+          return {
+            ...item,
+            mediaIds: mediaIds, // Lưu array đã parse
+            mediaIndex: mediaIndex
+          };
+        }
+        
+        return {
+          ...item,
+          mediaIds: mediaIds, // Lưu array đã parse
+          mediaIndex: []
+        };
+      });
+      
+      console.log('Items with mediaIndex:', itemsWithMediaIndex);
+      
+      setFormData({
+        ...selectedProduct,
+        media: productMedias,
+        items: itemsWithMediaIndex
+      });
       setEditorContent(selectedProduct.description || "");
-      setSelectedMedia((selectedProduct.media as any) || []);
+      setSelectedMedia(productMedias as any);
     } else {
+      // Reset form logic giữ nguyên
       setFormData({
         id: 0,
         name: "",
@@ -327,6 +385,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       color: "",
+      mediaIds: [], // Thay đổi từ mediaIndex thành mediaIds
+      mediaIndex: []
     });
 
     setFormData((prev: ProductAttributes) => ({
@@ -682,6 +742,97 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
   };
 
+  const handleItemMediaSelect = (media: ProductMedia) => {
+    if (selectedItemIndex === -1) return;
+
+    console.log("Selected item index:", selectedItemIndex);
+    console.log("Current item:", formData.items[selectedItemIndex]);
+
+    // Sử dụng media đã có sẵn
+    const newProductMedia: ProductMedia = {
+      id: 0,
+      url: media.url,
+      type: media.type,
+      createdAt: media.createdAt,
+      updatedAt: media.updatedAt,
+      productId: media.productId,
+    };
+
+    // Thêm media vào danh sách chung
+    const newMedia = [...(formData.media || []), newProductMedia];
+    const newMediaIndex = newMedia.length - 1; // Index trong danh sách media
+
+    // Cập nhật item
+    const newItems = [...formData.items];
+    const currentItem = newItems[selectedItemIndex];
+    
+    // Cập nhật mediaIds (ID thật từ database)
+    if (!currentItem.mediaIds) {
+      currentItem.mediaIds = [];
+    }
+    currentItem.mediaIds.push(media.id); // Push ID thật của media
+    
+    // Cập nhật mediaIndex (thứ tự trong danh sách)
+    if (!currentItem.mediaIndex) {
+      currentItem.mediaIndex = [];
+    }
+    currentItem.mediaIndex.push(newMediaIndex); // Push index trong danh sách
+  
+    console.log("Updated item mediaIds:", currentItem.mediaIds);
+    console.log("Updated item mediaIndex:", currentItem.mediaIndex);
+
+    setFormData((prev: ProductAttributes) => ({
+      ...prev,
+      media: newMedia,
+      items: newItems
+    }));
+
+    setItemMediaPopupOpen(false);
+    setSelectedItemIndex(-1);
+  };
+
+  const handleRemoveItemMedia = (itemIndex: number, mediaIndexInItem: number) => {
+    const newItems = [...formData.items];
+    const currentItem = newItems[itemIndex];
+    
+    if (currentItem.mediaIndex && currentItem.mediaIndex.length > mediaIndexInItem) {
+      // Lấy index của media trong danh sách chung
+      const globalMediaIndex = currentItem.mediaIndex[mediaIndexInItem];
+      
+      // Xóa media khỏi danh sách chung
+      const newMedia = [...(formData.media || [])];
+      newMedia.splice(globalMediaIndex, 1);
+      
+      // Xóa khỏi cả mediaIds và mediaIndex
+      currentItem.mediaIds?.splice(mediaIndexInItem, 1);
+      currentItem.mediaIndex.splice(mediaIndexInItem, 1);
+      
+      // Cập nhật lại các mediaIndex khác để phù hợp với danh sách mới
+      const updatedItems = newItems.map(itm => {
+        if (itm.mediaIndex) {
+          itm.mediaIndex = itm.mediaIndex.map(idx => 
+            idx > globalMediaIndex ? idx - 1 : idx
+          ).filter(idx => idx >= 0);
+        }
+        return itm;
+      });
+
+      // Cập nhật avatarUrl nếu cần
+      let newAvatarUrl = formData.avatarUrl;
+      const removedMedia = formData.media[globalMediaIndex];
+      if (removedMedia && removedMedia.url === formData.avatarUrl) {
+        newAvatarUrl = newMedia.length > 0 ? newMedia[0].url : "";
+      }
+
+      setFormData((prev: ProductAttributes) => ({
+        ...prev,
+        media: newMedia,
+        items: updatedItems,
+        avatarUrl: newAvatarUrl
+      }));
+    }
+  };
+
   return (
     <Suspense fallback={<p>Loading</p>}>
       <Card>
@@ -851,34 +1002,37 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       style={{ width: 100, height: 100, objectFit: "cover" }}
                     />
                   ) : (
-                    <div className="item">
+                    <div>
                       <img
-                        src={"https://img.youtube.com/vi/" + getYoutubeVideoId(media.url) + "/hqdefault.jpg"}
+                        src={`https://img.youtube.com/vi/${getYoutubeVideoId(media.url)}/hqdefault.jpg`}
+                        alt=""
                         style={{ width: 100, height: 100, objectFit: "cover" }}
                       />
                     </div>
                   )}
+
                   {!isView && (
                     <>
-                      <div style={{
-                        position: "absolute",
-                        top: 0,
-                        right: 0,
-                        display: "flex",
-                        gap: "5px",
-                        zIndex: 2
-                      }}>
-                        {/* Nút Update */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "2px",
+                          right: "2px",
+                          display: "flex",
+                          gap: "4px",
+                          zIndex: 10, // Thêm z-index cao
+                        }}
+                      >
+                        {/* Nút Edit */}
                         <IconButton
                           color="primary"
                           onClick={(e) => {
-                            e.stopPropagation(); // Prevent triggering the parent onClick
+                            e.stopPropagation();
                             handleOpenUpdateMediaPopup(media, index);
                           }}
                           style={{
                             backgroundColor: "white",
-                            borderColor: "#1890ff",
-                            borderWidth: "1.5px",
+                            border: "1.5px solid #1890ff",
                             color: "#1890ff",
                             boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                             width: "30px",
@@ -888,20 +1042,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
                             justifyContent: "center",
                             alignItems: "center",
                             transition: "all 0.3s ease",
+                            zIndex: 11, // Z-index cao hơn
+                            position: "relative", // Thêm position relative
                           }}
                           onMouseOver={(e) => {
                             e.currentTarget.style.backgroundColor = "#1890ff";
                             e.currentTarget.style.color = "white";
                             e.currentTarget.style.transform = "scale(1.1)";
-                            e.currentTarget.style.boxShadow =
-                              "0 4px 8px rgba(0,0,0,0.3)";
+                            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
                           }}
                           onMouseOut={(e) => {
                             e.currentTarget.style.backgroundColor = "white";
                             e.currentTarget.style.color = "#1890ff";
                             e.currentTarget.style.transform = "scale(1)";
-                            e.currentTarget.style.boxShadow =
-                              "0 2px 4px rgba(0,0,0,0.2)";
+                            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
                           }}
                         >
                           <IconEdit />
@@ -911,13 +1065,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         <IconButton
                           color="error"
                           onClick={(e) => {
-                            e.stopPropagation(); // Prevent triggering the parent onClick
+                            e.stopPropagation();
                             handleRemoveMedia(index);
                           }}
                           style={{
                             backgroundColor: "white",
-                            borderColor: "red",
-                            borderWidth: "1.5px",
+                            border: "1.5px solid red",
                             color: "red",
                             boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                             width: "30px",
@@ -927,20 +1080,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
                             justifyContent: "center",
                             alignItems: "center",
                             transition: "all 0.3s ease",
+                            zIndex: 11, // Z-index cao hơn
+                            position: "relative", // Thêm position relative
                           }}
                           onMouseOver={(e) => {
                             e.currentTarget.style.backgroundColor = "red";
                             e.currentTarget.style.color = "white";
                             e.currentTarget.style.transform = "scale(1.1)";
-                            e.currentTarget.style.boxShadow =
-                              "0 4px 8px rgba(0,0,0,0.3)";
+                            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
                           }}
                           onMouseOut={(e) => {
                             e.currentTarget.style.backgroundColor = "white";
                             e.currentTarget.style.color = "red";
                             e.currentTarget.style.transform = "scale(1)";
-                            e.currentTarget.style.boxShadow =
-                              "0 2px 4px rgba(0,0,0,0.2)";
+                            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
                           }}
                         >
                           <IconTrash />
@@ -1172,13 +1325,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           }}
                         />
                       ) : (
-                      <TextField
-                        fullWidth
-                        label="Giá gốc"
-                        type="text"
-                        value={'Đã chọn liên hệ báo giá'}
-                        disabled={true}
-                      />
+                        <TextField
+                          fullWidth
+                          label="Giá gốc"
+                          type="text"
+                          value={'Đã chọn liên hệ báo giá'}
+                          disabled={true}
+                        />
                       )}
                     </Box>
                   </Grid>
@@ -1198,16 +1351,107 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   </Grid>
                   <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                     {!isView && (
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={() => handleRemoveItem(index)}
-                        startIcon={<IconTrash />}
-                      >
-                        Xóa sản phẩm con
-                      </Button>
+                      <Stack direction="row" spacing={2}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => {
+                            console.log("Setting selected item index to:", index);
+                            setSelectedItemIndex(index);
+                            setMediaType("image");
+                            setItemMediaPopupOpen(true);
+                          }}
+                          startIcon={<IconUpload />}
+                        >
+                          Thêm ảnh
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => handleRemoveItem(index)}
+                          startIcon={<IconTrash />}
+                        >
+                          Xóa sản phẩm con
+                        </Button>
+                      </Stack>
                     )}
                   </Grid>
+
+                  {/* Hiển thị media của item */}
+                  {item.mediaIndex && item.mediaIndex.length > 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Hình ảnh sản phẩm con:
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                        {item.mediaIndex.map((mediaId, mediaIndexInItem) => {
+                          const media = formData.media && formData.media[mediaId];
+                          if (!media) return null;
+                          
+                          return (
+                            <Box
+                              key={`${index}-${mediaIndexInItem}`}
+                              sx={{
+                                position: "relative",
+                                border: "1px solid #e0e0e0",
+                                borderRadius: "4px",
+                                padding: "4px",
+                              }}
+                            >
+                              {media.type === "image" ? (
+                                <img
+                                  src={process.env.NEXT_PUBLIC_API_URL + media.url}
+                                  alt=""
+                                  style={{ width: 60, height: 60, objectFit: "cover" }}
+                                />
+                              ) : (
+                                <img
+                                  src={`https://img.youtube.com/vi/${getYoutubeVideoId(media.url)}/hqdefault.jpg`}
+                                  alt=""
+                                  style={{ width: 60, height: 60, objectFit: "cover" }}
+                                />
+                              )}
+                              {!isView && (
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleRemoveItemMedia(index, mediaIndexInItem)}
+                                  sx={{
+                                    position: "absolute",
+                                    top: -5,
+                                    right: -5,
+                                    backgroundColor: "white",
+                                    width: 20,
+                                    height: 20,
+                                    "& .MuiSvgIcon-root": {
+                                      fontSize: 14
+                                    }
+                                  }}
+                                >
+                                  <IconTrash />
+                                </IconButton>
+                              )}
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  position: "absolute",
+                                  bottom: 2,
+                                  left: 2,
+                                  bgcolor: 'rgba(0,0,0,0.7)',
+                                  color: 'white',
+                                  px: 0.5,
+                                  borderRadius: 0.5,
+                                  fontSize: '10px'
+                                }}
+                              >
+                                #{mediaId}
+                              </Typography>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Grid>
+                  )}
                 </Grid>
               </Box>
             ))}
@@ -1322,6 +1566,34 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
             {/* Nút Hủy/Thêm mới bên phải */}
             <Stack direction="row" spacing={2}>
+              <Button onClick={() => {
+                console.log("=== DEBUG FORM DATA ===");
+                console.log("Form data:", formData);
+                console.log("=== ITEMS DEBUG ===");
+                formData.items.forEach((item, index) => {
+                  console.log(`Item ${index}:`, {
+                    name: item.name,
+                    mediaIds: item.mediaIds, // Should be array now
+                    mediaIndex: item.mediaIndex, // Should have values
+                    actualMedia: item.mediaIndex?.map(idx => formData.media[idx]) || []
+                  });
+                });
+                console.log("=== MEDIA DEBUG ===");
+                formData.media.forEach((media, index) => {
+                  console.log(`Media ${index}:`, { id: media.id, url: media.url });
+                });
+                
+                // Debug API data
+                console.log("=== ORIGINAL API DATA ===");
+                if (selectedProduct) {
+                  console.log("Selected product items:", selectedProduct.items);
+                  selectedProduct.items.forEach((item, index) => {
+                    console.log(`Original item ${index} mediaIds:`, item.mediaIds, typeof item.mediaIds);
+                  });
+                }
+              }} variant="outlined" color="info">
+                Debug Log
+              </Button>
               <Button
                 variant="outlined"
                 onClick={onCancel}
@@ -1559,6 +1831,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
           open={mediaPopupOpen}
           onClose={() => setMediaPopupOpen(false)}
           onSelect={handleMediaSelect}
+          onSubmit={() => { }}
+        />
+
+        {/* Popup cho item media */}
+        <MediaPopup
+          listMedia={selectedMedia}
+          open={itemMediaPopupOpen}
+          onClose={() => {
+            setItemMediaPopupOpen(false);
+            setSelectedItemIndex(-1);
+          }}
+          onSelect={handleItemMediaSelect}
           onSubmit={() => { }}
         />
       </Card>

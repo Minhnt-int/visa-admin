@@ -2,12 +2,14 @@
 export interface ProductItemAttributes {
   id: number;
   name: string;
-  price: number | null;
+  price: number;
   originalPrice: number;
-  status: 'available' | 'out_of_stock' | 'discontinued';
+  status: "available" | "discontinued" | "out_of_stock";
   createdAt: string;
   updatedAt: string;
   color: string;
+  mediaIds: number[]; // Thay đổi từ mediaIndex thành mediaIds
+  mediaIndex: number[];
 }
 
 export interface ProductMedia {
