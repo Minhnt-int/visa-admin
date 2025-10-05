@@ -139,8 +139,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
       setIsLoading(true);
       const result = await generateAIContent(form?.content || '', 'evaluate');
 
-      if (result?.data) {
-        setAiSuggestions(result.data);
+      if (result) {
+        setAiSuggestions(result);
         setShowAiSuggestions(true);
         setSnackbar({
           open: true,

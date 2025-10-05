@@ -21,11 +21,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
-    ]
+    }
   },
   "include": [
     "next-env.d.ts",
@@ -33,7 +29,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/types/**/*.d.ts",
-    "src/services/productService.ts", ".next/middleware.ts",
+    "src/services/productService.ts", ".next/middleware.ts"
   ],
   "exclude": ["node_modules"]
 }

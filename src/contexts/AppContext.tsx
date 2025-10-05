@@ -1,6 +1,7 @@
 "use client"
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { BlogPostAttributes } from '@/data/BlogPost';
+import VisaServiceAPI from '@/services/VisaService';
 import { ProductAttributes } from '@/data/ProductAttributes';
 import { BlogCategory } from '@/data/blogCategory';
 import { ProductCategory } from '@/data/ProductCategory';
@@ -35,6 +36,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { fetchOrderList, updateOrder, deleteOrder } from '@/services/orderService';
 import ApiService from '@/services/ApiService';
+import { VisaService, VisaServiceSummary } from '@/data/VisaService';
+import { Response } from '@/data/response';
 
 // Enum cho các loại hành động
 export enum ActionType {
@@ -169,6 +172,7 @@ interface AppContextProps {
       limit: number;
       totalPages: number;
     };
+
   }>;
   fetchOrderById: (id: number) => Promise<void>;
   createOrder: (order: OrderAttributes) => Promise<boolean>;
@@ -196,6 +200,23 @@ interface AppContextProps {
   // AI Actions
   generateAIContent: (title: string, mode?: 'blog' | 'product' | 'category' | 'evaluate') => Promise<{ data: string }>;
   getAISuggestions: (content: string) => Promise<{ data: any }>;
+
+  visaServices: VisaServiceSummary[];
+  fetchVisaServiceBySlug: (slug: string) => Promise<void>;
+  createVisaService: (service: Omit<VisaService, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Response>;
+  updateVisaService: (slug: string, service: Partial<VisaService>) => Promise<Response>;
+  fetchVisaServices: (params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      tags?: string;
+      sortOrder?: 'ASC' | 'DESC';
+      minPrice?: number;
+      maxPrice?: number;
+      categoryId?: number;
+      status?: 'draft' | 'active' | 'deleted';
+    }) => Promise<void>;
+    selectedVisaService: VisaService | null;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -236,7 +257,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     entityType: null,
     timestamp: new Date()
   });
-
+  const [visaServices, setVisaServices] = useState<VisaServiceSummary[]>([]);
+  const [selectedVisaService, setSelectedVisaService] = useState<VisaService | null>(null);
   // Product Status State
   const [productStatus, setProductStatus] = useState<'draft' | 'active' | 'deleted'>('active');
 
@@ -1185,8 +1207,63 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [setCurrentAction, showMessage]);
 
+      // --- Visa Service Functions ---
+      const fetchVisaServices = useCallback(async (params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        tags?: string;
+        sortOrder?: 'ASC' | 'DESC';
+        minPrice?: number;
+        maxPrice?: number;
+        categoryId?: number;
+        status?: 'draft' | 'active' | 'deleted';
+      }) => {
+        const result = await VisaServiceAPI.getAll();
+        setVisaServices(result.data);
+    }, []);
+
+    const fetchVisaServiceBySlug = useCallback(async (slug: string) => {
+        const service = await VisaServiceAPI.getBySlug(slug);
+        setSelectedVisaService(service);
+    }, []);
+
+    const createVisaService = useCallback(async (service: Omit<VisaService, 'id' | 'createdAt' | 'updatedAt'>): Promise<Response> => {
+        try {
+            const createdService = await VisaServiceAPI.create(service); // Giả định VisaServiceAPI.create trả về VisaService khi thành công
+            await fetchVisaServices();
+            return { success: true, data: createdService }; // Trả về data khi thành công
+        } catch (error: any) { // Nên bắt lỗi cụ thể hơn nếu có thể
+            console.error("Error creating visa service in context:", error);
+            return { success: false, error: [error instanceof Error ? error : new Error(error.message || "Unknown error")] }; // Trả về error khi có lỗi
+        }
+    }, [fetchVisaServices]);
+    
+
+    const updateVisaService = useCallback(async (slug: string, service: Partial<VisaService>): Promise<Response> => {
+        try {
+            const updatedService = await VisaServiceAPI.update(slug, service); // Giả định VisaServiceAPI.update trả về VisaService khi thành công và boolean khi không tìm thấy/lỗi (cần kiểm tra lại API)
+            if (updatedService) { // Kiểm tra xem cập nhật có thành công và trả về dữ liệu không
+                 await fetchVisaServices();
+                 return { success: true, data: updatedService }; // Trả về data khi thành công
+            } else {
+                 // Xử lý trường hợp API.update trả về false hoặc null khi không thành công nhưng không throw error
+                 return { success: false, error: [new Error("Update failed or service not found")] };
+            }
+        } catch (error: any) { // Nên bắt lỗi cụ thể hơn nếu có thể
+            console.error("Error updating visa service in context:", error);
+            return { success: false, error: [error instanceof Error ? error : new Error(error.message || "Unknown error")] }; // Trả về error khi có lỗi
+        }
+    }, [fetchVisaServices]);
+    
+    
+
   // Cập nhật object value
   const value = {
+    fetchVisaServiceBySlug,
+    createVisaService,
+    updateVisaService,
+    fetchVisaServices,
     // Blog State
     blogs,
     selectedBlog,
@@ -1279,6 +1356,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // AI Actions
     generateAIContent: handleGenerateAIContent,
     getAISuggestions: handleGetAISuggestions,
+
+    selectedVisaService,
+    visaServices
   };
 
   return <AppContext.Provider value={value}>

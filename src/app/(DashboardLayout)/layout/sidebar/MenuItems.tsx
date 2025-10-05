@@ -71,6 +71,16 @@ const Menuitems = [
     icon: IconArticle,
     href: "/don-hang",
   },
+  {
+    navlabel: true,
+    subheader: "Quản lý dịch vụ Visa",
+  },
+  {
+    id: uniqueId(),
+    title: "Dịch vụ Visa",
+    icon: IconNews,
+    href: "/dich-vu-visa",
+  },
     {
     navlabel: true,
     subheader: "Quản lý thẻ Meta",

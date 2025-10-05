@@ -9,7 +9,7 @@ interface ScoringBlogProps {
 }
 
 const ScoringBlog: React.FC<any> = ({ }) => {
-    const { generateAIContent, fetchBlogBySlug, selectedBlog, clearSelectedBlog } = useAppContext();
+    const { generateAIContent, fetchBlogPostBySlug, selectedBlogPost, clearSelectedBlog } = useAppContext();
 
     const [selected, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -26,12 +26,12 @@ const ScoringBlog: React.FC<any> = ({ }) => {
     const onBlogSelect = async (blog: BlogPostAttributes) => {
         setLoading(true);
         try {
-            await fetchBlogBySlug(blog.slug);
-            setSelectedBlog(selectedBlog);
+            await fetchBlogPostBySlug(blog.slug);
+            setSelectedBlog(selectedBlogPost);
             
-            if (selectedBlog?.content) {
-                const result = await generateAIContent(selectedBlog.content, 'evaluate');
-                let data = result.data as any;
+            if (selectedBlogPost?.content) {
+                const result = await generateAIContent(selectedBlogPost.content, 'evaluate');
+                let data = result as any;
                 if (data.result) {
                     setAnalysis(data.result);
                 }
