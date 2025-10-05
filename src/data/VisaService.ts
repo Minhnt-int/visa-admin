@@ -3,56 +3,30 @@
 
 import { ProductMedia } from "./ProductAttributes";
 
-export interface WorkRequirement {
-  type: string;
-  docs: string[];
-}
-
 export interface Requirements {
   personal: string[];
-  work: WorkRequirement[];
+  work: string[];
   financial: string[];
   travel: string[];
+}
+
+export interface PricingEntry {
+  // Dynamic key-value fields for a pricing entry
+  [key: string]: string;
+}
+
+export interface Pricing {
+  type: string;
+  name: string;
+  description?: string;
+  prices: PricingEntry[];
 }
 
 export interface VisaType {
   id: string;
   name: string;
   requirements: Requirements;
-}
-
-export interface PriceDetail {
-  adult: string;
-  child_6_12: string;
-  child_under_6: string;
-  consularFee: string;
-  serviceFee: string;
-  note: string;
-}
-
-export interface Pricing {
-  type: string;
-  name: string;
-  description: string;
-  validity: string;
-  stayDuration: string;
-  processingTime: string;
-  prices: PriceDetail[];
-}
-
-export interface Testimonial {
-  id: string;
-  name: string;
-  quote: string;
-  rating: number;
-  image: string;
-}
-
-export interface RelatedArticle {
-  id: string;
-  title: string;
-  url: string;
-  image: string;
+  pricing: Pricing[];
 }
 
 export interface VisaService {
@@ -66,9 +40,6 @@ export interface VisaService {
   description: string;
   services: string[];
   visaTypes: VisaType[];
-  pricing: Pricing[];
-  testimonials: Testimonial[];
-  relatedArticles: RelatedArticle[];
   media: ProductMedia[];
   status: 'published' | 'draft' | 'deleted';
   createdAt: string;

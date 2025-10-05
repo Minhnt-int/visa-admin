@@ -198,7 +198,7 @@ const ProductCategoryForm: React.FC<ProductCategoryFormProps> = ({
       setSnackbar({
         open: true,
         message: (
-          <Box>  // Đây là JSX element, không phải string
+          <Box>{/* Đây là JSX element, không phải string */}
             <Typography variant="body2" fontWeight="bold" gutterBottom>
               Đã xảy ra các lỗi sau:
             </Typography>

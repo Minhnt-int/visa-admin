@@ -12,19 +12,12 @@ import {
 } from '@mui/material';
 import Image from 'next/image'; // Sử dụng Next.js Image component nếu có
 import { IconEdit, IconTrash, IconUpload } from '@tabler/icons-react'; // Import icons
-
-// Định nghĩa kiểu cho Media nếu chưa có (sao chép từ ProductForm hoặc định nghĩa chung)
-interface Media {
-    type: 'image' | 'video';
-    url: string;
-    previewUrl?: string; // Thêm previewUrl cho việc upload mới
-    // Thêm các thuộc tính khác nếu có
-}
+import { ProductMedia, ProductAttributes } from '@/data/ProductAttributes';
 
 // Định nghĩa kiểu cho formData (chỉ những thuộc tính cần thiết)
 interface FormData {
     avatarUrl?: string;
-    media?: Media[];
+    media?: ProductMedia[];
     // Thêm các thuộc tính khác cần thiết
 }
 
@@ -32,12 +25,12 @@ interface FormData {
 interface MediaDisplayProps {
     formData: FormData;
     isView: boolean;
-    handleInputChange: (name: string, value: any) => void; // Kiểu phù hợp với handleInputChange của bạn
-    handleOpenUpdateMediaPopup: (media: Media, index: number) => void;
+    handleInputChange: (field: keyof ProductAttributes, value: any) => void; // Đồng bộ với chữ ký ở ProductForm
+    handleOpenUpdateMediaPopup: (media: ProductMedia, index: number) => void;
     handleRemoveMedia: (index: number) => void;
     updateMediaModalVisible: boolean;
     handleCloseUpdateMediaPopup: () => void;
-    updatedMediaData: Media; // Dữ liệu media đang chỉnh sửa
+    updatedMediaData: ProductMedia; // Dữ liệu media đang chỉnh sửa
     handleMediaUploadChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
     handleUpdateMedia: () => void;
 }
@@ -283,7 +276,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                                     </Typography>
                                     {/* Đảm bảo process.env.NEXT_PUBLIC_API_URL được truy cập đúng */}
                                     <Image
-                                        src={`${updatedMediaData.previewUrl || (process.env.NEXT_PUBLIC_API_URL || '') + updatedMediaData.url}`}
+                                        src={`${(process.env.NEXT_PUBLIC_API_URL || '') + updatedMediaData.url}`}
                                     alt=""
                                     width={300}
                                     height={200}

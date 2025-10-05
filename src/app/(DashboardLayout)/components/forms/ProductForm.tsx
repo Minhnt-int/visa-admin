@@ -323,13 +323,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleRemoveMedia = async (index: number) => {
-    await productMediaDelete(formData.media[index].id)
-      .then(() => {
-        // Media deleted successfully
-      })
-      .catch((error) => {
-        // Error deleting media
-      });
     const newMedia = [...formData.media];
     const removedMedia = newMedia.splice(index, 1)[0];
 
@@ -894,7 +887,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               updatedMediaData={updatedMediaData}
               handleMediaUploadChange={handleMediaUploadChange}
               handleUpdateMedia={handleUpdateMedia}
-          />
+          />  
 
           {/* Product Items */}
           <Typography variant="h6" gutterBottom>

@@ -117,7 +117,7 @@ const VisaTypesForm: React.FC<VisaTypesFormProps> = ({ initialData: visaTypes, o
                                         <Autocomplete
                                             multiple freeSolo options={[]} value={work.docs || []}
                                             onChange={(e, v) => handleWorkRequirementChange(typeIndex, workIndex, 'docs', v)}
-                                            renderTags={(value, getTagProps) => value.map((option, i) => (<Chip label={option} {...getTagProps({ index: i })} />))}
+                                            renderTags={(value, getTagProps) => value.map((option, i) => (<Chip key={`${option}-${i}`} label={option} {...getTagProps({ index: i })} />))}
                                             renderInput={(params) => <TextField {...params} label="Hồ sơ yêu cầu" placeholder="Thêm yêu cầu"/>}
                                         />
                                          <Button size="small" color="error" onClick={() => handleDeleteWorkType(typeIndex, workIndex)} sx={{mt: 1}}>Xóa đối tượng</Button>
@@ -133,7 +133,7 @@ const VisaTypesForm: React.FC<VisaTypesFormProps> = ({ initialData: visaTypes, o
                                 multiple freeSolo options={[]}
                                 value={(type.requirements as any)[category] || []}
                                 onChange={(e, v) => handleRequirementChange(typeIndex, category as any, v)}
-                                renderTags={(value, getTagProps) => value.map((option, i) => (<Chip label={option} {...getTagProps({ index: i })} />))}
+                                renderTags={(value, getTagProps) => value.map((option, i) => (<Chip key={`${option}-${i}`} label={option} {...getTagProps({ index: i })} />))}
                                 renderInput={(params) => <TextField {...params} label={`Yêu cầu ${category.charAt(0).toUpperCase() + category.slice(1)}`} placeholder="Thêm yêu cầu"/>}
                             />
                         </Grid>
