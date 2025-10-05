@@ -120,7 +120,9 @@ const AddProductFormPopup: React.FC<AddProductFormPopupProps> = ({
       status: 'available',
       id: 0,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      mediaIds: [],
+      mediaIndex: []
     };
 
     const updatedItems = [...(formState.items || []), newItem];

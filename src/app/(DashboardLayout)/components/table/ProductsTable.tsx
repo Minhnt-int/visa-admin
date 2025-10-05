@@ -76,7 +76,9 @@ const initialFormData: ProductAttributes = {
       status: "available",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      color: ""
+      color: "",
+      mediaIds: [],
+      mediaIndex: []
     },
     {
       id: 1,
@@ -86,7 +88,9 @@ const initialFormData: ProductAttributes = {
       status: "available",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      color: ""
+      color: "",
+      mediaIds: [],
+      mediaIndex: []
     }
   ],
 };

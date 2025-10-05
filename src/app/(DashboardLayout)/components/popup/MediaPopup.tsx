@@ -49,7 +49,15 @@ interface MediaPopupProps {
   isView?: boolean;
 }
 
-const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMedia, onSubmit, formData, isView = false }) => {
+const MediaPopup: React.FC<MediaPopupProps> = ({ 
+  open, 
+  onClose, 
+  onSelect, 
+  listMedia, 
+  onSubmit, 
+  formData, 
+  isView = false 
+}) => {
   const [media, setMedia] = useState<ProductMedia[]>(listMedia);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -58,7 +66,11 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [altText, setAltText] = useState('');
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{ 
+    open: boolean; 
+    message: string; 
+    severity: 'success' | 'error' 
+  }>({
     open: false,
     message: '',
     severity: 'success'
@@ -67,18 +79,35 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     type: '',
     url: ''
   });
-
-  // Thêm state để quản lý việc chỉnh sửa altText
   const [editingAltTextId, setEditingAltTextId] = useState<number | null>(null);
   const [editingAltTextValue, setEditingAltTextValue] = useState('');
-
-  // Thêm states mới
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   const [batchUploading, setBatchUploading] = useState(false);
+  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video'>('image'); // Mặc định là image
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Utility functions
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const generateAltTextFromFilename = (filename: string): string => {
+    const fileName = filename.replace(/\.[^/.]+$/, "");
+    return fileName.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const resetUploadState = () => {
+    setAltText('');
+    setUploading(false);
+  };
+
+  // API functions
   const fetchMedia = async () => {
     try {
       setLoading(true);
@@ -92,27 +121,19 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
         setSnackbar({ open: true, message: 'Failed to fetch media', severity: 'error' });
       }
     } catch (error) {
-      console.error('Error fetching media:', error);
       setSnackbar({ open: true, message: 'Error fetching media', severity: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Cập nhật hàm handleUpload để đảm bảo luôn có altText
   const handleUpload = async (file: File) => {
     try {
       setUploading(true);
       const formData = new FormData();
       formData.append('file', file);
       
-      // Sử dụng altText hiện tại nếu có, nếu không thì tạo từ tên file
-      let finalAltText = altText;
-      if (!finalAltText || finalAltText.trim() === '') {
-        const fileName = file.name.replace(/\.[^/.]+$/, "");
-        finalAltText = fileName.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      }
-      
+      const finalAltText = altText.trim() || generateAltTextFromFilename(file.name);
       formData.append('altText', finalAltText);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media`, {
@@ -125,14 +146,80 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
       if (data.success) {
         setSnackbar({ open: true, message: 'Tải lên thành công', severity: 'success' });
         fetchMedia();
+        resetUploadState();
       } else {
         setSnackbar({ open: true, message: 'Tải lên thất bại', severity: 'error' });
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
       setSnackbar({ open: true, message: 'Lỗi khi tải file lên', severity: 'error' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      setSnackbar({ 
+        open: true, 
+        message: 'Chỉ chấp nhận file video', 
+        severity: 'error' 
+      });
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      setSnackbar({ 
+        open: true, 
+        message: 'File video quá lớn (max 25MB)', 
+        severity: 'error' 
+      });
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const finalAltText = altText.trim() || generateAltTextFromFilename(file.name);
+      formData.append('altText', finalAltText);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSnackbar({ 
+          open: true, 
+          message: 'Tải video thành công', 
+          severity: 'success' 
+        });
+        fetchMedia();
+        resetUploadState();
+      } else {
+        setSnackbar({ 
+          open: true, 
+          message: data.message || 'Tải video thất bại', 
+          severity: 'error' 
+        });
+      }
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: 'Lỗi khi tải video', 
+        severity: 'error' 
+      });
+    } finally {
+      setUploading(false);
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   };
 
@@ -152,7 +239,6 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
         setSnackbar({ open: true, message: 'Failed to delete media', severity: 'error' });
       }
     } catch (error) {
-      console.error('Error deleting media:', error);
       setSnackbar({ open: true, message: 'Error deleting media', severity: 'error' });
     } finally {
       setDeletingId(null);
@@ -160,7 +246,6 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     }
   };
 
-  // Thêm function để cập nhật altText
   const handleUpdateAltText = async (id: number, newAltText: string) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/${id}`, {
@@ -176,7 +261,6 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
       const data = await response.json();
       
       if (data.success) {
-        // Cập nhật state local
         setMedia(prevMedia => 
           prevMedia.map(item => 
             item.id === id ? { ...item, altText: newAltText } : item
@@ -187,7 +271,6 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
         setSnackbar({ open: true, message: 'Cập nhật mô tả thất bại', severity: 'error' });
       }
     } catch (error) {
-      console.error('Error updating altText:', error);
       setSnackbar({ open: true, message: 'Lỗi khi cập nhật mô tả', severity: 'error' });
     } finally {
       setEditingAltTextId(null);
@@ -195,29 +278,11 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      fetchMedia();
-    }
-  }, [open, currentPage]);
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-  };
-
-  const isMediaAlreadySelected = (id: number) => {
-    return listMedia.some(item => item.id === id);
-  };
-
+  // Event handlers
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Tự động tạo alt text từ tên file
-      const fileName = file.name.replace(/\.[^/.]+$/, ""); // Bỏ phần mở rộng
-      const formattedName = fileName
-        .replace(/[-_]/g, " ") // Thay thế dấu - và _ bằng khoảng trắng
-        .replace(/\b\w/g, (c) => c.toUpperCase()); // Viết hoa chữ cái đầu tiên của mỗi từ
-    
+      const formattedName = generateAltTextFromFilename(file.name);
       setAltText(formattedName);
       handleUpload(file);
     }
@@ -250,33 +315,22 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     }
   };
 
-  // Thêm function xử lý upload nhiều file
   const handleMultipleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      // Chuyển FileList thành mảng
       const filesArray = Array.from(event.target.files);
-      
-      // Lọc ra các file hợp lệ (chỉ chấp nhận ảnh)
       const validFiles = filesArray.filter(file => 
-        file.type.startsWith('image/') && file.size <= 5 * 1024 * 1024 // Tối đa 5MB
+        file.type.startsWith('image/') && file.size <= 25 * 1024 * 1024
       );
       
-      // Nếu có file không hợp lệ
       if (validFiles.length < filesArray.length) {
         setSnackbar({
           open: true,
-          message: `${filesArray.length - validFiles.length} file không hợp lệ đã bị loại bỏ. Chỉ chấp nhận ảnh dưới 5MB.`,
+          message: `${filesArray.length - validFiles.length} file không hợp lệ đã bị loại bỏ. Chỉ chấp nhận ảnh dưới 25MB.`,
           severity: 'error'
         });
       }
       
-      // Cập nhật state
       setSelectedFiles(validFiles);
-      
-      // Log kích thước để debug
-      validFiles.forEach(file => {
-        console.log(`File: ${file.name}, Size: ${file.size} bytes`);
-      });
     }
   };
 
@@ -290,14 +344,12 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       
-      // Cập nhật tiến trình
       setUploadProgress(prev => ({
         ...prev,
         [file.name]: 0
       }));
       
       try {
-        // Giả lập tiến trình upload
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => {
             const currentProgress = prev[file.name] || 0;
@@ -308,17 +360,9 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
           });
         }, 200);
 
-        // Xử lý upload
         const formData = new FormData();
         formData.append('file', file);
-        
-        // Tạo alt text từ tên file
-        const fileName = file.name.replace(/\.[^/.]+$/, "");
-        const formattedName = fileName
-          .replace(/[-_]/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase());
-        
-        formData.append('altText', formattedName);
+        formData.append('altText', generateAltTextFromFilename(file.name));
 
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media`, {
           method: 'POST',
@@ -336,43 +380,46 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
           setUploadProgress(prev => ({ ...prev, [file.name]: -1 }));
         }
       } catch (error) {
-        console.error('Error uploading file:', error);
         failCount++;
         setUploadProgress(prev => ({ ...prev, [file.name]: -1 }));
       }
     }
     
-    // Hiển thị kết quả
     setSnackbar({ 
       open: true, 
       message: `Đã tải lên ${successCount} trong ${selectedFiles.length} ảnh${failCount > 0 ? `, ${failCount} thất bại` : ''}`, 
       severity: failCount > 0 ? 'error' : 'success'
     });
     
-    // Cập nhật danh sách media
     fetchMedia();
-    
-    // Reset state
     setBatchUploading(false);
     setSelectedFiles([]);
     setUploadProgress({});
     
-    // Reset input để có thể chọn lại file
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Thêm hàm này vào component của bạn
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
+
+  const isMediaAlreadySelected = (id: number) => {
+    return listMedia.some(item => item.id === id);
+  };
+
+  const handleMediaTypeChange = (type: 'image' | 'video') => {
+    setSelectedMediaType(type);
+    setAltText(''); // Reset alt text khi chuyển type
+  };
+
+  // Effects
+  useEffect(() => {
+    if (open) {
+      fetchMedia();
+    }
+  }, [open, currentPage]);
 
   return (
     <>
@@ -429,102 +476,178 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
               )}
             </Grid>
 
-            <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
-              <Box sx={{ flex: '8 1 0' }}>
-                <TextField
-                  placeholder="Alt Text"
-                  value={altText}
-                  onChange={(e) => setAltText(e.target.value)}
-                  fullWidth   
-                  size="small"
-                />
-              </Box>
-              <Box sx={{ flex: '4 1 0' }}>
-                <input
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  id="upload-button"
-                  type="file"
-                  onChange={handleFileChange}
-                />
-                <label htmlFor="upload-button">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    startIcon={<IconUpload />}
-                    disabled={uploading}
-                    fullWidth
-                  >
-                    {uploading ? <CircularProgress size={20} /> : 'Upload Media'}
-                  </Button>
-                </label>
-              </Box>
-            </Box>
-
-            {/* Phần upload nhiều file */}
+            {/* Media Type Selection */}
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" gutterBottom>
-                Upload nhiều file
+                Chọn loại media để upload
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <input
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  id="batch-upload-button"
-                  type="file"
-                  multiple
-                  onChange={handleMultipleFileSelect}
-                  ref={fileInputRef}
-                />
-                <label htmlFor="batch-upload-button">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    startIcon={<IconUpload />}
-                    disabled={batchUploading}
-                    fullWidth
-                  >
-                    {batchUploading ? <CircularProgress size={20} /> : 'Chọn file'}
-                  </Button>
-                </label>
+              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                 <Button
-                  variant="contained"
-                  onClick={handleBatchUpload}
-                  disabled={batchUploading || selectedFiles.length === 0}
-                  fullWidth
+                  variant={selectedMediaType === 'image' ? 'contained' : 'outlined'}
+                  onClick={() => handleMediaTypeChange('image')}
+                  color="primary"
                 >
-                  {batchUploading ? <CircularProgress size={20} /> : 'Tải lên tất cả'}
+                  Hình ảnh
                 </Button>
-              </Box>
-
-              {/* Hiển thị tiến trình tải lên từng file */}
-              <Box sx={{ mt: 2 }}>
-                {selectedFiles.map((file) => (
-                  <Box key={file.name} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {file.name} ({formatFileSize(file.size)})
-                    </Typography>
-                    <Box sx={{ width: '100px', mr: 1 }}>
-                      <LinearProgress variant="determinate" value={uploadProgress[file.name] || 0} />
-                    </Box>
-                    <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right' }}>
-                      {uploadProgress[file.name] === 100 ? 'Hoàn thành' : uploadProgress[file.name] === -1 ? 'Thất bại' : `${uploadProgress[file.name] || 0}%`}
-                    </Typography>
-                    {!batchUploading && (
-                      <IconButton 
-                        size="small" 
-                        onClick={() => {
-                          setSelectedFiles(prev => prev.filter(f => f !== file));
-                        }}
-                      >
-                        <IconX size={16} />
-                      </IconButton>
-                    )}
-                  </Box>
-                ))}
+                <Button
+                  variant={selectedMediaType === 'video' ? 'contained' : 'outlined'}
+                  onClick={() => handleMediaTypeChange('video')}
+                  color="secondary"
+                >
+                  Video
+                </Button>
               </Box>
             </Box>
 
+            {/* Upload Section - Hiển thị theo loại được chọn */}
+            {selectedMediaType === 'image' && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Upload Hình ảnh
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    placeholder="Alt Text cho hình ảnh"
+                    value={altText}
+                    onChange={(e) => setAltText(e.target.value)}
+                    fullWidth   
+                    size="small"
+                  />
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="upload-image-button"
+                    type="file"
+                    onChange={handleFileChange}
+                  />
+                  <label htmlFor="upload-image-button">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<IconUpload />}
+                      disabled={uploading}
+                      color="primary"
+                    >
+                      {uploading ? <CircularProgress size={20} /> : 'Upload Image'}
+                    </Button>
+                  </label>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Chấp nhận: JPG, PNG, GIF. Tối đa 5MB
+                </Typography>
+              </Box>
+            )}
+
+            {selectedMediaType === 'video' && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Upload Video
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    placeholder="Alt Text cho video"
+                    value={altText}
+                    onChange={(e) => setAltText(e.target.value)}
+                    fullWidth
+                    size="small"
+                  />
+                  <input
+                    accept="video/*"
+                    style={{ display: 'none' }}
+                    id="upload-video-button"
+                    type="file"
+                    onChange={handleVideoUpload}
+                  />
+                  <label htmlFor="upload-video-button">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<IconUpload />}
+                      disabled={uploading}
+                      color="secondary"
+                    >
+                      {uploading ? <CircularProgress size={20} /> : 'Upload Video'}
+                    </Button>
+                  </label>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Chấp nhận: MP4, AVI, MOV. Tối đa 5MB
+                </Typography>
+              </Box>
+            )}
+
+            {/* Batch Upload Section - Chỉ hiển thị khi chọn image */}
+            {selectedMediaType === 'image' && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Upload nhiều hình ảnh
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="batch-upload-button"
+                    type="file"
+                    multiple
+                    onChange={handleMultipleFileSelect}
+                    ref={fileInputRef}
+                  />
+                  <label htmlFor="batch-upload-button">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<IconUpload />}
+                      disabled={batchUploading}
+                      fullWidth
+                    >
+                      {batchUploading ? <CircularProgress size={20} /> : 'Chọn nhiều ảnh'}
+                    </Button>
+                  </label>
+                  <Button
+                    variant="contained"
+                    onClick={handleBatchUpload}
+                    disabled={batchUploading || selectedFiles.length === 0}
+                    fullWidth
+                  >
+                    {batchUploading ? <CircularProgress size={20} /> : 'Tải lên tất cả'}
+                  </Button>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Chọn nhiều file ảnh cùng lúc để tải lên
+                </Typography>
+
+                {/* Upload Progress */}
+                <Box sx={{ mt: 2 }}>
+                  {selectedFiles.map((file) => (
+                    <Box key={file.name} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {file.name} ({formatFileSize(file.size)})
+                      </Typography>
+                      <Box sx={{ width: '100px', mr: 1 }}>
+                        <LinearProgress variant="determinate" value={uploadProgress[file.name] || 0} />
+                      </Box>
+                      <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right' }}>
+                        {uploadProgress[file.name] === 100 ? 'Hoàn thành' : 
+                         uploadProgress[file.name] === -1 ? 'Thất bại' : 
+                         `${uploadProgress[file.name] || 0}%`}
+                      </Typography>
+                      {!batchUploading && (
+                        <IconButton 
+                          size="small" 
+                          onClick={() => {
+                            setSelectedFiles(prev => prev.filter(f => f !== file));
+                          }}
+                        >
+                          <IconX size={16} />
+                        </IconButton>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Media Gallery */}
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                 <CircularProgress />
@@ -561,7 +684,11 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                                 justifyContent: 'center',
                               }}
                             >
-                              <Typography variant="body2" sx={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', padding: '4px 8px', borderRadius: '4px' }}>
+                              <Typography variant="body2" sx={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.8)', 
+                                padding: '4px 8px', 
+                                borderRadius: '4px' 
+                              }}>
                                 Already Selected
                               </Typography>
                             </Box>
@@ -595,23 +722,95 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                               <IconTrash />
                             )}
                           </IconButton>
-                          <CardMedia
-                            component="img"
-                            height="140"
-                            image={`${process.env.NEXT_PUBLIC_API_URL}${item.url}`}
-                            alt={item.altText}
-                            onClick={() => {
-                              if (!isAlreadySelected) {
-                                onSelect(item);
-                                onClose();
-                              }
-                            }}
-                          />
+
+                          {/* Hiển thị Media dựa trên type */}
+                          {item.type === 'video' ? (
+                            <Box
+                              sx={{
+                                height: 140,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#000',
+                                position: 'relative',
+                                cursor: isAlreadySelected ? 'not-allowed' : 'pointer'
+                              }}
+                              onClick={() => {
+                                if (!isAlreadySelected) {
+                                  onSelect(item);
+                                  onClose();
+                                }
+                              }}
+                            >
+                              <video
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                }}
+                                preload="metadata"
+                                muted
+                              >
+                                <source src={`${process.env.NEXT_PUBLIC_API_URL}${item.url}`} />
+                              </video>
+                              {/* Video play icon overlay */}
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  left: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  width: '40px',
+                                  height: '40px',
+                                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'white',
+                                  fontSize: '20px',
+                                  pointerEvents: 'none',
+                                }}
+                              >
+                                ▶
+                              </Box>
+                            </Box>
+                          ) : (
+                            <CardMedia
+                              component="img"
+                              height="140"
+                              image={`${process.env.NEXT_PUBLIC_API_URL}${item.url}`}
+                              alt={item.altText}
+                              onClick={() => {
+                                if (!isAlreadySelected) {
+                                  onSelect(item);
+                                  onClose();
+                                }
+                              }}
+                            />
+                          )}
+
                           <CardContent>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.name}
-                            </Typography>
-                            {/* Thêm phần chỉnh sửa altText */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                                {item.name}
+                              </Typography>
+                              {/* Type badge */}
+                              <Box
+                                sx={{
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: '4px',
+                                  backgroundColor: item.type === 'video' ? '#f44336' : '#4caf50',
+                                  color: 'white',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 'bold',
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                {item.type}
+                              </Box>
+                            </Box>
                             <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                               {editingAltTextId === item.id ? (
                                 <>
@@ -661,6 +860,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
                   })}
                 </Grid>
 
+                {/* Pagination */}
                 {totalPages > 1 && (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 1 }}>
                     <Button 
@@ -689,10 +889,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
         </DialogActions>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={deleteConfirmOpen}
-          onClose={() => setDeleteConfirmOpen(false)}
-        >
+        <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
           <DialogTitle>Confirm Delete</DialogTitle>
           <DialogContent>
             <DialogContentText>
@@ -700,9 +897,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({ open, onClose, onSelect, listMe
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button 
-              onClick={() => setDeleteConfirmOpen(false)}
-            >
+            <Button onClick={() => setDeleteConfirmOpen(false)}>
               Cancel
             </Button>
             <Button 

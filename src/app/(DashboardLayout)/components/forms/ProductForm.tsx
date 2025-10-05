@@ -97,7 +97,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     updateProduct,
     selectedProduct,
     setSelectedProduct,
-    generateAIContent, // Thêm dòng này
+    generateAIContent,
   } = useAppContext();
 
   const [formData, setFormData] = useState<ProductAttributes>(initialFormData);
@@ -126,7 +126,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [seoScore, setSeoScore] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
-    message: React.ReactNode; // Thay đổi từ string sang ReactNode
+    message: React.ReactNode;
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({
     open: false,
@@ -137,7 +137,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [itemMediaPopupOpen, setItemMediaPopupOpen] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(-1);
 
-  // Thêm vào sau khai báo tất cả các state
   const router = useRouter();
   const searchParams = useSearchParams();
   const slug = searchParams?.get('slug');
@@ -161,13 +160,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        // Kiểm tra nếu danh mục đã được tải
         if (productCategories.length === 0) {
           setIsCategoriesLoading(true);
           await fetchProductCategories();
         }
       } catch (error) {
-        console.error("Error loading product categories:", error);
         showError("Failed to load product categories");
       } finally {
         setIsCategoriesLoading(false);
@@ -187,21 +184,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   useEffect(() => {
     if (selectedProduct) {
-      // Đầu tiên, set media vào formData
       const productMedias = selectedProduct.media || [];
       
-      // Sau đó, xử lý items với mediaIndex
       const itemsWithMediaIndex = selectedProduct.items.map(item => {
         let mediaIds: number[] = [];
         
-        // Parse mediaIds từ string hoặc array
         if (item.mediaIds) {
           if (typeof item.mediaIds === 'string') {
             try {
-              // Parse string "[74,75]" thành array [74,75]
               mediaIds = JSON.parse(item.mediaIds);
             } catch (error) {
-              console.error('Error parsing mediaIds:', error);
               mediaIds = [];
             }
           } else if (Array.isArray(item.mediaIds)) {
@@ -209,33 +201,25 @@ const ProductForm: React.FC<ProductFormProps> = ({
           }
         }
         
-        console.log('Item mediaIds after parsing:', mediaIds);
-        
         if (mediaIds && Array.isArray(mediaIds) && mediaIds.length > 0) {
-          // Tìm index của từng mediaId trong danh sách media
           const mediaIndex = mediaIds.map(mediaId => {
             const foundIndex = productMedias.findIndex(media => media.id === mediaId);
-            console.log(`Looking for mediaId ${mediaId}, found at index:`, foundIndex);
-            return foundIndex !== -1 ? foundIndex : -1; // -1 nếu không tìm thấy
-          }).filter(index => index !== -1); // Loại bỏ index -1
-          
-          console.log('Final mediaIndex for item:', mediaIndex);
+            return foundIndex !== -1 ? foundIndex : -1;
+          }).filter(index => index !== -1);
           
           return {
             ...item,
-            mediaIds: mediaIds, // Lưu array đã parse
+            mediaIds: mediaIds,
             mediaIndex: mediaIndex
           };
         }
         
         return {
           ...item,
-          mediaIds: mediaIds, // Lưu array đã parse
+          mediaIds: mediaIds,
           mediaIndex: []
         };
       });
-      
-      console.log('Items with mediaIndex:', itemsWithMediaIndex);
       
       setFormData({
         ...selectedProduct,
@@ -245,7 +229,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setEditorContent(selectedProduct.description || "");
       setSelectedMedia(productMedias as any);
     } else {
-      // Reset form logic giữ nguyên
       setFormData({
         id: 0,
         name: "",
@@ -272,9 +255,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setSelectedMedia((formData.media as any) || []);
   }, [formData.media]);
 
-  // Thêm useEffect để cập nhật slug khi name thay đổi
   useEffect(() => {
-    // Tự động cập nhật slug khi tên sản phẩm thay đổi
     if (formData.name) {
       setFormData(prev => ({
         ...prev,
@@ -283,29 +264,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [formData.name]);
 
-  // Khởi tạo state
   const [shortDescriptionContent, setShortDescriptionContent] = useState('');
   const [descriptionContent, setDescriptionContent] = useState('');
 
-  // Sử dụng useEffect để đồng bộ khi formData thay đổi
   useEffect(() => {
-    // Cập nhật giá trị editor khi formData thay đổi (khi tải dữ liệu từ API)
     setShortDescriptionContent(formData?.shortDescription || '');
     setDescriptionContent(formData?.description || '');
   }, [formData?.id, formData?.shortDescription, formData?.description]);
 
-  // Nếu formData được tải sau khi component mount
-  // hoặc nếu có sự thay đổi trong formData
   useEffect(() => {
     if (formData) {
-      // Cập nhật giá trị editor từ formData
-      // Sử dụng || '' để tránh giá trị null/undefined
       setShortDescriptionContent(formData.shortDescription || '');
       setDescriptionContent(formData.description || '');
     }
   }, [formData]);
 
-  // Trong trường hợp initialData được truyền vào qua props
   useEffect(() => {
     if (initialFormData && isEdit) {
       setShortDescriptionContent(initialFormData.shortDescription || '');
@@ -337,7 +310,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
     const newMedia = [...formData.media, newProductMedia];
 
-    // If this is the first media or no avatar is set yet, set it as avatar
     const newAvatarUrl = (!formData.avatarUrl && newMedia.length === 1)
       ? media.url
       : formData.avatarUrl;
@@ -352,15 +324,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleRemoveMedia = async (index: number) => {
     await productMediaDelete(formData.media[index].id)
       .then(() => {
-        console.log("Media đã được xóa thành công");
+        // Media deleted successfully
       })
       .catch((error) => {
-        console.error("Lỗi khi xóa media:", error);
+        // Error deleting media
       });
     const newMedia = [...formData.media];
     const removedMedia = newMedia.splice(index, 1)[0];
 
-    // If we're removing the current avatar, set a new one or clear it
     let newAvatarUrl = formData.avatarUrl;
     if (removedMedia.url === formData.avatarUrl) {
       newAvatarUrl = newMedia.length > 0 ? newMedia[0].url : "";
@@ -371,7 +342,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
       media: newMedia,
       avatarUrl: newAvatarUrl
     }));
-
   };
 
   const handleAddItem = () => {
@@ -385,7 +355,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       color: "",
-      mediaIds: [], // Thay đổi từ mediaIndex thành mediaIds
+      mediaIds: [],
       mediaIndex: []
     });
 
@@ -406,13 +376,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const handleItemChange = (index: number, field: string, value: any) => {
-
     const newItems = [...formData.items];
     newItems[index] = {
       ...newItems[index],
       [field]: value,
     };
-
 
     setFormData((prev: ProductAttributes) => ({
       ...prev,
@@ -425,19 +393,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
       if (isEdit) {
         await updateProduct(formData.id, formData);
       } else {
-        await createProduct(formData); // Dòng 336 gây lỗi
+        await createProduct(formData);
       }
       router.push("/san-pham");
     } catch (error) {
-      // Xử lý lỗi ở đây
       handleErrorDisplay(error);
-
-      // Quan trọng: Đảm bảo lỗi được xử lý đúng cách
-      setConfirmPopupOpen(false);  // Đóng dialog xác nhận nếu đang mở
+      setConfirmPopupOpen(false);
     }
   };
 
-  // Thêm hàm kiểm tra form hợp lệ
   const isFormValid = () => {
     return Boolean(
       formData?.name &&
@@ -445,12 +409,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
     );
   };
 
-  // Thêm hàm lấy gợi ý AI dựa trên nội dung hiện tại
   const handleGetSuggestions = async () => {
     try {
       setIsLoadingAi(true);
 
-      // Sử dụng generateAIContent với mode 'evaluate' giống BlogPostForm
       const result = await generateAIContent(formData.description || '', 'evaluate');
 
       if (result.data) {
@@ -463,9 +425,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         });
       }
     } catch (error) {
-      console.error('Error getting AI suggestions:', error);
-
-      // Sử dụng ApiService.handleError để xử lý lỗi
       const errorResult = ApiService.handleError(error);
 
       setSnackbar({
@@ -495,9 +454,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         });
       }
     } catch (error) {
-      console.error('Error getting AI content:', error);
-
-      // Sử dụng ApiService.handleError để xử lý lỗi
       const errorResult = ApiService.handleError(error);
 
       setSnackbar({
@@ -514,7 +470,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
     try {
       setIsLoadingAi(true);
 
-      // Sử dụng API để chấm điểm nội dung
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ai/score-content`, {
         method: 'POST',
         headers: {
@@ -535,7 +490,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         showError('Không thể chấm điểm nội dung');
       }
     } catch (error) {
-      console.error('Error scoring content:', error);
       handleErrorDisplay(error);
     } finally {
       setIsLoadingAi(false);
@@ -552,18 +506,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setPrimaryMediaIndex(index);
 
     const newMedia = [...formData.media];
-
     const selectedMedia = newMedia[index];
 
     newMedia.splice(index, 1);
-
     newMedia.unshift(selectedMedia);
 
     setFormData((prev) => ({
       ...prev,
       media: newMedia as any,
     }));
-
   };
 
   const handleOpenUpdateMediaPopup = (media: ProductMedia, index: number) => {
@@ -586,14 +537,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   const handleUpdateMedia = async () => {
     try {
-      // Kiểm tra nếu có file mới được upload
       if (updatedMediaData.fileObj) {
-        // Tạo FormData để upload file
         const formData = new FormData();
         formData.append('file', updatedMediaData.fileObj);
         formData.append('type', 'image');
 
-        // Gọi API upload file
         const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload/media`, {
           method: 'POST',
           body: formData,
@@ -604,12 +552,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
         }
 
         const uploadResult = await uploadResponse.json();
-
-        // Cập nhật URL mới từ kết quả upload
         updatedMediaData.url = uploadResult.data.url;
       }
 
-      // Gọi API cập nhật thông tin media thông qua API product/update
       const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/product/update`, {
         method: 'PUT',
         headers: {
@@ -633,7 +578,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
       const updateResult = await updateResponse.json();
 
-      // Cập nhật media trong formData
       const updatedMedia = [...formData.media];
       const mediaIndex = updatedMedia.findIndex(m => m.id === updatedMediaData.id);
 
@@ -653,7 +597,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
       }
 
     } catch (error) {
-      console.error("Lỗi khi cập nhật media:", error);
       showError("Cập nhật media thất bại: " + (error instanceof Error ? error.message : "Lỗi không xác định"));
     } finally {
       handleCloseUpdateMediaPopup();
@@ -675,15 +618,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
   };
 
-  // Cập nhật hàm handleErrorDisplay để xử lý đúng cấu trúc lỗi từ API
   const handleErrorDisplay = (error: any) => {
-
-    // Các trường hợp lỗi khác
+    console.error("Error occurred:", error);
     const errorMessage = error?.response?.data?.message ||
       error?.response?.data?.message ||
       error?.message ||
       'Đã xảy ra lỗi không xác định';
-    // Kiểm tra nếu có response data và là mảng errors thông thường
+
     if (error?.data && Array.isArray(error.data) && error.data.length > 0) {
       const errorMessages = error.data.map((err: any) => {
         if (typeof err === 'string') return err;
@@ -714,7 +655,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       });
       return;
     } else {
-      showError(errorMessage);  // Hiển thị thông báo lỗi đầu tiên
+      showError(errorMessage);
     }
   };
 
@@ -734,10 +675,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
         router.push("/san-pham");
       }
 
-      // Đóng hộp thoại xác nhận nếu thành công
       setConfirmPopupOpen(false);
     } catch (error) {
-      // Re-throw lỗi để xử lý ở phần gọi
       throw error;
     }
   };
@@ -745,10 +684,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleItemMediaSelect = (media: ProductMedia) => {
     if (selectedItemIndex === -1) return;
 
-    console.log("Selected item index:", selectedItemIndex);
-    console.log("Current item:", formData.items[selectedItemIndex]);
-
-    // Sử dụng media đã có sẵn
     const newProductMedia: ProductMedia = {
       id: 0,
       url: media.url,
@@ -758,29 +693,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
       productId: media.productId,
     };
 
-    // Thêm media vào danh sách chung
     const newMedia = [...(formData.media || []), newProductMedia];
-    const newMediaIndex = newMedia.length - 1; // Index trong danh sách media
+    const newMediaIndex = newMedia.length - 1;
 
-    // Cập nhật item
     const newItems = [...formData.items];
     const currentItem = newItems[selectedItemIndex];
     
-    // Cập nhật mediaIds (ID thật từ database)
     if (!currentItem.mediaIds) {
       currentItem.mediaIds = [];
     }
-    currentItem.mediaIds.push(media.id); // Push ID thật của media
+    currentItem.mediaIds.push(media.id);
     
-    // Cập nhật mediaIndex (thứ tự trong danh sách)
     if (!currentItem.mediaIndex) {
       currentItem.mediaIndex = [];
     }
-    currentItem.mediaIndex.push(newMediaIndex); // Push index trong danh sách
+    currentItem.mediaIndex.push(newMediaIndex);
   
-    console.log("Updated item mediaIds:", currentItem.mediaIds);
-    console.log("Updated item mediaIndex:", currentItem.mediaIndex);
-
     setFormData((prev: ProductAttributes) => ({
       ...prev,
       media: newMedia,
@@ -796,18 +724,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
     const currentItem = newItems[itemIndex];
     
     if (currentItem.mediaIndex && currentItem.mediaIndex.length > mediaIndexInItem) {
-      // Lấy index của media trong danh sách chung
       const globalMediaIndex = currentItem.mediaIndex[mediaIndexInItem];
       
-      // Xóa media khỏi danh sách chung
       const newMedia = [...(formData.media || [])];
       newMedia.splice(globalMediaIndex, 1);
       
-      // Xóa khỏi cả mediaIds và mediaIndex
       currentItem.mediaIds?.splice(mediaIndexInItem, 1);
       currentItem.mediaIndex.splice(mediaIndexInItem, 1);
       
-      // Cập nhật lại các mediaIndex khác để phù hợp với danh sách mới
       const updatedItems = newItems.map(itm => {
         if (itm.mediaIndex) {
           itm.mediaIndex = itm.mediaIndex.map(idx => 
@@ -817,7 +741,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         return itm;
       });
 
-      // Cập nhật avatarUrl nếu cần
       let newAvatarUrl = formData.avatarUrl;
       const removedMedia = formData.media[globalMediaIndex];
       if (removedMedia && removedMedia.url === formData.avatarUrl) {
@@ -834,12 +757,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   return (
-    <Suspense fallback={<p>Loading</p>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <Card>
         <CardContent>
           <Typography variant="h5" component="h2" gutterBottom>
             {isEdit ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
           </Typography>
+          
           {/* Basic Information */}
           <Typography variant="h6" gutterBottom style={{ marginTop: "16px" }}>
             Thông tin sản phẩm
@@ -867,7 +791,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </Box>
 
           {/* Editor cho shortDescription */}
-          <div style={{ marginBottom: "16px" }}>
+          <Box sx={{ marginBottom: "16px" }}>
             <Typography variant="body2" gutterBottom>
               Mô tả ngắn
             </Typography>
@@ -880,10 +804,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
               }}
               placeholder="Nhập mô tả ngắn về sản phẩm"
             />
-          </div>
+          </Box>
 
           {/* Editor cho description */}
-          <div style={{ marginBottom: "16px" }}>
+          <Box sx={{ marginBottom: "16px" }}>
             <Typography variant="body2" gutterBottom>
               Mô tả chi tiết
             </Typography>
@@ -896,7 +820,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               }}
               placeholder="Nhập mô tả chi tiết về sản phẩm"
             />
-          </div>
+          </Box>
 
           <TextField
             placeholder="Nhập đường dẫn slug (vd: san-pham-moi)"
@@ -909,7 +833,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
           />
 
           <FormControl fullWidth margin="normal">
-            <InputLabel id="category-label" style={{ backgroundColor: "white" }}>Chọn danh mục sản phẩm</InputLabel>
+            <InputLabel id="category-label" style={{ backgroundColor: "white" }}>
+              Chọn danh mục sản phẩm
+            </InputLabel>
             <Select
               labelId="category-label"
               value={formData.categoryId}
@@ -953,172 +879,215 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 Thêm video
               </Button>
             </Stack>
-            <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 2 }}>
-              {formData?.media?.map((media, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    position: "relative",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    border: formData.avatarUrl === media.url ? "2px solid #1976d2" : "1px solid #e0e0e0",
-                    borderRadius: "4px",
-                    padding: "4px",
-                    transition: "all 0.3s ease",
-                    cursor: !isView ? "pointer" : "default",
-                    "&:hover": !isView ? {
-                      boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-                      transform: "translateY(-2px)",
-                      borderColor: "#1976d2",
-                      "::after": {
-                        content: "'Chọn làm ảnh đại diện'",
+          </Box>
+
+          {/* Media Display */}
+          <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 2 }}>
+            {formData?.media?.map((media, index) => (
+              <Box
+                key={index}
+                sx={{
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  border: formData.avatarUrl === media.url ? "2px solid #1976d2" : "1px solid #e0e0e0",
+                  borderRadius: "4px",
+                  padding: "4px",
+                  transition: "all 0.3s ease",
+                  cursor: !isView ? "pointer" : "default",
+                  "&:hover": !isView ? {
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                    transform: "translateY(-2px)",
+                    borderColor: "#1976d2",
+                } : {}
+                }}
+                onClick={() => {
+                  if (!isView) {
+                    handleInputChange("avatarUrl", media.url);
+                  }
+                }}
+              >
+                {/* Hiển thị media dựa trên type */}
+                {media.type === "video" ? (
+                  <Box
+                    sx={{
+                      width: 100,
+                      height: 100,
+                      position: "relative",
+                      backgroundColor: "#000",
+                      borderRadius: "4px",
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <video
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                      preload="metadata"
+                      muted
+                    >
+                      <source src={process.env.NEXT_PUBLIC_API_URL + media.url} />
+                    </video>
+                    {/* Video play icon overlay */}
+                    <Box
+                      sx={{
                         position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(25, 118, 210, 0.7)",
-                        color: "white",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: "30px",
+                        height: "30px",
+                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                        borderRadius: "50%",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        color: "white",
+                        fontSize: "14px",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      ▶
+                    </Box>
+                    {/* Video type badge */}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 2,
+                        left: 2,
+                        backgroundColor: "#f44336",
+                        color: "white",
+                        px: 0.5,
+                        py: 0.2,
+                        borderRadius: "2px",
                         fontSize: "10px",
                         fontWeight: "bold",
-                        opacity: formData.avatarUrl === media.url ? 0 : 0.8,
-                      }
-                    } : {}
-                  }}
-                  onClick={() => {
-                    if (!isView) {
-                      handleInputChange("avatarUrl", media.url);
-                    }
-                  }}
-                >
-                  {media.type === "image" ? (
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      VIDEO
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box
+                    sx={{
+                      width: 100,
+                      height: 100,
+                      position: "relative",
+                      borderRadius: "4px",
+                      overflow: "hidden"
+                    }}
+                  >
                     <img
                       src={process.env.NEXT_PUBLIC_API_URL + media.url}
                       alt=""
-                      style={{ width: 100, height: 100, objectFit: "cover" }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
-                  ) : (
-                    <div>
-                      <img
-                        src={`https://img.youtube.com/vi/${getYoutubeVideoId(media.url)}/hqdefault.jpg`}
-                        alt=""
-                        style={{ width: 100, height: 100, objectFit: "cover" }}
-                      />
-                    </div>
-                  )}
-
-                  {!isView && (
-                    <>
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "2px",
-                          right: "2px",
-                          display: "flex",
-                          gap: "4px",
-                          zIndex: 10, // Thêm z-index cao
-                        }}
-                      >
-                        {/* Nút Edit */}
-                        <IconButton
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenUpdateMediaPopup(media, index);
-                          }}
-                          style={{
-                            backgroundColor: "white",
-                            border: "1.5px solid #1890ff",
-                            color: "#1890ff",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                            width: "30px",
-                            height: "30px",
-                            padding: 0,
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            transition: "all 0.3s ease",
-                            zIndex: 11, // Z-index cao hơn
-                            position: "relative", // Thêm position relative
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = "#1890ff";
-                            e.currentTarget.style.color = "white";
-                            e.currentTarget.style.transform = "scale(1.1)";
-                            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = "white";
-                            e.currentTarget.style.color = "#1890ff";
-                            e.currentTarget.style.transform = "scale(1)";
-                            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
-                          }}
-                        >
-                          <IconEdit />
-                        </IconButton>
-
-                        {/* Nút Delete */}
-                        <IconButton
-                          color="error"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveMedia(index);
-                          }}
-                          style={{
-                            backgroundColor: "white",
-                            border: "1.5px solid red",
-                            color: "red",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                            width: "30px",
-                            height: "30px",
-                            padding: 0,
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            transition: "all 0.3s ease",
-                            zIndex: 11, // Z-index cao hơn
-                            position: "relative", // Thêm position relative
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = "red";
-                            e.currentTarget.style.color = "white";
-                            e.currentTarget.style.transform = "scale(1.1)";
-                            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = "white";
-                            e.currentTarget.style.color = "red";
-                            e.currentTarget.style.transform = "scale(1)";
-                            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
-                          }}
-                        >
-                          <IconTrash />
-                        </IconButton>
-                      </div>
-                    </>
-                  )}
-                  {formData.avatarUrl === media.url && (
-                    <Typography
-                      variant="caption"
+                    {/* Image type badge */}
+                    <Box
                       sx={{
-                        bgcolor: 'primary.main',
-                        color: 'white',
-                        px: 1,
-                        borderRadius: 1,
-                        mt: 1,
-                        fontWeight: 'bold'
+                        position: "absolute",
+                        top: 2,
+                        left: 2,
+                        backgroundColor: "#4caf50",
+                        color: "white",
+                        px: 0.5,
+                        py: 0.2,
+                        borderRadius: "2px",
+                        fontSize: "10px",
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
                       }}
                     >
-                      Avatar
-                    </Typography>
-                  )}
-                </Box>
-              ))}
-            </Box>
+                      IMAGE
+                    </Box>
+                  </Box>
+                )}
+
+                {!isView && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "2px",
+                      right: "2px",
+                      display: "flex",
+                      gap: "4px",
+                      zIndex: 10,
+                    }}
+                  >
+                    <IconButton
+                      color="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenUpdateMediaPopup(media, index);
+                      }}
+                      sx={{
+                        backgroundColor: "white",
+                        border: "1.5px solid #1890ff",
+                        color: "#1890ff",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                        width: "30px",
+                        height: "30px",
+                        padding: 0,
+                        "&:hover": {
+                          backgroundColor: "#1890ff",
+                          color: "white",
+                          transform: "scale(1.1)",
+                        }
+                      }}
+                    >
+                      <IconEdit />
+                    </IconButton>
+
+                    <IconButton
+                      color="error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveMedia(index);
+                      }}
+                      sx={{
+                        backgroundColor: "white",
+                        border: "1.5px solid red",
+                        color: "red",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                        width: "30px",
+                        height: "30px",
+                        padding: 0,
+                        "&:hover": {
+                          backgroundColor: "red",
+                          color: "white",
+                          transform: "scale(1.1)",
+                        }
+                      }}
+                    >
+                      <IconTrash />
+                    </IconButton>
+                  </Box>
+                )}
+                
+                {formData.avatarUrl === media.url && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      px: 1,
+                      borderRadius: 1,
+                      mt: 1,
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Avatar
+                  </Typography>
+                )}
+              </Box>
+            ))}
 
             {/* Modal cập nhật Media */}
             <Dialog
@@ -1172,24 +1141,50 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         <Typography variant="subtitle1" gutterBottom>
                           Video hiện tại
                         </Typography>
-                        <Image
-                          src={`https://img.youtube.com/vi/${getYoutubeVideoId(updatedMediaData.url)}/hqdefault.jpg`}
-                          alt=""
-                          width={300}
-                          height={200}
-                          style={{ objectFit: "contain" }}
-                        />
+                        <Box
+                          sx={{
+                            width: 300,
+                            height: 200,
+                            backgroundColor: "#000",
+                            borderRadius: "4px",
+                            overflow: "hidden",
+                            position: "relative",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
+                        >
+                          <video
+                            controls
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                            }}
+                            preload="metadata"
+                          >
+                            <source src={process.env.NEXT_PUBLIC_API_URL + updatedMediaData.url} />
+                          </video>
+                        </Box>
                       </Box>
-                      <TextField
-                        fullWidth
-                        label="YouTube URL"
-                        value={updatedMediaData.url}
-                        onChange={(e) => setUpdatedMediaData({
-                          ...updatedMediaData,
-                          url: e.target.value
-                        })}
-                        placeholder="Nhập URL YouTube (vd: https://www.youtube.com/watch?v=xxxx)"
-                      />
+                      <Box>
+                        <Typography variant="subtitle1" gutterBottom>
+                          Thay đổi video
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          startIcon={<IconUpload />}
+                          component="label"
+                        >
+                          Chọn video mới
+                          <input
+                            type="file"
+                            hidden
+                            accept="video/*"
+                            onChange={handleMediaUploadChange}
+                          />
+                        </Button>
+                      </Box>
                     </>
                   )}
                 </Stack>
@@ -1292,6 +1287,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         type="number"
                         placeholder="Nhập giá gốc"
                         value={item.originalPrice || ''}
+
                         onChange={(e) => handleItemChange(index, "originalPrice", Number(e.target.value))}
                         disabled={isView}
                         InputProps={{
@@ -1356,7 +1352,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                           variant="outlined"
                           color="primary"
                           onClick={() => {
-                            console.log("Setting selected item index to:", index);
                             setSelectedItemIndex(index);
                             setMediaType("image");
                             setItemMediaPopupOpen(true);
@@ -1396,21 +1391,65 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                 border: "1px solid #e0e0e0",
                                 borderRadius: "4px",
                                 padding: "4px",
+                                width: 68,
+                                height: 68,
                               }}
                             >
-                              {media.type === "image" ? (
+                              {media.type === "video" ? (
+                                <Box
+                                  sx={{
+                                    width: 60,
+                                    height: 60,
+                                    backgroundColor: "#000",
+                                    borderRadius: "4px",
+                                    overflow: "hidden",
+                                    position: "relative",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center"
+                                  }}
+                                >
+                                  <video
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                    }}
+                                    preload="metadata"
+                                    muted
+                                  >
+                                    <source src={process.env.NEXT_PUBLIC_API_URL + media.url} />
+                                  </video>
+                                  {/* Mini play icon */}
+                                  <Box
+                                    sx={{
+                                      position: "absolute",
+                                      top: "50%",
+                                      left: "50%",
+                                      transform: "translate(-50%, -50%)",
+                                      width: "20px",
+                                      height: "20px",
+                                      backgroundColor: "rgba(0, 0, 0, 0.7)",
+                                      borderRadius: "50%",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: "white",
+                                      fontSize: "10px",
+                                      pointerEvents: "none",
+                                    }}
+                                  >
+                                    ▶
+                                  </Box>
+                                </Box>
+                              ) : (
                                 <img
                                   src={process.env.NEXT_PUBLIC_API_URL + media.url}
                                   alt=""
                                   style={{ width: 60, height: 60, objectFit: "cover" }}
                                 />
-                              ) : (
-                                <img
-                                  src={`https://img.youtube.com/vi/${getYoutubeVideoId(media.url)}/hqdefault.jpg`}
-                                  alt=""
-                                  style={{ width: 60, height: 60, objectFit: "cover" }}
-                                />
                               )}
+                              
                               {!isView && (
                                 <IconButton
                                   size="small"
@@ -1431,17 +1470,36 @@ const ProductForm: React.FC<ProductFormProps> = ({
                                   <IconTrash />
                                 </IconButton>
                               )}
+                              
+                              {/* Type badge */}
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  bottom: 2,
+                                  left: 2,
+                                  backgroundColor: media.type === "video" ? "#f44336" : "#4caf50",
+                                  color: "white",
+                                  px: 0.5,
+                                  borderRadius: "2px",
+                                  fontSize: "8px",
+                                  fontWeight: "bold",
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {media.type === "video" ? "VID" : "IMG"}
+                              </Box>
+                              
                               <Typography
                                 variant="caption"
                                 sx={{
                                   position: "absolute",
                                   bottom: 2,
-                                  left: 2,
+                                  right: 2,
                                   bgcolor: 'rgba(0,0,0,0.7)',
                                   color: 'white',
                                   px: 0.5,
                                   borderRadius: 0.5,
-                                  fontSize: '10px'
+                                  fontSize: '8px'
                                 }}
                               >
                                 #{mediaId}
@@ -1456,6 +1514,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               </Box>
             ))}
           </Stack>
+
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
             {!isView && (
               <Button
@@ -1537,7 +1596,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </LocalizationProvider>
 
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3 }}>
-            {/* Nút Gợi ý AI bên trái */}
             <Box>
               <Tooltip title={!isFormValid() && !isLoadingAi ? "Vui lòng điền đầy đủ các trường thông tin trước khi sử dụng gợi ý AI" : ""}>
                 <span>
@@ -1564,36 +1622,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               </Tooltip>
             </Box>
 
-            {/* Nút Hủy/Thêm mới bên phải */}
             <Stack direction="row" spacing={2}>
-              <Button onClick={() => {
-                console.log("=== DEBUG FORM DATA ===");
-                console.log("Form data:", formData);
-                console.log("=== ITEMS DEBUG ===");
-                formData.items.forEach((item, index) => {
-                  console.log(`Item ${index}:`, {
-                    name: item.name,
-                    mediaIds: item.mediaIds, // Should be array now
-                    mediaIndex: item.mediaIndex, // Should have values
-                    actualMedia: item.mediaIndex?.map(idx => formData.media[idx]) || []
-                  });
-                });
-                console.log("=== MEDIA DEBUG ===");
-                formData.media.forEach((media, index) => {
-                  console.log(`Media ${index}:`, { id: media.id, url: media.url });
-                });
-                
-                // Debug API data
-                console.log("=== ORIGINAL API DATA ===");
-                if (selectedProduct) {
-                  console.log("Selected product items:", selectedProduct.items);
-                  selectedProduct.items.forEach((item, index) => {
-                    console.log(`Original item ${index} mediaIds:`, item.mediaIds, typeof item.mediaIds);
-                  });
-                }
-              }} variant="outlined" color="info">
-                Debug Log
-              </Button>
               <Button
                 variant="outlined"
                 onClick={onCancel}
@@ -1608,7 +1637,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               {!isView && (
                 <Button
                   variant="contained"
-                  onClick={() => setConfirmPopupOpen(true)} // Mở popup xác nhận thay vì gọi handleSubmit trực tiếp
+                  onClick={() => setConfirmPopupOpen(true)}
                   disabled={isLoading}
                   sx={{
                     minWidth: '120px',
@@ -1632,15 +1661,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
             onConfirm={async () => {
               try {
                 await handleConfirmSubmit();
-                // Thành công đã được xử lý trong handleConfirmSubmit
               } catch (error) {
-                // Xử lý lỗi ở đây
                 handleErrorDisplay(error);
-                setConfirmPopupOpen(false); // Đóng popup khi có lỗi
+                setConfirmPopupOpen(false);
               }
             }}
             title={isEdit ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}
           />
+
           {showAiSuggestions && aiSuggestions && (
             <>
               <Divider sx={{ my: 3 }} />
@@ -1648,7 +1676,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 Gợi ý và Phân tích từ AI
               </Typography>
 
-              {/* Phân tích SEO nếu có */}
               {aiSuggestions.seoAnalysis && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
@@ -1670,15 +1697,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         </Typography>
                         <Divider sx={{ mb: 2 }} />
                         {Array.isArray(aiSuggestions.seoAnalysis.strengths) ? (
-                          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                          <Box component="ul" sx={{ paddingLeft: '20px', margin: 0 }}>
                             {aiSuggestions.seoAnalysis.strengths.map((item: string, index: number) => (
-                              <li key={index}>
+                              <Box component="li" key={index}>
                                 <Typography variant="body2" sx={{ mb: 1 }}>
                                   {item}
                                 </Typography>
-                              </li>
+                              </Box>
                             ))}
-                          </ul>
+                          </Box>
                         ) : (
                           <Typography variant="body2">
                             {aiSuggestions.seoAnalysis.strengths || 'Không có thông tin'}
@@ -1702,15 +1729,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
                         </Typography>
                         <Divider sx={{ mb: 2 }} />
                         {Array.isArray(aiSuggestions.seoAnalysis.improvements) ? (
-                          <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                          <Box component="ul" sx={{ paddingLeft: '20px', margin: 0 }}>
                             {aiSuggestions.seoAnalysis.improvements.map((item: string, index: number) => (
-                              <li key={index}>
+                              <Box component="li" key={index}>
                                 <Typography variant="body2" sx={{ mb: 1 }}>
                                   {item}
                                 </Typography>
-                              </li>
+                              </Box>
                             ))}
-                          </ul>
+                          </Box>
                         ) : (
                           <Typography variant="body2">
                             {aiSuggestions.seoAnalysis.improvements || 'Không có thông tin'}
@@ -1757,7 +1784,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </Box>
               )}
 
-              {/* Hiển thị kết quả gợi ý nội dung */}
               {aiSuggestions.result && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
@@ -1776,7 +1802,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       {aiSuggestions.result}
                     </Typography>
 
-                    {/* Thêm nút để áp dụng gợi ý */}
                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                       <Button
                         variant="contained"
@@ -1793,7 +1818,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </Box>
               )}
 
-              {/* Phân tích chung */}
               {aiSuggestions.analysis && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
@@ -1809,7 +1833,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
             </>
           )}
 
-          {/* Add MUI Snackbar for notifications */}
           <Snackbar
             open={snackbar.open}
             autoHideDuration={6000}
@@ -1826,26 +1849,26 @@ const ProductForm: React.FC<ProductFormProps> = ({
             </Alert>
           </Snackbar>
         </CardContent>
-        <MediaPopup
-          listMedia={selectedMedia}
-          open={mediaPopupOpen}
-          onClose={() => setMediaPopupOpen(false)}
-          onSelect={handleMediaSelect}
-          onSubmit={() => { }}
-        />
-
-        {/* Popup cho item media */}
-        <MediaPopup
-          listMedia={selectedMedia}
-          open={itemMediaPopupOpen}
-          onClose={() => {
-            setItemMediaPopupOpen(false);
-            setSelectedItemIndex(-1);
-          }}
-          onSelect={handleItemMediaSelect}
-          onSubmit={() => { }}
-        />
       </Card>
+
+      <MediaPopup
+        listMedia={selectedMedia}
+        open={mediaPopupOpen}
+        onClose={() => setMediaPopupOpen(false)}
+        onSelect={handleMediaSelect}
+        onSubmit={() => { }}
+      />
+
+      <MediaPopup
+        listMedia={selectedMedia}
+        open={itemMediaPopupOpen}
+        onClose={() => {
+          setItemMediaPopupOpen(false);
+          setSelectedItemIndex(-1);
+        }}
+        onSelect={handleItemMediaSelect}
+        onSubmit={() => { }}
+      />
     </Suspense>
   );
 };

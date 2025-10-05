@@ -184,7 +184,6 @@ export const fetchPopularProducts = async (
 
 ) => {
   // Trả về mảng rỗng để vô hiệu hóa tạm thời
-  console.log("fetchPopularProducts đã bị vô hiệu hóa, trả về mảng rỗng");
   return [];
 };
 
@@ -251,11 +250,11 @@ export const updateProduct = async (productData: ProductAttributes ) => {
       message: response.data?.message || 'Product updated successfully'
     };
   } catch (error: any) {
-    console.error('Lỗi khi cập nhật sản phẩm:', error);
+    console.error('Lỗi khi cập nhật sản phẩm:', error.response );
     return {
       success: false,
       data: null,
-      message: error.message || 'Failed to update product'
+      message: error.response?.data?.error?.message || 'Failed to update product'
     };
   }
 };

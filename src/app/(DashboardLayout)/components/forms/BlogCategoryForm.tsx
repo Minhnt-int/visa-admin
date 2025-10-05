@@ -58,12 +58,10 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
     deleteBlogCategory,
     fetchBlogCategoryBySlug,
   } = useAppContext();
-  console.log('BlogCategoryForm initialized with initialData:', initialData);
   // Cập nhật initialFormData
   const [formData, setFormData] = useState<BlogCategory>(() => {
     // Nếu đang edit, sử dụng initialData, nếu không tạo form trống
     if (currentAction.type === ActionType.EDIT && initialData) {
-      console.log('Initializing form with data:', initialData);
       return {
         ...initialData,
         // Đảm bảo các trường không bị undefined/null
@@ -265,7 +263,6 @@ const BlogCategoryForm: React.FC<BlogCategoryFormProps> = ({
   // Quan trọng: cập nhật formData khi initialData thay đổi (ví dụ: sau khi tải từ API)
   useEffect(() => {
     if (currentAction.type === ActionType.EDIT && initialData && initialData.id) {
-      console.log('Updating form data from initialData:', initialData);
       
       setFormData(prev => ({
         ...initialData,

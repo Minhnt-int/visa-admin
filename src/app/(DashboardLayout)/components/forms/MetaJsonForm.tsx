@@ -638,7 +638,6 @@ const toggleItemExpand = (catIndex: number, itemIndex: number) => {
           };
         }
       } else if (mediaTarget.type === 'about' && mediaTarget.field === 'image') {
-        console.log("Updating About image with media:", media.altText);
         
         newMetaData = {
           ...newMetaData,

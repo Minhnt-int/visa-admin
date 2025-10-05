@@ -1159,7 +1159,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           };
         };
       };
-      console.log('response', response);
       if (response.data) {
         const blogData = {
           ...response.data,
