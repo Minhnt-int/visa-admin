@@ -1,9 +1,11 @@
 "use client";
-import Link from "next/link";
 import { Grid, Box, Card, Stack, Typography } from "@mui/material";
+import Link from "next/link";
+
 // components
 import PageContainer from "@/app/(DashboardLayout)/components/container/PageContainer";
 import Logo from "@/app/(DashboardLayout)/layout/shared/logo/Logo";
+
 import AuthLogin from "../auth/AuthLogin";
 
 const Login2 = () => {

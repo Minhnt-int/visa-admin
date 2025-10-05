@@ -1,6 +1,6 @@
-import React from "react";
 import { Card, Paper } from "@mui/material";
 import { DataGrid, GridColDef, GridRowsProp } from '@mui/x-data-grid';
+import React from "react";
 
 type Props = {
   title?: string;

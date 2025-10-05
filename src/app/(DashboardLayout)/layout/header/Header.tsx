@@ -1,10 +1,12 @@
-import React from 'react';
 import { Box, AppBar, Toolbar, styled, Stack, IconButton, Badge, Button } from '@mui/material';
-import PropTypes from 'prop-types';
+import { IconBellRinging, IconMenu } from '@tabler/icons-react';
 import Link from 'next/link';
+import PropTypes from 'prop-types';
+import React from 'react';
+
 // components
 import Profile from './Profile';
-import { IconBellRinging, IconMenu } from '@tabler/icons-react';
+
 
 interface ItemType {
   toggleMobileSidebar:  (event: React.MouseEvent<HTMLElement>) => void;

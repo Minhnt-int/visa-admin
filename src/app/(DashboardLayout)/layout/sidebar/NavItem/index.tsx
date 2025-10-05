@@ -1,4 +1,3 @@
-import React from "react";
 // mui imports
 import {
   ListItemIcon,
@@ -10,6 +9,7 @@ import {
   ListItemButton,
 } from "@mui/material";
 import Link from "next/link";
+import React from "react";
 
 type NavGroup = {
   [x: string]: any;

@@ -1,8 +1,9 @@
-import React from 'react';
 import { Select, MenuItem } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 import dynamic from "next/dynamic";
+import React from 'react';
+
+import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { styled } from "@mui/material";
 import Image from "next/image";
+import Link from "next/link";
 
 const LinkStyled = styled(Link)(() => ({
   height: "70px",

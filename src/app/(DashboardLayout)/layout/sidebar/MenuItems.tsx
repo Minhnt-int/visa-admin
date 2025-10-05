@@ -9,7 +9,6 @@ import {
   IconTypography,
   IconUserPlus,
 } from "@tabler/icons-react";
-
 import { uniqueId } from "lodash";
 
 const Menuitems = [

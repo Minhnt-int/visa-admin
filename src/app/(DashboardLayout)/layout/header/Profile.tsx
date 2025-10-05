@@ -1,5 +1,3 @@
-import React, { useState } from "react";
-import Link from "next/link";
 import {
   Avatar,
   Box,
@@ -10,8 +8,9 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
-
 import { IconListCheck, IconMail, IconUser } from "@tabler/icons-react";
+import Link from "next/link";
+import React, { useState } from "react";
 
 const Profile = () => {
   const [anchorEl2, setAnchorEl2] = useState(null);

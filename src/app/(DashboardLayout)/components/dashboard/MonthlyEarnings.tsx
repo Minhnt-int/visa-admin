@@ -1,9 +1,10 @@
 
 import dynamic from "next/dynamic";
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
-import { useTheme } from '@mui/material/styles';
 import { Stack, Typography, Avatar, Fab } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { IconArrowDownRight, IconCurrencyDollar } from '@tabler/icons-react';
+
 import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 
 const MonthlyEarnings = () => {

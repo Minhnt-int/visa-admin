@@ -1,7 +1,8 @@
 import { useMediaQuery, Box, Drawer } from "@mui/material";
+import { Sidebar, Logo } from 'react-mui-sidebar';
+
 import SidebarItems from "./SidebarItems";
 import { Upgrade } from "./Updrade";
-import { Sidebar, Logo } from 'react-mui-sidebar';
 
 interface ItemType {
   isMobileSidebarOpen: boolean;

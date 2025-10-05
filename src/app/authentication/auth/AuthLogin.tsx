@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Box,
   Typography,
@@ -9,6 +8,7 @@ import {
   Checkbox,
 } from "@mui/material";
 import Link from "next/link";
+import React from "react";
 
 import CustomTextField from "@/app/(DashboardLayout)/components/forms/theme-elements/CustomTextField";
 
