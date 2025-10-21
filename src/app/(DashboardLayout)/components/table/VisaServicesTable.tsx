@@ -39,15 +39,13 @@ import VisaServiceAPI from '@/services/VisaService';
 import { useRouter } from 'next/navigation';
 
 const statusColors: { [key: string]: 'success' | 'warning' | 'error' | 'default' } = {
-  published: 'success',
-  draft: 'warning',
-  deleted: 'error',
+  active: 'success',
+  inactive: 'error',
 };
 
 const statusLabels: { [key: string]: string } = {
-    published: 'Đã xuất bản',
-    draft: 'Bản nháp',
-    deleted: 'Đã xóa',
+    active: 'Hoạt động',
+    inactive: 'Không hoạt động',
   };
 
 const VisaServicesTable: React.FC = () => {
@@ -59,7 +57,7 @@ const VisaServicesTable: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'deleted'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [permanentlyDeleteDialogOpen, setPermanentlyDeleteDialogOpen] = useState(false);
@@ -110,7 +108,8 @@ const VisaServicesTable: React.FC = () => {
 
   const handleDelete = async () => {
     if (selectedService) {
-        await VisaServiceAPI.changeStatus(selectedService.id, 'deleted');
+        // Soft delete: chuyển status sang inactive
+        await VisaServiceAPI.changeStatus(Number(selectedService.id), 'inactive');
         fetchData();
     }
     setDeleteDialogOpen(false);
@@ -119,7 +118,7 @@ const VisaServicesTable: React.FC = () => {
 
   const handlePermanentlyDelete = async () => {
     if (selectedService) {
-        await VisaServiceAPI.permanentlyDelete(selectedService.id);
+        await VisaServiceAPI.permanentlyDelete(Number(selectedService.id));
         fetchData();
     }
     setPermanentlyDeleteDialogOpen(false);
@@ -128,7 +127,8 @@ const VisaServicesTable: React.FC = () => {
 
   const handleRestore = async () => {
     if (selectedService) {
-        await VisaServiceAPI.restore(selectedService.id);
+        // Restore: chuyển status về active
+        await VisaServiceAPI.changeStatus(Number(selectedService.id), 'active');
         fetchData();
     }
     setRestoreDialogOpen(false);
@@ -149,7 +149,7 @@ const VisaServicesTable: React.FC = () => {
   };
   
   const handleStatusFilterChange = (event: any) => {
-    setStatusFilter(event.target.value as 'all' | 'published' | 'draft' | 'deleted');
+    setStatusFilter(event.target.value as 'all' | 'active' | 'inactive');
     setPage(0);
   };
 
@@ -179,9 +179,8 @@ const VisaServicesTable: React.FC = () => {
                     onChange={handleStatusFilterChange}
                 >
                     <MenuItem value="all">Tất cả</MenuItem>
-                    <MenuItem value="published">Đã xuất bản</MenuItem>
-                    <MenuItem value="draft">Bản nháp</MenuItem>
-                    <MenuItem value="deleted">Đã xóa</MenuItem>
+                    <MenuItem value="active">Hoạt động</MenuItem>
+                    <MenuItem value="inactive">Không hoạt động</MenuItem>
                 </Select>
             </FormControl>
             <Button 
@@ -248,10 +247,10 @@ const VisaServicesTable: React.FC = () => {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
         >
-            {selectedService?.status !== 'deleted' ? (
+            {selectedService?.status === 'active' ? (
                 [
                     <MenuItem key="edit" onClick={handleEdit}><EditIcon sx={{ mr: 1 }} />Chỉnh sửa</MenuItem>,
-                    <MenuItem key="delete" onClick={() => setDeleteDialogOpen(true)}><DeleteIcon sx={{ mr: 1 }} />Xóa</MenuItem>
+                    <MenuItem key="delete" onClick={() => setDeleteDialogOpen(true)}><DeleteIcon sx={{ mr: 1 }} />Chuyển sang Inactive</MenuItem>
                 ]
             ) : (
                 [
@@ -263,11 +262,11 @@ const VisaServicesTable: React.FC = () => {
 
         {/* Action Dialogs */}
         <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-            <DialogTitle>Xác nhận xóa</DialogTitle>
-            <DialogContent><DialogContentText>Bạn có chắc muốn chuyển dịch vụ này vào thùng rác không?</DialogContentText></DialogContent>
+            <DialogTitle>Xác nhận chuyển sang Inactive</DialogTitle>
+            <DialogContent><DialogContentText>Bạn có chắc muốn chuyển dịch vụ này sang trạng thái Inactive không?</DialogContentText></DialogContent>
             <DialogActions>
                 <Button onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
-                <Button onClick={handleDelete} color="error">Xóa</Button>
+                <Button onClick={handleDelete} color="warning">Chuyển Inactive</Button>
             </DialogActions>
         </Dialog>
 

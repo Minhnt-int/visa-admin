@@ -6,6 +6,8 @@ import {
   IconLayoutDashboard,
   IconNews,
   IconTablePlus,
+  IconPhoto,
+  IconPlane,
 } from "@tabler/icons-react";
 
 let counter = 0;
@@ -81,7 +83,37 @@ const Menuitems = [
     icon: IconNews,
     href: "/dich-vu-visa",
   },
-    {
+  {
+    navlabel: true,
+    subheader: "Tin tức",
+  },
+  {
+    id: uniqueId(),
+    title: "Quản lý tin tức",
+    icon: IconArticle,
+    href: "/tin-tuc",
+  },
+  {
+    navlabel: true,
+    subheader: "Tour du lịch",
+  },
+  {
+    id: uniqueId(),
+    title: "Quản lý tour",
+    icon: IconPlane,
+    href: "/tour-du-lich",
+  },
+  {
+    navlabel: true,
+    subheader: "Media",
+  },
+  {
+    id: uniqueId(),
+    title: "Quản lý media",
+    icon: IconPhoto,
+    href: "/media",
+  },
+  {
     navlabel: true,
     subheader: "Quản lý thẻ Meta",
   },
@@ -91,7 +123,7 @@ const Menuitems = [
     icon: IconArticle,
     href: "/meta",
   },
-    {
+  {
     id: uniqueId(),
     title: "MetaJson",
     icon: IconArticle,

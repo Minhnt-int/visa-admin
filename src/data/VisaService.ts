@@ -32,6 +32,7 @@ export interface VisaType {
 export interface VisaService {
   id: string; // The slug, e.g., "china"
   continentSlug: string;
+  slug: string;
   title: string;
   countryName: string;
   heroImage: string;
@@ -41,7 +42,7 @@ export interface VisaService {
   services: string[];
   visaTypes: VisaType[];
   media: ProductMedia[];
-  status: 'published' | 'draft' | 'deleted';
+  status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +54,6 @@ export interface VisaServiceSummary {
     countryName: string;
     successRate: string;
     processingTime: string;
-    status: 'published' | 'draft' | 'deleted';
+    status: 'active' | 'inactive';
     createdAt: string;
 }
