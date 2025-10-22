@@ -36,7 +36,8 @@ import {
   IconPlus,
   IconUpload,
   IconPhoto,
-  IconVideo
+  IconVideo,
+  IconEye
 } from '@tabler/icons-react';
 import ConfirmPopup from '../popup/ConfirmPopup';
 import { MediaSummary } from '@/data/Media';
@@ -72,6 +73,13 @@ const MediaTable: React.FC = () => {
   const [altText, setAltText] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewDialog, setPreviewDialog] = useState<{
+    open: boolean;
+    media: MediaSummary | null;
+  }>({
+    open: false,
+    media: null
+  });
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -106,6 +114,10 @@ const MediaTable: React.FC = () => {
       }
 
       const result = await MediaService.getAll(params);
+      if(!result.data || !Array.isArray(result.data)) {
+        setMedia([]);
+        return;
+      }
       setMedia(result.data);
       setPagination(prev => ({
         ...prev,
@@ -192,6 +204,20 @@ const MediaTable: React.FC = () => {
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     showSnackbar('Đã copy URL', 'success');
+  };
+
+  const handlePreview = (media: MediaSummary) => {
+    setPreviewDialog({
+      open: true,
+      media: media
+    });
+  };
+
+  const handleClosePreview = () => {
+    setPreviewDialog({
+      open: false,
+      media: null
+    });
   };
 
   useEffect(() => {
@@ -339,7 +365,7 @@ const MediaTable: React.FC = () => {
                       {row.type === 'image' ? (
                         <Box
                           component="img"
-                          src={row.url}
+                          src={process.env.NEXT_PUBLIC_API_URL + row.url}
                           alt={row.altText}
                           sx={{
                             width: 60,
@@ -392,15 +418,30 @@ const MediaTable: React.FC = () => {
                     </TableCell>
                     <TableCell>{new Date(row.createdAt).toLocaleDateString('vi-VN')}</TableCell>
                     <TableCell>
-                      <IconButton
-                        onClick={() => handleDelete(row.id)}
-                        sx={{
-                          color: 'error.main',
-                          '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
-                        }}
-                      >
-                        <IconTrash size={18} />
-                      </IconButton>
+                      <Stack direction="row" spacing={1}>
+                        <Tooltip title="Xem trước">
+                          <IconButton
+                            onClick={() => handlePreview(row)}
+                            sx={{
+                              color: 'primary.main',
+                              '&:hover': { backgroundColor: 'primary.light', color: 'primary.dark' }
+                            }}
+                          >
+                            <IconEye size={18} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Xóa">
+                          <IconButton
+                            onClick={() => handleDelete(row.id)}
+                            sx={{
+                              color: 'error.main',
+                              '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
+                            }}
+                          >
+                            <IconTrash size={18} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))
@@ -490,6 +531,134 @@ const MediaTable: React.FC = () => {
             disabled={!selectedFile || uploading}
           >
             {uploading ? 'Đang upload...' : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog 
+        open={previewDialog.open} 
+        onClose={handleClosePreview}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '12px' }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            {previewDialog.media?.type === 'image' ? <IconPhoto size={24} /> : <IconVideo size={24} />}
+            <Typography variant="h6">
+              {previewDialog.media?.name}
+            </Typography>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {previewDialog.media && (
+            <Stack spacing={3}>
+              {/* Media Preview */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: 400,
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 2,
+                  overflow: 'hidden'
+                }}
+              >
+                {previewDialog.media.type === 'image' ? (
+                  <Box
+                    component="img"
+                    src={process.env.NEXT_PUBLIC_API_URL + previewDialog.media.url}
+                    alt={previewDialog.media.altText}
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: 400,
+                      objectFit: 'contain',
+                      borderRadius: 1
+                    }}
+                  />
+                ) : (
+                  <Box
+                    component="video"
+                    src={process.env.NEXT_PUBLIC_APP_URL + previewDialog.media.url}
+                    controls
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: 400,
+                      borderRadius: 1
+                    }}
+                  />
+                )}
+              </Box>
+
+              {/* Media Info */}
+              <Stack spacing={2}>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Tên file
+                    </Typography>
+                    <Typography variant="body1">
+                      {previewDialog.media.name}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Loại
+                    </Typography>
+                    <Chip
+                      icon={previewDialog.media.type === 'image' ? <IconPhoto size={16} /> : <IconVideo size={16} />}
+                      label={previewDialog.media.type === 'image' ? 'Hình ảnh' : 'Video'}
+                      color={previewDialog.media.type === 'image' ? 'primary' : 'secondary'}
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Alt Text
+                    </Typography>
+                    <Typography variant="body1">
+                      {previewDialog.media.altText || 'Không có'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      URL
+                    </Typography>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        wordBreak: 'break-all',
+                        fontFamily: 'monospace',
+                        backgroundColor: '#f5f5f5',
+                        p: 1,
+                        borderRadius: 1
+                      }}
+                    >
+                      {previewDialog.media.url}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Stack>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleClosePreview}>
+            Đóng
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              if (previewDialog.media) {
+                handleCopyUrl(previewDialog.media.url);
+              }
+            }}
+          >
+            Copy URL
           </Button>
         </DialogActions>
       </Dialog>

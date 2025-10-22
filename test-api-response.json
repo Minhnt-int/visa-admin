@@ -1,0 +1,74 @@
+{
+    "status": "success",
+    "message": "Lấy chi tiết dịch vụ thành công.",
+    "data": {
+        "data": {
+            "id": 10,
+            "slug": "india",
+            "continent_slug": "visa-chau-a",
+            "title": "Dịch Vụ Xin Visa Ấn Độ (India)",
+            "country_name": "Ấn Độ",
+            "hero_image": "https://images.unsplash.com/photo-1564507548766-261561f3244b",
+            "success_rate": "99%",
+            "processing_time": "3-5 ngày làm việc (E-visa)",
+            "description": "Hỗ trợ xin E-visa du lịch, công tác Ấn Độ nhanh chóng và tiện lợi.",
+            "services": [
+                "Điền đơn E-visa",
+                "Kiểm tra và chuẩn hóa ảnh/hộ chiếu",
+                "Theo dõi và thông báo kết quả"
+            ],
+            "visa_types": [
+                {
+                    "id": "india-e-visa",
+                    "name": "E-Visa Du lịch",
+                    "pricing": [
+                        {
+                            "name": "Gói Du lịch",
+                            "type": "Trọn gói",
+                            "prices": [
+                                {
+                                    "note": "Chỉ áp dụng cho E-visa",
+                                    "adult": "2,500,000 VNĐ",
+                                    "child_6_12": "2,500,000 VNĐ",
+                                    "serviceFee": "Từ 1,000,000 VNĐ",
+                                    "consularFee": "10 USD - 80 USD (tùy thời hạn)",
+                                    "child_under_6": "1,500,000 VNĐ"
+                                }
+                            ],
+                            "description": "Bao gồm xử lý hồ sơ online, điền đơn, nộp phí LSQ và nhận E-visa."
+                        }
+                    ],
+                    "requirements": {
+                        "travel": [
+                            "Vé máy bay khứ hồi",
+                            "Booking khách sạn"
+                        ],
+                        "personal": [
+                            "Scan Hộ chiếu còn hạn trên 6 tháng",
+                            "Ảnh 5x5 nền trắng (scan)"
+                        ],
+                        "financial": [],
+                        "work_enterprise": [],
+                        "work_individual": []
+                    }
+                }
+            ],
+            "pricing": null,
+            "testimonials": [],
+            "related_articles": [],
+            "benefits": [],
+            "process": [],
+            "meta_title": null,
+            "meta_description": null,
+            "meta_keywords": null,
+            "status": "active",
+            "created_at": "2025-10-16T10:05:34.000Z",
+            "updated_at": "2025-10-16T10:05:34.000Z",
+            "media": []
+        },
+        "total": 1,
+        "page": 1,
+        "limit": 1,
+        "totalPages": 1
+    }
+}

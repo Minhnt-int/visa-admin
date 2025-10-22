@@ -4,8 +4,10 @@ import { Media, MediaSummary, MediaFormData, MediaUploadResponse } from '../data
 const API_URL = '/api/media';
 
 interface ApiResponse {
-  data: MediaSummary[];
-  pagination: {
+  status: 'success' | 'error' | 'fail';
+  message: string;
+  data: {
+    data: MediaSummary[];
     total: number;
     page: number;
     limit: number;
@@ -21,13 +23,18 @@ class MediaServiceClass {
     type?: 'image' | 'video';
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
-  } = {}): Promise<ApiResponse> {
+  } = {}): Promise<{ data: MediaSummary[]; pagination: { total: number; page: number; limit: number; totalPages: number } }> {
     try {
       const response = await instance.get(API_URL, { params });
-      // Backend returns { success, data, pagination }
+      // Backend returns standardized format: { status, message, data: { data, total, page, limit, totalPages } }
       return {
-        data: response.data.data,
-        pagination: response.data.pagination,
+        data: response.data.data.data,
+        pagination: {
+          total: response.data.data.total,
+          page: response.data.data.page,
+          limit: response.data.data.limit,
+          totalPages: response.data.data.totalPages,
+        },
       };
     } catch (error) {
       console.error('Error fetching all media:', error);
@@ -38,7 +45,7 @@ class MediaServiceClass {
   async getById(id: number): Promise<Media> {
     try {
       const response = await instance.get(`${API_URL}/${id}`);
-      return response.data.data;
+      return response.data.data.data;
     } catch (error) {
       console.error(`Error fetching media with id ${id}:`, error);
       throw error;
@@ -75,7 +82,7 @@ class MediaServiceClass {
   async update(id: number, data: { altText: string }): Promise<Media> {
     try {
       const response = await instance.put(`${API_URL}/${id}`, data);
-      return response.data.data;
+      return response.data.data.data;
     } catch (error) {
       console.error(`Error updating media with id ${id}:`, error);
       throw error;

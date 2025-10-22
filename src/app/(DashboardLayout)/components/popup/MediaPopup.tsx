@@ -27,15 +27,14 @@ import { ProductMedia } from '@/data/ProductAttributes';
 import { IconTrash, IconUpload, IconX, IconEdit } from '@tabler/icons-react';
 
 interface MediaResponse {
-  success: boolean;
+  status: 'success' | 'error' | 'fail';
+  message: string;
   data: {
-    media: ProductMedia[];
-    pagination: {
-      total: number;
-      totalPages: number;
-      currentPage: number;
-      itemsPerPage: number;
-    };
+    data: ProductMedia[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   };
 }
 
@@ -114,13 +113,17 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media?page=${currentPage}`);
       const data: MediaResponse = await response.json();
       
-      if (data.success) {
-        setMedia(data.data.media);
-        setTotalPages(data.data.pagination.totalPages);
+      console.log('Media API Response:', data); // Debug log
+      
+      if (data.status === 'success') {
+        setMedia(data.data.data);
+        setTotalPages(data.data.totalPages);
+        console.log('Media loaded:', data.data.data.length, 'items'); // Debug log
       } else {
-        setSnackbar({ open: true, message: 'Failed to fetch media', severity: 'error' });
+        setSnackbar({ open: true, message: data.message || 'Failed to fetch media', severity: 'error' });
       }
     } catch (error) {
+      console.error('Error fetching media:', error); // Debug log
       setSnackbar({ open: true, message: 'Error fetching media', severity: 'error' });
     } finally {
       setLoading(false);
@@ -143,12 +146,12 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
 
       const data = await response.json();
       
-      if (data.success) {
+      if (data.status === 'success') {
         setSnackbar({ open: true, message: 'Tải lên thành công', severity: 'success' });
         fetchMedia();
         resetUploadState();
       } else {
-        setSnackbar({ open: true, message: 'Tải lên thất bại', severity: 'error' });
+        setSnackbar({ open: true, message: data.message || 'Tải lên thất bại', severity: 'error' });
       }
     } catch (error) {
       setSnackbar({ open: true, message: 'Lỗi khi tải file lên', severity: 'error' });
@@ -194,7 +197,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
 
       const data = await response.json();
       
-      if (data.success) {
+      if (data.status === 'success') {
         setSnackbar({ 
           open: true, 
           message: 'Tải video thành công', 
@@ -232,11 +235,11 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
 
       const data = await response.json();
       
-      if (data.success) {
+      if (data.status === 'success') {
         setSnackbar({ open: true, message: 'Media deleted successfully', severity: 'success' });
         fetchMedia();
       } else {
-        setSnackbar({ open: true, message: 'Failed to delete media', severity: 'error' });
+        setSnackbar({ open: true, message: data.message || 'Failed to delete media', severity: 'error' });
       }
     } catch (error) {
       setSnackbar({ open: true, message: 'Error deleting media', severity: 'error' });
@@ -260,7 +263,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
 
       const data = await response.json();
       
-      if (data.success) {
+      if (data.status === 'success') {
         setMedia(prevMedia => 
           prevMedia.map(item => 
             item.id === id ? { ...item, altText: newAltText } : item
@@ -268,7 +271,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
         );
         setSnackbar({ open: true, message: 'Cập nhật mô tả thành công', severity: 'success' });
       } else {
-        setSnackbar({ open: true, message: 'Cập nhật mô tả thất bại', severity: 'error' });
+        setSnackbar({ open: true, message: data.message || 'Cập nhật mô tả thất bại', severity: 'error' });
       }
     } catch (error) {
       setSnackbar({ open: true, message: 'Lỗi khi cập nhật mô tả', severity: 'error' });
@@ -372,7 +375,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
         const data = await response.json();
         clearInterval(progressInterval);
         
-        if (data.success) {
+        if (data.status === 'success') {
           successCount++;
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
         } else {
@@ -417,6 +420,7 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
   // Effects
   useEffect(() => {
     if (open) {
+      console.log('MediaPopup opened, fetching media...'); // Debug log
       fetchMedia();
     }
   }, [open, currentPage]);
@@ -654,6 +658,11 @@ const MediaPopup: React.FC<MediaPopupProps> = ({
               </Box>
             ) : (
               <>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Debug: Media count: {media.length}, Loading: {loading.toString()}
+                  </Typography>
+                </Box>
                 <Grid container spacing={2}>
                   {media.map((item) => {
                     const isAlreadySelected = isMediaAlreadySelected(item.id);

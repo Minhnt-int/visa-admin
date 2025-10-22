@@ -29,7 +29,17 @@ import { ProductMedia, ProductAttributes } from '@/data/ProductAttributes';
 import MediaDisplay from '../display/MediaDisplay';
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
+// Static continent data
+const CONTINENT_OPTIONS = [
+  { slug: "visa-chau-a", name: "Châu Á" },
+  { slug: "visa-chau-au", name: "Châu Âu" },
+  { slug: "visa-chau-my", name: "Châu Mỹ" },
+  { slug: "visa-chau-phi", name: "Châu Phi" },
+  { slug: "visa-chau-uc", name: "Châu Úc" },
+];
+
 const initialServiceState: Omit<VisaService, 'id' | 'createdAt' | 'updatedAt'> = {
+  slug: '',
   title: '',
   continentSlug: '',
   countryName: '',
@@ -40,7 +50,7 @@ const initialServiceState: Omit<VisaService, 'id' | 'createdAt' | 'updatedAt'> =
   services: [],
   visaTypes: [],
   media: [],
-  status: 'draft',
+  status: 'inactive',
 };
 
 // Fixed visa type options
@@ -65,16 +75,16 @@ function buildVisaType(id: 'tourist' | 'business' | 'family', name: string): Vis
 }
 
 interface VisaServiceFormProps {
-  formData: VisaService;
+  formData?: VisaService;
   isView?: boolean;
   isEdit?: boolean;
-  onSubmit: (data: VisaService) => Promise<void>;
-  onCancel: () => void;
+  onSubmit?: (data: VisaService) => Promise<void>;
+  onCancel?: () => void;
   isLoading?: boolean;
 }
  
 const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
-  formData: initialFormData,
+  formData: initialFormData = initialServiceState as VisaService,
   isView = false,
   isEdit = false,
   onSubmit,
@@ -145,7 +155,9 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
 
   useEffect(() => {
     if (isEditMode && selectedVisaService) {
-      setServiceData(selectedVisaService as any);
+      // API service already maps the data, so we can use it directly
+      console.log('Setting service data from API:', selectedVisaService);
+      setServiceData(selectedVisaService);
     }
   }, [isEditMode, selectedVisaService]);
 
@@ -172,7 +184,7 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
   };
 
   const handleStatusChange = (e: any) => {
-    setServiceData(prev => ({ ...prev, status: e.target.value as 'published' | 'draft' }));
+    setServiceData(prev => ({ ...prev, status: e.target.value as 'active' | 'inactive' }));
   };
 
   // Handle fixed visa types selection
@@ -304,12 +316,32 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = { ...serviceData, media: selectedMedia } as any;
-    if (isEditMode && slug) {
-      await updateVisaService(slug, payload);
-    } else {
-      await createVisaService(payload);
+    
+    console.log('Form submission:', {
+      isEditMode,
+      slug,
+      hasSlugParam: !!slug,
+      action: (isEditMode && slug) ? 'UPDATE' : 'CREATE',
+      payload
+    });
+    
+    try {
+      if (isEditMode && slug) {
+        console.log('Calling updateVisaService with slug:', slug);
+        await updateVisaService(slug, payload);
+      } else {
+        console.log('Calling createVisaService');
+        await createVisaService(payload);
+      }
+      router.push('/dich-vu-visa');
+    } catch (error) {
+      console.error('Form submission error:', error);
+      // Handle error appropriately
     }
-    router.push('/dich-vu-visa');
+  };
+
+  const handleContinentChange = (e: any) => {
+    setServiceData(prev => ({ ...prev, continentSlug: e.target.value }));
   };
 
   return (
@@ -324,14 +356,28 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
             <TextField name="countryName" label="Tên Quốc Gia" value={serviceData?.countryName ?? ''} onChange={handleChange} fullWidth required />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField name="continentSlug" label="Slug Châu Lục" value={serviceData?.continentSlug ?? ''} onChange={handleChange} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>Châu lục</InputLabel>
+              <Select
+                name="continentSlug"
+                value={serviceData?.continentSlug ?? ''}
+                label="Châu lục"
+                onChange={handleContinentChange}
+              >
+                {CONTINENT_OPTIONS.map((continent) => (
+                  <MenuItem key={continent.slug} value={continent.slug}>
+                    {continent.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Trạng thái</InputLabel>
-              <Select name="status" value={serviceData?.status ?? 'draft'} label="Trạng thái" onChange={handleStatusChange}>
-                <MenuItem value="draft">Bản nháp</MenuItem>
-                <MenuItem value="published">Xuất bản</MenuItem>
+              <Select name="status" value={serviceData?.status ?? 'inactive'} label="Trạng thái" onChange={handleStatusChange}>
+                <MenuItem value="inactive">Không hoạt động</MenuItem>
+                <MenuItem value="active">Hoạt động</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -455,7 +501,7 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
                 <Grid item xs={12} md={6} key={cat}>
                   <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>Yêu cầu {cat}</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {(vt.requirements[cat] as string[]).map((req, idx) => (
+                    {(vt.requirements[cat] as string[])?.map((req, idx) => (
                       <Chip key={`${cat}-${idx}`} label={req} onDelete={() => removeRequirement(vt.id, cat, idx)} />
                     ))}
                     {/* Add control */}

@@ -72,6 +72,9 @@ const VisaServicesTable: React.FC = () => {
       };
       if (statusFilter !== 'all') {
           params.status = statusFilter;
+      } else {
+          // Khi chọn "Tất cả", gửi status=all để lấy cả active và inactive
+          params.status = 'all';
       }
       const result = await VisaServiceAPI.getAll(params); 
       setServices(result.data);
@@ -101,7 +104,7 @@ const VisaServicesTable: React.FC = () => {
 
   const handleEdit = () => {
     if (selectedService) {
-        router.push(`/dich-vu-visa/action?slug=${selectedService.id}`);
+        router.push(`/dich-vu-visa/action?slug=${selectedService.slug}`);
     }
     handleMenuClose();
   };
@@ -109,7 +112,7 @@ const VisaServicesTable: React.FC = () => {
   const handleDelete = async () => {
     if (selectedService) {
         // Soft delete: chuyển status sang inactive
-        await VisaServiceAPI.changeStatus(Number(selectedService.id), 'inactive');
+        await VisaServiceAPI.changeStatus(selectedService.id, 'inactive');
         fetchData();
     }
     setDeleteDialogOpen(false);
@@ -118,7 +121,7 @@ const VisaServicesTable: React.FC = () => {
 
   const handlePermanentlyDelete = async () => {
     if (selectedService) {
-        await VisaServiceAPI.permanentlyDelete(Number(selectedService.id));
+        await VisaServiceAPI.permanentlyDelete(selectedService.id);
         fetchData();
     }
     setPermanentlyDeleteDialogOpen(false);
@@ -128,7 +131,7 @@ const VisaServicesTable: React.FC = () => {
   const handleRestore = async () => {
     if (selectedService) {
         // Restore: chuyển status về active
-        await VisaServiceAPI.changeStatus(Number(selectedService.id), 'active');
+        await VisaServiceAPI.changeStatus(selectedService.id, 'active');
         fetchData();
     }
     setRestoreDialogOpen(false);
@@ -212,9 +215,9 @@ const VisaServicesTable: React.FC = () => {
                 </TableCell>
                 <TableCell>{service.countryName}</TableCell>
                 <TableCell>
-                    <Chip label={service.successRate} color="info" size="small" />
+                    <Chip label={service.successRate || 'N/A'} color="info" size="small" />
                 </TableCell>
-                <TableCell>{service.processingTime}</TableCell>
+                <TableCell>{service.processingTime || 'N/A'}</TableCell>
                 <TableCell>
                     <Chip 
                         label={statusLabels[service.status] || 'Không xác định'}
