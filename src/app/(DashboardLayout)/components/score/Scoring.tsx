@@ -23,19 +23,19 @@ const stripHtml = (html: string) => {
 };
 
 interface ScoringProps {
-  blogContent: string;
+  newsContent: string;
   analysis: string;
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
-const Scoring: React.FC<ScoringProps> = ({ blogContent, analysis, onLoadingChange }) => {
+const Scoring: React.FC<ScoringProps> = ({ newsContent, analysis, onLoadingChange }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const { generateAIContent } = useAppContext();
 
   const analyzeContent = async () => {
-    if (!blogContent || blogContent.trim() === '') {
+    if (!newsContent || newsContent.trim() === '') {
       setLoading(false);
       if (onLoadingChange) {
         onLoadingChange(false);
@@ -59,11 +59,16 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, analysis, onLoadingChang
     }, 500);
     
     try {
-      const result = await generateAIContent(blogContent, 'evaluate');
+      const result = await generateAIContent(newsContent, 'evaluate') as any;
       
-      if (result.data) {
-        // No need to set analysis here as it's passed as a prop
+      // Check if result has the correct structure
+      if (result && result.status === 'success' && result.data) {
+        // Data is correctly formatted, no need to set analysis here as it's passed as a prop
+        console.log('AI Analysis successful:', result.data);
+      } else if (result && result.status === 'fail') {
+        setError(result.message || 'Phân tích thất bại');
       } else {
+        console.log('Unexpected result format:', result);
         setError('Dữ liệu không đúng định dạng');
       }
     } catch (err) {
@@ -83,7 +88,7 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, analysis, onLoadingChang
   };
 
   useEffect(() => {
-    if (blogContent && blogContent.trim() !== '') {
+    if (newsContent && newsContent.trim() !== '') {
       analyzeContent();
     } else {
       setLoading(false);
@@ -91,7 +96,7 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, analysis, onLoadingChang
         onLoadingChange(false);
       }
     }
-  }, [blogContent]);
+  }, [newsContent]);
 
   return (
     <DashboardCard 
@@ -118,7 +123,7 @@ const Scoring: React.FC<ScoringProps> = ({ blogContent, analysis, onLoadingChang
         <Paper elevation={0} sx={{ p: 3, backgroundColor: '#fafafa', borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom>Kết quả phân tích</Typography>
           <Typography sx={{ whiteSpace: 'pre-wrap' }}>
-            {analysis || 'Chọn một blog để xem phân tích SEO'}
+            {analysis || 'Chọn một tin tức để xem phân tích SEO'}
           </Typography>
         </Paper>
       )}

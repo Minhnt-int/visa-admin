@@ -24,6 +24,16 @@ export default function CKEditorWrapper({ disabled = false, onChange, value, pla
 		return () => setIsLayoutReady(false);
 	}, []);
 
+	// Update editor content when value prop changes
+	useEffect(() => {
+		if (editorInstance && value !== undefined) {
+			const currentData = editorInstance.getData();
+			if (currentData !== value) {
+				editorInstance.setData(value || '');
+			}
+		}
+	}, [editorInstance, value]);
+
 	const deleteImageFromServer = (src : any) => {
 		// Implement API call to delete image from server
 	};

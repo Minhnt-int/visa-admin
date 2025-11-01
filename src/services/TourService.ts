@@ -1,10 +1,69 @@
 import instance from '../../axiosConfig';
-import { Tour, TourSummary, TourFormData, TourCategory } from '../data/Tour';
+import { TourFormData, TourSummary } from '../data/Tour';
 
-const API_URL = '/api/tours';
-const CATEGORY_API_URL = '/tour-categories';
+export interface Tour {
+  id?: number;
+  slug: string;
+  name: string;
+  categoryId: number;
+  country: string;
+  duration: string;
+  price: number;
+  originalPrice?: number;
+  departure: string[];
+  image: string;
+  gallery: string[];
+  rating: number;
+  reviewCount: number;
+  isHot: boolean;
+  groupSize: {
+    min: number;
+    max: number;
+  };
+  highlights: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+  }>;
+  itinerary: Array<{
+    day: string;
+    title: string;
+    activities: Array<{
+      activity: string;
+    }>;
+    description: string;
+  }>;
+  services: {
+    included: Array<{
+      id: string;
+      name: string;
+    }>;
+    excluded: Array<{
+      id: string;
+      name: string;
+    }>;
+  };
+  terms: {
+    registration: string[];
+    cancellation: string[];
+    payment: string[];
+  };
+  whyChooseUs: Array<{
+    id: string;
+    icon: string;
+    title: string;
+    description: string;
+  }>;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  status: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-interface ApiResponse {
+export interface TourListResponse {
   data: TourSummary[];
   pagination: {
     total: number;
@@ -14,176 +73,211 @@ interface ApiResponse {
   };
 }
 
-interface CategoryApiResponse {
-  data: TourCategory[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+export interface TourResponse {
+  message: string;
+  data: Tour;
 }
 
-class TourServiceClass {
-  async getAll(params: {
+class TourService {
+  /**
+   * Lấy danh sách tours với phân trang và tìm kiếm
+   */
+  async getList(params?: {
     page?: number;
     limit?: number;
     search?: string;
-    tags?: string;
     categorySlug?: string;
     country?: string;
     isHot?: boolean;
     minPrice?: number;
     maxPrice?: number;
-    status?: 'active' | 'inactive';
+    status?: 'active' | 'inactive' | 'all';
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
-  } = {}): Promise<ApiResponse> {
+  }): Promise<TourListResponse> {
     try {
-      const response = await instance.get(API_URL, { params });
-      // Backend response structure: { data: [...], pagination: { total, page, limit, totalPages } }
-      return {
-        data: response.data.data,
-        pagination: response.data.pagination,
-      };
-    } catch (error) {
-      console.error('Error fetching all tours:', error);
-      throw error;
+      const response = await instance.get('/api/tours', { params });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy danh sách tours');
     }
   }
 
-  async getBySlug(slug: string): Promise<Tour> {
-    try {
-      const response = await instance.get(`${API_URL}/${slug}`);
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error fetching tour with slug ${slug}:`, error);
-      throw error;
-    }
-  }
-
-  async create(tourData: TourFormData): Promise<Tour> {
-    try {
-      const response = await instance.post(API_URL, tourData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error creating tour:', error);
-      throw error;
-    }
-  }
-
-  async update(slug: string, tourData: Partial<TourFormData>): Promise<Tour> {
-    try {
-      const response = await instance.put(`${API_URL}/${slug}`, tourData);
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error updating tour with slug ${slug}:`, error);
-      throw error;
-    }
-  }
-
-  async changeStatus(id: number, status: 'active' | 'inactive'): Promise<Tour> {
-    try {
-      const response = await instance.patch(`${API_URL}/by-id/${id}/status`, { status });
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error changing status for tour with id ${id}:`, error);
-      throw error;
-    }
-  }
-
-  async softDelete(ids: number[]): Promise<void> {
-    try {
-      await instance.put(API_URL, { ids });
-    } catch (error) {
-      console.error('Error soft deleting tours:', error);
-      throw error;
-    }
-  }
-
-  async permanentlyDelete(ids: number[]): Promise<void> {
-    try {
-      await instance.delete(API_URL, {
-        params: { ids: ids.join(',') },
-      });
-    } catch (error) {
-      console.error('Error permanently deleting tours:', error);
-      throw error;
-    }
-  }
-
-  async restore(ids: number[]): Promise<void> {
-    try {
-      await instance.put(`${API_URL}/restore`, { ids });
-    } catch (error) {
-      console.error('Error restoring tours:', error);
-      throw error;
-    }
-  }
-
-  // Tour Categories
-  async getAllCategories(params: {
+  /**
+   * Lấy tất cả tours (alias cho getList)
+   */
+  async getAll(params?: {
     page?: number;
     limit?: number;
     search?: string;
-    status?: 'active' | 'inactive';
+    categorySlug?: string;
+    country?: string;
+    isHot?: boolean;
+    minPrice?: number;
+    maxPrice?: number;
+    status?: 'active' | 'inactive' | 'all';
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
-  } = {}): Promise<CategoryApiResponse> {
-    try {
-      const response = await instance.get(CATEGORY_API_URL, { params });
-      return {
-        data: response.data.data,
-        pagination: response.data.pagination,
-      };
-    } catch (error) {
-      console.error('Error fetching tour categories:', error);
-      throw error;
-    }
+  }): Promise<TourListResponse> {
+    return this.getList(params);
   }
 
-  async getCategoryBySlug(slug: string): Promise<TourCategory> {
+  /**
+   * Lấy tour theo slug
+   */
+  async getBySlug(slug: string): Promise<Tour> {
     try {
-      const response = await instance.get(`${CATEGORY_API_URL}/${slug}`);
+      const response = await instance.get(`/api/tours/${slug}`);
       return response.data.data;
-    } catch (error) {
-      console.error(`Error fetching tour category with slug ${slug}:`, error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy tour');
     }
   }
 
-  async createCategory(categoryData: Partial<TourCategory>): Promise<TourCategory> {
+  /**
+   * Tạo tour mới
+   */
+  async create(data: TourFormData): Promise<TourResponse> {
     try {
-      const response = await instance.post(CATEGORY_API_URL, categoryData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error creating tour category:', error);
-      throw error;
-    }
-  }
-
-  async updateCategory(slug: string, categoryData: Partial<TourCategory>): Promise<TourCategory> {
-    try {
-      const response = await instance.put(`${CATEGORY_API_URL}/${slug}`, categoryData);
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error updating tour category with slug ${slug}:`, error);
-      throw error;
-    }
-  }
-
-  async deleteCategory(ids: number[]): Promise<void> {
-    try {
-      await instance.delete(CATEGORY_API_URL, {
-        params: { ids: ids.join(',') },
+      const response = await instance.post('/api/tours', {
+        slug: data.slug,
+        name: data.name,
+        categoryId: data.categoryId,
+        country: data.country,
+        duration: data.duration,
+        price: data.price,
+        originalPrice: data.originalPrice,
+        departure: data.departure,
+        image: data.image,
+        gallery: data.gallery,
+        rating: data.rating,
+        reviewCount: data.reviewCount,
+        isHot: data.isHot,
+        groupSize: data.groupSize,
+        highlights: data.highlights,
+        itinerary: data.itinerary,
+        services: data.services,
+        terms: data.terms,
+        whyChooseUs: data.whyChooseUs,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        metaKeywords: data.metaKeywords,
+        status: data.status || 'active'
       });
-    } catch (error) {
-      console.error('Error deleting tour categories:', error);
-      throw error;
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể tạo tour');
+    }
+  }
+
+  /**
+   * Cập nhật tour
+   */
+  async update(id: number, data: TourFormData): Promise<TourResponse> {
+    try {
+      const response = await instance.put('/api/tours', {
+        id: id,
+        name: data.name,
+        categoryId: data.categoryId,
+        country: data.country,
+        duration: data.duration,
+        price: data.price,
+        originalPrice: data.originalPrice,
+        departure: data.departure,
+        image: data.image,
+        gallery: data.gallery,
+        rating: data.rating,
+        reviewCount: data.reviewCount,
+        isHot: data.isHot,
+        groupSize: data.groupSize,
+        highlights: data.highlights,
+        itinerary: data.itinerary,
+        services: data.services,
+        terms: data.terms,
+        whyChooseUs: data.whyChooseUs,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        metaKeywords: data.metaKeywords,
+        status: data.status
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể cập nhật tour');
+    }
+  }
+
+  /**
+   * Xóa tour (soft delete - đánh dấu status = inactive)
+   */
+  async softDelete(id: number): Promise<{ message: string; data: { id: number; status: string } }> {
+    try {
+      const response = await instance.patch(`/api/tours/by-id/${id}/status`, {
+        status: 'inactive'
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể xóa tour');
+    }
+  }
+
+  /**
+   * Xóa tour vĩnh viễn (hard delete)
+   */
+  async delete(id: number): Promise<{ message: string; data: { id: number } }> {
+    try {
+      const response = await instance.delete(`/api/tours?id=${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể xóa tour vĩnh viễn');
+    }
+  }
+
+  /**
+   * Xóa tour vĩnh viễn (alias cho delete)
+   */
+  async permanentlyDelete(id: number): Promise<{ message: string; data: { id: number } }> {
+    return this.delete(id);
+  }
+
+  /**
+   * Khôi phục tour từ soft delete (đánh dấu status = active)
+   */
+  async restore(id: number): Promise<{ message: string; data: { id: number; status: string } }> {
+    try {
+      const response = await instance.patch(`/api/tours/by-id/${id}/status`, {
+        status: 'active'
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể khôi phục tour');
+    }
+  }
+
+  /**
+   * Thay đổi trạng thái tour
+   */
+  async changeStatus(id: number, status: 'active' | 'inactive'): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await instance.patch(`/api/tours/by-id/${id}/status`, {
+        status
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể thay đổi trạng thái tour');
+    }
+  }
+
+  /**
+   * Lấy danh sách categories
+   */
+  async getCategories(): Promise<{ data: Array<{ id: number; name: string; slug: string }> }> {
+    try {
+      const response = await instance.get('/api/tours/categories');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy danh sách categories');
     }
   }
 }
 
-const TourService = new TourServiceClass();
-export default TourService;
-
+export default new TourService();

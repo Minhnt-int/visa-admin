@@ -73,6 +73,7 @@ const MediaTable: React.FC = () => {
   const [altText, setAltText] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDialog, setPreviewDialog] = useState<{
     open: boolean;
     media: MediaSummary | null;
@@ -147,10 +148,19 @@ const MediaTable: React.FC = () => {
     setUploadDialogOpen(true);
   };
 
+  const resetUploadForm = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setSelectedFile(null);
+    setAltText('');
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -166,8 +176,7 @@ const MediaTable: React.FC = () => {
       if (result.success) {
         showSnackbar('Upload thành công', 'success');
         setUploadDialogOpen(false);
-        setSelectedFile(null);
-        setAltText('');
+        resetUploadForm();
         fetchData(pagination.current, pagination.pageSize, searchText, sortField, sortOrder);
       } else {
         showSnackbar(result.error || 'Upload thất bại', 'error');
@@ -494,7 +503,7 @@ const MediaTable: React.FC = () => {
       </CardContent>
 
       {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={uploadDialogOpen} onClose={() => { setUploadDialogOpen(false); resetUploadForm(); }} maxWidth="sm" fullWidth>
         <DialogTitle>Upload Media</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 2 }}>
@@ -513,6 +522,45 @@ const MediaTable: React.FC = () => {
             >
               {selectedFile ? selectedFile.name : 'Chọn file'}
             </Button>
+            {selectedFile && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: 220,
+                  border: '1px dashed #E0E0E0',
+                  borderRadius: 2,
+                  backgroundColor: '#fafafa',
+                  p: 2
+                }}
+              >
+                {selectedFile.type.startsWith('image/') && previewUrl ? (
+                  <Box
+                    component="img"
+                    src={previewUrl}
+                    alt={altText || selectedFile.name}
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: 300,
+                      objectFit: 'contain',
+                      borderRadius: 1
+                    }}
+                  />
+                ) : selectedFile.type.startsWith('video/') && previewUrl ? (
+                  <Box
+                    component="video"
+                    src={previewUrl}
+                    controls
+                    sx={{
+                      maxWidth: '100%',
+                      maxHeight: 300,
+                      borderRadius: 1
+                    }}
+                  />
+                ) : null}
+              </Box>
+            )}
             <TextField
               label="Alt Text (tùy chọn)"
               value={altText}
@@ -524,7 +572,7 @@ const MediaTable: React.FC = () => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUploadDialogOpen(false)}>Hủy</Button>
+          <Button onClick={() => { setUploadDialogOpen(false); resetUploadForm(); }}>Hủy</Button>
           <Button
             onClick={handleUpload}
             variant="contained"

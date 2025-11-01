@@ -22,7 +22,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Editor from "../editor/Editor";
 import { BlogPostAttributes, initBlog } from '@/data/BlogPost';
-import { useAppContext } from '@/contexts/AppContext';
+import { useAppContext, ActionType } from '@/contexts/AppContext';
 import MediaPopup from '../popup/MediaPopup';
 import { ProductMedia } from '@/data/ProductAttributes';
 import { useRouter } from 'next/navigation';
@@ -49,7 +49,8 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
     setSelectedBlogPost,
     updateBlogPost,
     createBlogPost,
-    generateAIContent
+    generateAIContent,
+    currentAction
   } = useAppContext();
   const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
   const [confirmPopupOpen, setConfirmPopupOpen] = useState(false);
@@ -57,7 +58,7 @@ const BlogPostForm: React.FC<BlogPostFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [editorContent, setEditorContent] = useState('');
-  const formTitle = formData && formData?.id ? "Edit Blog Post" : "Add Blog Post";
+  const formTitle = currentAction.type === ActionType.EDIT ? "Edit Blog Post" : "Add Blog Post";
   const [form, setForm] = useState<BlogPostAttributes>(formData);
   const { blogCategories, fetchBlogCategories } = useAppContext();
   const router = useRouter();

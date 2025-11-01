@@ -19,74 +19,76 @@ import {
   FormControlLabel
 } from '@mui/material';
 import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
-import { BlogPostAttributes } from '@/data/BlogPost';
-import { fetchBlogList } from '@/services/blogService';
-import AddBlogFormPopup from '../popup/AddBlogFormPopup';
-import { BlogCategory } from '@/data/blogCategory';
+import { NewsAttributes } from '@/data/News';
+import NewsService from '@/services/NewsService';
 
-interface PickBlogProps {
-  onBlogSelect: (blog: BlogPostAttributes) => void;
+interface PickNewsProps {
+  onNewsSelect: (news: NewsAttributes) => void;
   disabled?: boolean;
 }
 
-const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) => {
-  const [blogs, setBlogs] = useState<BlogPostAttributes[]>([]);
+const PickNews: React.FC<PickNewsProps> = ({ onNewsSelect, disabled = false }) => {
+  const [news, setNews] = useState<NewsAttributes[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [selectedBlog, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
+  const [selectedNews, setSelectedNews] = useState<NewsAttributes | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [viewBlog, setViewBlog] = useState<BlogPostAttributes | null>(null);
+  const [viewNews, setViewNews] = useState<NewsAttributes | null>(null);
 
-  const fetchBlogs = async (pageNumber: number, pageSize: number) => {
+  const newsService = NewsService;
+
+  const fetchNews = async (pageNumber: number, pageSize: number) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetchBlogList({
+      const response = await newsService.getList({
         page: pageNumber + 1,
         limit: pageSize,
-        categoryId: '',
         search: '',
-        sortBy: '',
-        sortOrder: '',
-      }) as any;
+        status: 'active',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
 
-      if (response.data) {
-        setBlogs(response.data);
-        setTotal(response.pagination.total);
+      // Check if response has the correct structure
+      if (response && response.status === 'success' && response.data) {
+        setNews(response.data.data || response.data);
+        setTotal(response.data.total || 0);
+      } else if (response && response.status === 'fail') {
+        setError(response.message || 'Không thể tải danh sách tin tức');
       } else {
-        setError('Dữ liệu không đúng định dạng');
+        console.log('Unexpected response format:', response);
+        setError('Dữ liệu không đúng định dạng'); 
       }
     } catch (err) {
-      setError('Không thể tải danh sách blog. Vui lòng thử lại sau.');
-      console.error('Error fetching blogs:', err);
+      setError('Không thể tải danh sách tin tức. Vui lòng thử lại sau.');
+      console.error('Error fetching news:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBlogs(page, rowsPerPage);
+    fetchNews(page, rowsPerPage);
   }, [page, rowsPerPage]);
 
-  const handleSelectBlog = (blog: BlogPostAttributes) => {
-    // if (disabled) return;
-
-    setSelectedBlog(blog);
-    onBlogSelect(blog);
+  const handleSelectNews = (newsItem: NewsAttributes) => {
+    setSelectedNews(newsItem);
+    onNewsSelect(newsItem);
   };
 
-  const handleViewBlog = (blog: BlogPostAttributes) => {
-    setViewBlog(blog);
+  const handleViewNews = (newsItem: NewsAttributes) => {
+    setViewNews(newsItem);
     setIsModalOpen(true);
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
-    setViewBlog(null);
+    setViewNews(null);
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -100,25 +102,23 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
     setPage(0);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
-    }).format(new Date(date));
+    }).format(new Date(dateString));
   };
 
   const createExcerpt = (content: string, maxLength: number = 100) => {
-    const plainText = content.replace(/<[^>]*>/g, '');
+    if(!content) return '';
+    const plainText = content.replace(/<[^>]*>/g, '') || '';
     if (plainText.length <= maxLength) return plainText;
     return plainText.substr(0, plainText.lastIndexOf(' ', maxLength)) + '...';
   };
 
-  // Add empty categories array since we're only viewing
-  const emptyCategories: BlogCategory[] = [];
-
   return (
-    <DashboardCard title="Chọn Blog để đánh giá">
+    <DashboardCard title="Chọn Tin Tức để đánh giá">
       <>
         {loading ? (
           <Box display="flex" justifyContent="center" p={3}>
@@ -131,7 +131,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
               size="small"
               variant="outlined"
               sx={{ ml: 2 }}
-              onClick={() => fetchBlogs(page, rowsPerPage)}
+              onClick={() => fetchNews(page, rowsPerPage)}
               disabled={disabled}
             >
               Thử lại
@@ -147,35 +147,35 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
                     <TableCell>ID</TableCell>
                     <TableCell>Tiêu đề</TableCell>
                     <TableCell>Nội dung</TableCell>
-                    <TableCell>Danh mục</TableCell>
+                    <TableCell>Tác giả</TableCell>
                     <TableCell>Ngày đăng</TableCell>
                     <TableCell>Thao tác</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {blogs.map((blog) => (
+                  {news.map((newsItem) => (
                     <TableRow 
-                      key={blog.id}
-                      selected={selectedBlog?.id === blog.id}
+                      key={newsItem.id}
+                      selected={selectedNews?.id === newsItem.id}
                       hover
                     >
                       <TableCell padding="checkbox">
                         <Radio
-                          checked={selectedBlog?.id === blog.id}
-                          onChange={() => handleSelectBlog(blog)}
+                          checked={selectedNews?.id === newsItem.id}
+                          onChange={() => handleSelectNews(newsItem)}
                           disabled={disabled}
                         />
                       </TableCell>
-                      <TableCell>{blog.id}</TableCell>
+                      <TableCell>{newsItem.id}</TableCell>
                       <TableCell>
                         <Typography sx={{ fontWeight: 'bold' }}>
-                          {blog.title}
+                          {newsItem.title}
                         </Typography>
                       </TableCell>
-                      <TableCell>{createExcerpt(blog.content, 150)}</TableCell>
-                      <TableCell>{blog.blogCategoryId}</TableCell>
+                      <TableCell>{createExcerpt(newsItem.content, 150)}</TableCell>
+                      <TableCell>{newsItem.author}</TableCell>
                       <TableCell>
-                        {blog.publishedAt ? formatDate(blog.publishedAt) : 'N/A'}
+                        {newsItem.publishedAt ? formatDate(newsItem.publishedAt) : 'N/A'}
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1}>
@@ -183,7 +183,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
                             variant="outlined"
                             color="info"
                             size="small"
-                            onClick={() => handleViewBlog(blog)}
+                            onClick={() => handleViewNews(newsItem)}
                             disabled={disabled}
                           >
                             Xem
@@ -192,7 +192,7 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
                             variant="contained"
                             color="primary"
                             size="small"
-                            onClick={() => handleSelectBlog(blog)}
+                            onClick={() => handleSelectNews(newsItem)}
                             disabled={disabled}
                           >
                             Chọn
@@ -215,30 +215,51 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
               />
             </TableContainer>
 
-            <AddBlogFormPopup
-              open={isModalOpen}
-              isView={true}
-              onClose={handleModalClose}
-              onSubmit={() => {}}
-              formData={viewBlog || {
-                id: 0,
-                title: "",
-                content: "",
-                slug: "",
-                metaTitle: "",
-                metaDescription: "",
-                metaKeywords: "",
-                author: "",
-                publishedAt: new Date(),
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                blogCategoryId: 0,
-                avatarUrl: "",
-                status: "draft"
-              }}
-              onChange={(data) => {}}
-              categories={emptyCategories}
-            />
+            {/* News View Modal - You can create a separate component for this */}
+            {isModalOpen && viewNews && (
+              <Box
+                sx={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  zIndex: 1300,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+                onClick={handleModalClose}
+              >
+                <Paper
+                  sx={{
+                    maxWidth: '80%',
+                    maxHeight: '80%',
+                    overflow: 'auto',
+                    p: 3
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Typography variant="h5" gutterBottom>
+                    {viewNews.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Tác giả: {viewNews.author} | Ngày đăng: {formatDate(viewNews.publishedAt)}
+                  </Typography>
+                  <Typography variant="body1" sx={{ mt: 2 }}>
+                    {viewNews.content.replace(/<[^>]*>/g, '')}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={handleModalClose}
+                    sx={{ mt: 2 }}
+                  >
+                    Đóng
+                  </Button>
+                </Paper>
+              </Box>
+            )}
           </>
         )}
       </>
@@ -246,4 +267,4 @@ const PickBlog: React.FC<PickBlogProps> = ({ onBlogSelect, disabled = false }) =
   );
 };
 
-export default PickBlog;
+export default PickNews;

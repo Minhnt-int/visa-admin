@@ -596,9 +596,7 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
       <Button type="submit" variant="contained" color="primary" sx={{ mt: 3 }} disabled={isLoading}>
         {isEditMode ? 'Cập nhật Dịch vụ' : 'Tạo Dịch vụ'}
       </Button>
-      <Button type="submit" variant="contained" color="primary" sx={{ mt: 3 }} disabled={isLoading} onClick={() => console.log(serviceData)}>
-        Log
-      </Button>
+
 
       {/* Popups */}
       <MediaPopup

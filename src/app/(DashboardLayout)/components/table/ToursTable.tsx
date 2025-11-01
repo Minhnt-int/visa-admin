@@ -66,7 +66,7 @@ const ToursTable: React.FC = () => {
     total: 0,
   });
   const [confirmingPopup, setConfirmingPopup] = useState(false);
-  const [action, setAction] = useState<'delete' | 'restore' | 'activate'>('delete');
+  const [action, setAction] = useState<'softDelete' | 'hardDelete' | 'restore' | 'activate'>('softDelete');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -95,11 +95,8 @@ const ToursTable: React.FC = () => {
         search,
         sortBy,
         sortOrder: order,
+        status: statusFilter, // Luôn gửi status parameter
       };
-
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
 
       const result = await TourService.getAll(params);
       setTours(result.data);
@@ -139,10 +136,16 @@ const ToursTable: React.FC = () => {
     router.push(`/tour-du-lich/action?action=edit&slug=${slug}`);
   };
 
-  const handleDelete = (id: number) => {
+  const handleSoftDelete = (id: number) => {
     setSelectedId(id);
     setConfirmingPopup(true);
-    setAction('delete');
+    setAction('softDelete');
+  };
+
+  const handleHardDelete = (id: number) => {
+    setSelectedId(id);
+    setConfirmingPopup(true);
+    setAction('hardDelete');
   };
 
   const handleRestore = (id: number) => {
@@ -161,20 +164,20 @@ const ToursTable: React.FC = () => {
     if (!selectedId) return;
 
     try {
-      if (action === 'delete') {
-        if (statusFilter === 'inactive') {
-          // Nếu đang ở trạng thái inactive → xóa vĩnh viễn
-          await TourService.permanentlyDelete([selectedId]);
-          showSnackbar('Xóa vĩnh viễn tour thành công', 'success');
-        } else {
-          // Nếu đang ở trạng thái active → chuyển sang inactive (soft delete)
-          await TourService.changeStatus(selectedId, 'inactive');
-          showSnackbar('Đã chuyển tour sang trạng thái inactive', 'success');
-        }
+      if (action === 'softDelete') {
+        // Soft delete - chuyển sang inactive
+        await TourService.softDelete(selectedId);
+        showSnackbar('Đã chuyển tour sang trạng thái inactive', 'success');
+      } else if (action === 'hardDelete') {
+        // Hard delete - xóa vĩnh viễn
+        await TourService.delete(selectedId);
+        showSnackbar('Đã xóa tour vĩnh viễn', 'success');
       } else if (action === 'restore') {
-        await TourService.changeStatus(selectedId, 'active');
+        // Restore - khôi phục từ inactive
+        await TourService.restore(selectedId);
         showSnackbar('Khôi phục tour thành công', 'success');
       } else if (action === 'activate') {
+        // Activate - kích hoạt tour
         await TourService.changeStatus(selectedId, 'active');
         showSnackbar('Kích hoạt tour thành công', 'success');
       }
@@ -196,9 +199,7 @@ const ToursTable: React.FC = () => {
     switch (status) {
       case 'active':
         return 'success';
-      case 'draft':
-        return 'warning';
-      case 'deleted':
+      case 'inactive':
         return 'error';
       default:
         return 'default';
@@ -209,10 +210,8 @@ const ToursTable: React.FC = () => {
     switch (status) {
       case 'active':
         return 'Hoạt động';
-      case 'draft':
-        return 'Bản nháp';
-      case 'deleted':
-        return 'Đã xóa';
+      case 'inactive':
+        return 'Không hoạt động';
       default:
         return status;
     }
@@ -405,42 +404,43 @@ const ToursTable: React.FC = () => {
                           <IconEye size={18} />
                         </IconButton>
 
-                        {statusFilter === 'active' && (
-                          <>
-                            <IconButton
-                              onClick={() => handleEdit(row.slug)}
-                              sx={{
-                                color: 'primary.main',
-                                '&:hover': { backgroundColor: 'primary.light', color: 'primary.dark' }
-                              }}
-                            >
-                              <IconEdit size={18} />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDelete(row.id)}
-                              sx={{
-                                color: 'error.main',
-                                '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
-                              }}
-                            >
-                              <IconTrash size={18} />
-                            </IconButton>
-                          </>
-                        )}
+                        {/* Edit button - luôn hiển thị */}
+                        <IconButton
+                          onClick={() => handleEdit(row.slug)}
+                          sx={{
+                            color: 'primary.main',
+                            '&:hover': { backgroundColor: 'primary.light', color: 'primary.dark' }
+                          }}
+                        >
+                          <IconEdit size={18} />
+                        </IconButton>
 
-                        {statusFilter === 'inactive' && (
+                        {/* Buttons dựa trên status của từng item */}
+                        {(row.status as string === 'active') ? (
+                          // Tour đang active: chỉ có soft delete
+                          <IconButton
+                            onClick={() => handleSoftDelete(row.id)}
+                            sx={{
+                              color: 'error.main',
+                              '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
+                            }}
+                          >
+                            <IconTrash size={18} />
+                          </IconButton>
+                        ) : (
+                          // Tour đang inactive: có restore và hard delete
                           <>
                             <IconButton
-                              onClick={() => handleRestore(row.id)}
+                              onClick={() => handleActivate(row.id)}
                               sx={{
-                                color: 'info.main',
-                                '&:hover': { backgroundColor: 'info.light', color: 'info.dark' }
+                                color: 'success.main',
+                                '&:hover': { backgroundColor: 'success.light', color: 'success.dark' }
                               }}
                             >
                               <IconArrowBackUp size={18} />
                             </IconButton>
                             <IconButton
-                              onClick={() => handleDelete(row.id)}
+                              onClick={() => handleHardDelete(row.id)}
                               sx={{
                                 color: 'error.main',
                                 '&:hover': { backgroundColor: 'error.light', color: 'error.dark' }
@@ -508,14 +508,16 @@ const ToursTable: React.FC = () => {
         onClose={() => setConfirmingPopup(false)}
         onConfirm={executeAction}
         title={
-          action === 'delete' ? 'Xác nhận xóa' :
-            action === 'restore' ? 'Xác nhận khôi phục' :
-              'Xác nhận kích hoạt'
+          action === 'softDelete' ? 'Xác nhận xóa tạm thời' :
+            action === 'hardDelete' ? 'Xác nhận xóa vĩnh viễn' :
+              action === 'restore' ? 'Xác nhận khôi phục' :
+                'Xác nhận kích hoạt'
         }
         content={
-          action === 'delete' ? 'Bạn có chắc chắn muốn xóa tour này?' :
-            action === 'restore' ? 'Bạn có chắc chắn muốn khôi phục tour này?' :
-              'Bạn có chắc chắn muốn kích hoạt tour này?'
+          action === 'softDelete' ? 'Bạn có chắc chắn muốn chuyển tour sang trạng thái inactive?' :
+            action === 'hardDelete' ? 'Bạn có chắc chắn muốn xóa tour này vĩnh viễn? Hành động này không thể hoàn tác!' :
+              action === 'restore' ? 'Bạn có chắc chắn muốn khôi phục tour này?' :
+                'Bạn có chắc chắn muốn kích hoạt tour này?'
         }
       />
     </Card>

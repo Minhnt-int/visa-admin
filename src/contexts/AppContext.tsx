@@ -1,6 +1,10 @@
 "use client"
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { BlogPostAttributes } from '@/data/BlogPost';
+import { NewsAttributes } from '@/data/News';
+import { TourFormData } from '@/data/Tour';
+import NewsService from '@/services/NewsService';
+import TourService from '@/services/TourService';
 import VisaServiceAPI from '@/services/VisaService';
 import { ProductAttributes } from '@/data/ProductAttributes';
 import { BlogCategory } from '@/data/blogCategory';
@@ -54,7 +58,7 @@ interface ActionInfo {
   id?: number;
   slug?: string;
   timestamp: Date;
-  entityType?: 'blog' | 'blogCategory' | 'product' | 'productCategory' | 'order' | null;
+  entityType?: 'blog' | 'blogCategory' | 'product' | 'productCategory' | 'order' | 'news' | 'tour' | null;
 }
 
 // Interface cho AppContext
@@ -63,6 +67,20 @@ interface AppContextProps {
   blogs: BlogPostAttributes[];
   selectedBlog: BlogPostAttributes | null;
   selectedBlogPost: BlogPostAttributes | null;
+
+  // News State
+  selectedNews: NewsAttributes | null;
+  setSelectedNews: (news: NewsAttributes | null) => void;
+  createNews: (data: NewsAttributes) => Promise<NewsAttributes>;
+  updateNews: (data: NewsAttributes) => Promise<NewsAttributes>;
+  getNewsBySlug: (slug: string) => Promise<NewsAttributes>;
+  getNewsById: (id: number) => Promise<NewsAttributes>;
+
+  // Tour State
+  selectedTour: TourFormData | null;
+  setSelectedTour: (tour: TourFormData | null) => void;
+  createTour: (data: TourFormData) => Promise<any>;
+  updateTour: (data: TourFormData) => Promise<any>;
 
   // BlogCategory State
   blogCategories: BlogCategory[];
@@ -229,6 +247,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedBlog, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
   const [selectedBlogPost, setSelectedBlogPostState] = useState<BlogPostAttributes | null>(null);
 
+  // News State
+  const [selectedNews, setSelectedNews] = useState<NewsAttributes | null>(null);
+
+  // Tour State
+  const [selectedTour, setSelectedTour] = useState<TourFormData | null>(null);
+
   // BlogCategory State
   const [blogCategories, setBlogCategories] = useState<BlogCategory[]>([]);
   const [selectedBlogCategory, setSelectedBlogCategory] = useState<BlogCategory | null>(null);
@@ -285,7 +309,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Action method (chung)
   const setCurrentAction = useCallback((
     type: ActionType,
-    entityType: 'blog' | 'blogCategory' | 'product' | 'productCategory' | 'order' | null = null,
+    entityType: 'blog' | 'blogCategory' | 'product' | 'productCategory' | 'order' | 'news' | 'tour' | null = null,
     id?: number,
     slug?: string
   ) => {
@@ -1113,6 +1137,148 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [fetchBlogList, setCurrentAction]);
 
+  // News Methods
+  const createNews = useCallback(async (data: NewsAttributes) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.CREATE, 'news');
+      
+      const result = await NewsService.create(data);
+      
+      if (result.status === 'success') {
+        showMessage('Đã tạo tin tức thành công!', 'success');
+        setError(null);
+        return result.data;
+      } else {
+        const errorMsg = result.message || 'Không thể tạo tin tức';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setCurrentAction, showMessage]);
+
+  const updateNews = useCallback(async (data: NewsAttributes) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.EDIT, 'news');
+      
+      const result = await NewsService.update(data);
+      
+      if (result.status === 'success') {
+        showMessage('Đã cập nhật tin tức thành công!', 'success');
+        setError(null);
+        return result.data;
+      } else {
+        const errorMsg = result.message || 'Không thể cập nhật tin tức';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setCurrentAction, showMessage]);
+
+  const getNewsBySlug = useCallback(async (slug: string) => {
+    try {
+      setLoading(true);
+      const result = await NewsService.getBySlug(slug);
+      setSelectedNews(result);
+      return result;
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Không thể lấy tin tức';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setSelectedNews, showMessage]);
+
+  const getNewsById = useCallback(async (id: number) => {
+    try {
+      setLoading(true);
+      const result = await NewsService.getById(id);
+      setSelectedNews(result);
+      return result;
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Không thể lấy tin tức';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setSelectedNews, showMessage]);
+
+  // Tour Methods
+  const createTour = useCallback(async (data: TourFormData) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.CREATE, 'tour');
+      
+      const result = await TourService.create(data);
+      
+      if (result.message === 'Tour created successfully') {
+        showMessage('Đã tạo tour thành công!', 'success');
+        setError(null);
+        return result.data;
+      } else {
+        const errorMsg = result.message || 'Không thể tạo tour';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setCurrentAction, showMessage]);
+
+  const updateTour = useCallback(async (data: TourFormData) => {
+    try {
+      setLoading(true);
+      setCurrentAction(ActionType.EDIT, 'tour');
+      
+      const result = await TourService.update(data.id!, data);
+      
+      if (result.message === 'Tour updated successfully') {
+        showMessage('Đã cập nhật tour thành công!', 'success');
+        setError(null);
+        return result.data;
+      } else {
+        const errorMsg = result.message || 'Không thể cập nhật tour';
+        setError(errorMsg);
+        showMessage(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Đã xảy ra lỗi';
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setCurrentAction, showMessage]);
+
   // AI Actions
   const handleGenerateAIContent = useCallback(async (title: string, mode: 'product' | 'blog' | 'category' | 'evaluate' = 'blog'): Promise<{ data: string }> => {
     try {
@@ -1268,6 +1434,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     blogs,
     selectedBlog,
     selectedBlogPost,
+
+    // News State
+    selectedNews,
+    setSelectedNews,
+    createNews,
+    updateNews,
+    getNewsBySlug,
+    getNewsById,
+
+    // Tour State
+    selectedTour,
+    setSelectedTour,
+    createTour,
+    updateTour,
 
     // BlogCategory State
     blogCategories,

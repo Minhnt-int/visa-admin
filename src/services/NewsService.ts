@@ -1,11 +1,11 @@
 import instance from '../../axiosConfig';
-import { News, NewsSummary, NewsFormData } from '../data/News';
+import { NewsAttributes } from '../data/News';
 
-const API_URL = '/api/news';
-
-interface ApiResponse {
-  data: NewsSummary[];
-  pagination: {
+export interface NewsListResponse {
+  status: 'success' | 'fail' | 'error';
+  message: string;
+  data: {
+    data: NewsAttributes[];
     total: number;
     page: number;
     limit: number;
@@ -13,114 +13,160 @@ interface ApiResponse {
   };
 }
 
-interface SingleApiResponse {
-  status: string;
+export interface NewsResponse {
+  status: 'success' | 'fail' | 'error';
   message: string;
-  data: News;
+  data: NewsAttributes;
 }
 
-class NewsServiceClass {
-  async getAll(params: {
+class NewsService {
+  /**
+   * Lấy danh sách tin tức với phân trang và tìm kiếm
+   */
+  async getList(params?: {
     page?: number;
     limit?: number;
     search?: string;
     keyword?: string;
     status?: 'active' | 'inactive';
     sortBy?: string;
-    sortOrder?: 'ASC' | 'DESC';
-  } = {}): Promise<ApiResponse> {
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<NewsListResponse> {
     try {
-      const response = await instance.get(API_URL, { params });
-      // Backend returns { status, message, data: { data, total, page, limit, totalPages } }
-      // Backend response structure: { status, message, data: { data, total, page, limit, totalPages } }
-      const responseData = response.data.data;
-      return {
-        data: responseData.data,
-        pagination: {
-          total: responseData.total,
-          page: responseData.page,
-          limit: responseData.limit,
-          totalPages: responseData.totalPages,
-        },
-      };
-    } catch (error) {
-      console.error('Error fetching all news:', error);
-      throw error;
+      const response = await instance.get('/api/news', { params });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy danh sách tin tức');
     }
   }
 
-  async getBySlug(slug: string): Promise<News> {
+  /**
+   * Lấy tin tức theo slug
+   */
+  async getBySlug(slug: string): Promise<NewsAttributes> {
     try {
-      const response = await instance.get(`${API_URL}/${slug}`);
+      const response = await instance.get(`/api/news/${slug}`);
       return response.data.data;
-    } catch (error) {
-      console.error(`Error fetching news with slug ${slug}:`, error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy tin tức');
     }
   }
 
-  async create(newsData: NewsFormData): Promise<News> {
+  /**
+   * Lấy tin tức theo ID
+   */
+  async getById(id: number): Promise<NewsAttributes> {
     try {
-      const response = await instance.post(`${API_URL}/create`, newsData);
+      const response = await instance.get(`/api/news/by-id/${id}`);
       return response.data.data;
-    } catch (error) {
-      console.error('Error creating news:', error);
-      throw error;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy tin tức');
     }
   }
 
-  async update(slug: string, newsData: Partial<NewsFormData>): Promise<News> {
+  /**
+   * Tạo tin tức mới
+   */
+  async create(data: NewsAttributes): Promise<NewsResponse> {
     try {
-      const response = await instance.put(`${API_URL}/update/${slug}`, newsData);
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error updating news with slug ${slug}:`, error);
-      throw error;
-    }
-  }
-
-  async changeStatus(id: number, status: 'active' | 'inactive'): Promise<News> {
-    try {
-      const response = await instance.patch(`${API_URL}/by-id/${id}/status`, { status });
-      return response.data.data;
-    } catch (error) {
-      console.error(`Error changing status for news with id ${id}:`, error);
-      throw error;
-    }
-  }
-
-  async delete(ids: number[]): Promise<void> {
-    try {
-      await instance.delete(`${API_URL}/delete`, {
-        data: { ids },
+      const response = await instance.post('/api/news/create', {
+        title: data.title,
+        content: data.content,
+        slug: data.slug,
+        image_url: data.imageUrl,
+        excerpt: data.excerpt,
+        meta_keywords: data.metaKeywords,
+        author: data.author,
+        published_at: data.publishedAt,
+        read_time: data.readTime,
+        status: data.status || 'published'
       });
-    } catch (error) {
-      console.error('Error deleting news:', error);
-      throw error;
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể tạo tin tức');
     }
   }
 
-  async permanentlyDelete(ids: number[]): Promise<void> {
+  /**
+   * Cập nhật tin tức
+   */
+  async update(data: NewsAttributes): Promise<NewsResponse> {
     try {
-      await instance.delete(`${API_URL}/delete/permanent`, {
-        data: { ids },
+      const response = await instance.put('/api/news/update', {
+        id: data.id, // Sử dụng ID thay vì slug để identify record
+        slug: data.slug,
+        title: data.title,
+        content: data.content,
+        image_url: data.imageUrl,
+        excerpt: data.excerpt,
+        meta_keywords: data.metaKeywords
       });
-    } catch (error) {
-      console.error('Error permanently deleting news:', error);
-      throw error;
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể cập nhật tin tức');
     }
   }
 
-  async restore(ids: number[]): Promise<void> {
+  /**
+   * Soft delete tin tức (chuyển sang inactive)
+   */
+  async softDelete(ids: number[]): Promise<{ status: 'success' | 'fail'; message: string }> {
     try {
-      await instance.put(`${API_URL}/restore`, { ids });
-    } catch (error) {
-      console.error('Error restoring news:', error);
-      throw error;
+      const promises = ids.map(id => 
+        instance.patch(`/api/news/by-id/${id}/status`, { status: 'inactive' })
+      );
+      const responses = await Promise.all(promises);
+      return { status: 'success', message: `Đã chuyển ${ids.length} bài viết thành inactive` };
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể chuyển trạng thái tin tức');
+    }
+  }
+
+  /**
+   * Hard delete tin tức (xóa vĩnh viễn)
+   */
+  async delete(ids: number[]): Promise<{ status: 'success' | 'fail'; message: string }> {
+    try {
+      const response = await instance.delete('/api/news/delete', {
+        data: { ids }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể xóa tin tức');
+    }
+  }
+
+  /**
+   * Lấy tất cả tin tức (không phân trang)
+   */
+  async getAll(params?: {
+    search?: string;
+    keyword?: string;
+    status?: 'active' | 'inactive';
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<NewsListResponse> {
+    try {
+      const response = await instance.get('/api/news', { params });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể lấy danh sách tin tức');
+    }
+  }
+
+  /**
+   * Thay đổi trạng thái tin tức
+   */
+  async changeStatus(id: number, status: 'active' | 'inactive'): Promise<{ status: 'success' | 'fail'; message: string }> {
+    try {
+      const response = await instance.patch(`/api/news/by-id/${id}/status`, {
+        status
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Không thể thay đổi trạng thái tin tức');
     }
   }
 }
 
-const NewsService = new NewsServiceClass();
-export default NewsService;
-
+export default new NewsService();

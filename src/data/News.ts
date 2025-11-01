@@ -26,6 +26,7 @@ export interface NewsSummary {
   imageUrl: string;
   author: string;
   publishedAt: string;
+  date?: string; // Backend trả về date thay vì publishedAt
   readTime: number;
   metaKeywords: string;
   status: 'active' | 'inactive';
@@ -45,5 +46,11 @@ export interface NewsFormData {
   metaDescription: string;
   metaKeywords: string;
   status: 'active' | 'inactive';
+}
+
+export interface NewsAttributes extends NewsFormData {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
 }
 

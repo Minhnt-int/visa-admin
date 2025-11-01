@@ -1,43 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import PickBlog from './PickBlog';
-import { BlogPostAttributes } from '@/data/BlogPost';
+import PickNews from './PickNews';
+import { NewsAttributes } from '@/data/News';
 import Scoring from './Scoring';
 import { Box, CircularProgress } from '@mui/material';
 import { useAppContext } from '@/contexts/AppContext';
 
-interface ScoringBlogProps {
+interface ScoringNewsProps {
 }
 
-const ScoringBlog: React.FC<any> = ({ }) => {
-    const { generateAIContent, fetchBlogPostBySlug, selectedBlogPost, clearSelectedBlog } = useAppContext();
+const ScoringNews: React.FC<any> = ({ }) => {
+    const { generateAIContent } = useAppContext();
 
-    const [selected, setSelectedBlog] = useState<BlogPostAttributes | null>(null);
+    const [selected, setSelectedNews] = useState<NewsAttributes | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [loading, setLoading] = useState(false);
     const [analysis, setAnalysis] = useState<string>('');
     
     // Reset state when component mounts
     useEffect(() => {
-        setSelectedBlog(null);
+        setSelectedNews(null);
         setAnalysis('');
-        clearSelectedBlog();
-    }, [clearSelectedBlog]);
+    }, []);
     
-    const onBlogSelect = async (blog: BlogPostAttributes) => {
+    const onNewsSelect = async (news: NewsAttributes) => {
         setLoading(true);
         try {
-            await fetchBlogPostBySlug(blog.slug);
-            setSelectedBlog(selectedBlogPost);
+            setSelectedNews(news);
             
-            if (selectedBlogPost?.content) {
-                const result = await generateAIContent(selectedBlogPost.content, 'evaluate');
+            if (news?.content) {
+                const result = await generateAIContent(news.content, 'evaluate');
                 let data = result as any;
                 if (data.result) {
                     setAnalysis(data.result);
                 }
             }
         } catch (error) {
-            console.error('Error in blog selection process:', error);
+            console.error('Error in news selection process:', error);
         } finally {
             setLoading(false);
             setRefreshKey(prevKey => prevKey + 1);
@@ -50,8 +48,8 @@ const ScoringBlog: React.FC<any> = ({ }) => {
 
     return (
         <>
-            <PickBlog 
-                onBlogSelect={onBlogSelect} 
+            <PickNews 
+                onNewsSelect={onNewsSelect} 
                 disabled={loading}
             />
             
@@ -76,7 +74,7 @@ const ScoringBlog: React.FC<any> = ({ }) => {
             
             <Scoring 
                 key={refreshKey} 
-                blogContent={selected?.content || ''}
+                newsContent={selected?.content || ''}
                 analysis={analysis}
                 onLoadingChange={handleLoadingChange}
             />
@@ -84,4 +82,4 @@ const ScoringBlog: React.FC<any> = ({ }) => {
     );
 };
 
-export default ScoringBlog;
+export default ScoringNews;

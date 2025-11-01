@@ -27,54 +27,6 @@ const Menuitems = [
   },
   {
     navlabel: true,
-    subheader: "Sản Phẩm",
-  },
-  {
-    id: uniqueId(),
-    title: "Quản lý Sản Phẩm",
-    icon: IconTablePlus,
-    href: "/san-pham",
-  },
-  // {
-  //   id: uniqueId(),
-  //   title: "Lượt Xem Sản Phẩm",
-  //   icon: IconEye,
-  //   href: "/san-pham",
-  // },
-  {
-    id: uniqueId(),
-    title: "Quản lý danh mục",
-    icon: IconCategory,
-    href: "/danh-muc-san-pham",
-  },
-  {
-    navlabel: true,
-    subheader: "Bài viết",
-  },
-  {
-    id: uniqueId(),
-    title: "Quản lý blog",
-    icon: IconNews,
-    href: "/bai-viet",
-  },
-  {
-    id: uniqueId(),
-    title: "Danh mục bài viết",
-    icon: IconCategoryFilled,
-    href: "/danh-muc-bai-viet",
-  },
-  {
-    navlabel: true,
-    subheader: "Quản lý đơn hàng",
-  },
-  {
-    id: uniqueId(),
-    title: "Đơn hàng",
-    icon: IconArticle,
-    href: "/don-hang",
-  },
-  {
-    navlabel: true,
     subheader: "Quản lý dịch vụ Visa",
   },
   {

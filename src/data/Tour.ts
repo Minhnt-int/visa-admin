@@ -72,7 +72,6 @@ export interface Tour {
   services: TourServices; // JSON object
   terms: TourTerms; // JSON object
   whyChooseUs: WhyChooseUs[]; // JSON array
-  tags: string[]; // JSON array
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string;
@@ -100,6 +99,7 @@ export interface TourSummary {
 }
 
 export interface TourFormData {
+  id?: number;
   slug: string;
   name: string;
   categoryId: number;
@@ -119,7 +119,6 @@ export interface TourFormData {
   services: TourServices;
   terms: TourTerms;
   whyChooseUs: WhyChooseUs[];
-  tags: string[];
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string;

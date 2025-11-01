@@ -19,19 +19,43 @@ class VisaServiceClass {
       limit?: number;
       search?: string;
       tags?: string;
-      status?: 'active' | 'inactive';
+      status?: 'active' | 'inactive' | 'all';
       sortBy?: string;
       sortOrder?: string;
     } = {}): Promise<ApiResponse> {
     try {
       const response = await instance.get(API_URL, { params });
+      
       // Backend response structure: { status, message, data: { data, total, page, limit, totalPages } }
-      const responseData = response.data.data;
-      console.log('API Response for getAll:', response.data);
-      console.log('Response data:', responseData);
-      const mapped: VisaServiceSummary[] = (responseData.data || []).map((item: any) => ({
-        id: item.id || 0, // Database ID (number)
-        slug: item.slug || '', // URL slug (string)
+      // axios already unwraps response.data, so response.data = { status, message, data: {...} }
+      const backendData = response.data;
+      
+      if (!backendData || !backendData.data) {
+        console.error('Invalid response structure:', backendData);
+        return {
+          data: [],
+          pagination: { total: 0, page: 1, pageSize: params.limit || 10 }
+        };
+      }
+      
+      // Check response structure - backend returns { status, message, data: { data: [...], total, ... } }
+      let responseData;
+      if (backendData.data && typeof backendData.data === 'object' && 'data' in backendData.data) {
+        // Standard format: backendData.data = { data: [...], total, page, limit, totalPages }
+        responseData = backendData.data;
+      } else if (Array.isArray(backendData.data)) {
+        // Fallback: backendData.data is directly an array
+        responseData = { data: backendData.data, total: backendData.data.length, page: 1, limit: params.limit || 10 };
+      } else {
+        // Fallback: try response.data directly
+        responseData = backendData;
+      }
+      
+      const dataArray = Array.isArray(responseData.data) ? responseData.data : [];
+      
+      const mapped: VisaServiceSummary[] = dataArray.map((item: any) => ({
+        id: item.id || 0,
+        slug: item.slug || '',
         title: item.title,
         countryName: item.country || item.countryName || item.country_name || '-',
         successRate: item.success_rate || item.successRate || '-',
@@ -39,24 +63,27 @@ class VisaServiceClass {
         status: (item.status as 'active' | 'inactive') || 'active',
         createdAt: item.created_at || item.createdAt || new Date().toISOString(),
       }));
+      
       return {
         data: mapped,
         pagination: {
-          total: responseData.total,
-          page: responseData.page,
-          pageSize: responseData.limit,
+          total: responseData.total || 0,
+          page: responseData.page || 1,
+          pageSize: responseData.limit || params.limit || 10,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching all visa services:', error);
-      throw error;
+      return {
+        data: [],
+        pagination: { total: 0, page: 1, pageSize: params.limit || 10 }
+      };
     }
   }
 
   async getBySlug(slug: string): Promise<VisaService> {
     try {
       const response = await instance.get(`${API_URL}/${slug}`);
-      console.log('API Response:', response.data);
       const apiData: VisaServiceApiResponse = response.data.data.data;
       return mapApiResponseToVisaService(apiData);
     } catch (error) {
@@ -68,7 +95,9 @@ class VisaServiceClass {
   async create(serviceData: Omit<VisaService, 'id' | 'createdAt' | 'updatedAt'>): Promise<VisaService> {
     try {
       const response = await instance.post(API_URL + '/create', serviceData);
-      return response.data.data.data;
+      // Backend response: { status: 'success', message: '...', data: {...} }
+      const apiData: VisaServiceApiResponse = response.data.data;
+      return mapApiResponseToVisaService(apiData);
     } catch (error) {
       console.error('Error creating visa service:', error);
       throw error;
@@ -98,7 +127,9 @@ class VisaServiceClass {
           'Content-Type': 'multipart/form-data',
         },
       });
-      return response.data.data.data;
+      // Backend response: { status: 'success', message: '...', data: {...} }
+      const apiData: VisaServiceApiResponse = response.data.data;
+      return mapApiResponseToVisaService(apiData);
     } catch (error) {
       console.error(`Error updating visa service with slug ${slug}:`, error);
       throw error;
@@ -125,11 +156,14 @@ class VisaServiceClass {
     try {
       // First get all services and find by ID
       const response = await instance.get(API_URL);
-      const service = response.data.data.find((s: any) => s.id === id);
+      // Backend response structure: { status, message, data: { data: [...], total, page, limit, totalPages } }
+      const responseData = response.data.data;
+      const services = responseData.data || [];
+      const service = services.find((s: any) => s.id === id);
       if (!service) {
         throw new Error(`Service with id ${id} not found`);
       }
-      return service;
+      return mapApiResponseToVisaService(service);
     } catch (error) {
       console.error(`Error fetching visa service with id ${id}:`, error);
       throw error;
