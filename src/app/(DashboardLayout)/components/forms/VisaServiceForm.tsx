@@ -353,6 +353,9 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
             <TextField name="title" label="Tên Dịch Vụ" value={serviceData?.title ?? ''} onChange={handleChange} fullWidth required />
           </Grid>
           <Grid item xs={12} sm={6}>
+            <TextField name="slug" label="Slug" value={serviceData?.slug ?? ''} onChange={handleChange} fullWidth required />
+          </Grid>
+          <Grid item xs={12} sm={6}>
             <TextField name="countryName" label="Tên Quốc Gia" value={serviceData?.countryName ?? ''} onChange={handleChange} fullWidth required />
           </Grid>
           <Grid item xs={12} sm={6}>

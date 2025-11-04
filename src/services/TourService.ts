@@ -127,10 +127,29 @@ class TourService {
    */
   async getBySlug(slug: string): Promise<Tour> {
     try {
-      const response = await instance.get(`/api/tours/${slug}`);
-      return response.data.data;
+      // Thêm timestamp vào params để bypass cache
+      const response = await instance.get(`/api/tours/${slug}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        params: {
+          _t: Date.now()
+        }
+      });
+      
+      // Xử lý cả trường hợp response.data.data và response.data trực tiếp
+      const tourData = response.data?.data || response.data;
+      
+      if (!tourData) {
+        throw new Error('Không tìm thấy dữ liệu tour');
+      }
+      
+      return tourData;
     } catch (error: any) {
-      throw new Error(error?.response?.data?.message || 'Không thể lấy tour');
+      const errorMessage = error?.response?.data?.message || error?.message || 'Không thể lấy tour';
+      throw new Error(errorMessage);
     }
   }
 
@@ -142,7 +161,6 @@ class TourService {
       const response = await instance.post('/api/tours', {
         slug: data.slug,
         name: data.name,
-        categoryId: data.categoryId,
         country: data.country,
         duration: data.duration,
         price: data.price,
@@ -177,8 +195,8 @@ class TourService {
     try {
       const response = await instance.put('/api/tours', {
         id: id,
+        slug: data.slug, // Include slug for update
         name: data.name,
-        categoryId: data.categoryId,
         country: data.country,
         duration: data.duration,
         price: data.price,

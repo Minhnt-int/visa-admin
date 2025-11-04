@@ -3,6 +3,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { CustomUploadAdapterPlugin } from './uploadAdapter';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import MediaPopup from '../popup/MediaPopup';
+import { ProductMedia } from '@/data/ProductAttributes';
+import { Button, Box } from '@mui/material';
+import { Image as ImageIcon } from '@mui/icons-material';
 
 interface CKEditorWrapperProps {
   disabled?: boolean;
@@ -15,8 +19,9 @@ export default function CKEditorWrapper({ disabled = false, onChange, value, pla
 	const editorContainerRef = useRef(null);
 	const editorRef = useRef(null);
 	const [isLayoutReady, setIsLayoutReady] = useState(false);
-	const [editorInstance, setEditorInstance] = useState(null);
+	const [editorInstance, setEditorInstance] = useState<any>(null);
 	const [wordStats, setWordStats] = useState({ words: 0, characters: 0 });
+	const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
 
 	useEffect(() => {
 		setIsLayoutReady(true);
@@ -33,6 +38,34 @@ export default function CKEditorWrapper({ disabled = false, onChange, value, pla
 			}
 		}
 	}, [editorInstance, value]);
+
+
+	// Handle media selection from MediaPopup
+	const handleMediaSelect = (media: ProductMedia) => {
+		if (!editorInstance) return;
+
+		// Build full URL - MediaPopup trả về URL đã có format /api/media/serve/...
+		const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+		// URL từ API đã có format /api/media/serve/filename.jpg
+		const imageUrl = media.url.startsWith('http') 
+			? media.url 
+			: media.url.startsWith('/') 
+				? `${apiUrl}${media.url}` 
+				: `${apiUrl}/api/media/serve/${media.url}`;
+		
+		// Insert image into editor
+		editorInstance.model.change((writer: any) => {
+			const imageElement = writer.createElement('imageBlock', {
+				src: imageUrl,
+				alt: media.altText || media.name || ''
+			});
+
+			// Insert at current selection position
+			editorInstance.model.insertContent(imageElement, editorInstance.model.document.selection);
+		});
+
+		setIsMediaPopupOpen(false);
+	};
 
 	const deleteImageFromServer = (src : any) => {
 		// Implement API call to delete image from server
@@ -109,6 +142,27 @@ export default function CKEditorWrapper({ disabled = false, onChange, value, pla
 
 	return (
 		<>
+			{/* Button để mở Media Library - đặt ngay trên toolbar */}
+			<Box sx={{ 
+				mb: 1, 
+				display: 'flex', 
+				justifyContent: 'flex-end',
+				gap: 1
+			}}>
+				<Button
+					variant="outlined"
+					size="small"
+					startIcon={<ImageIcon />}
+					onClick={() => setIsMediaPopupOpen(true)}
+					sx={{
+						textTransform: 'none',
+						fontSize: '14px'
+					}}
+				>
+					Thư viện ảnh
+				</Button>
+			</Box>
+			
 			<div className="editor-container editor-container_classic-editor editor-container_include-style" 
 				 ref={editorContainerRef}>
 				<div className="editor-container__editor">
@@ -140,6 +194,16 @@ export default function CKEditorWrapper({ disabled = false, onChange, value, pla
 			}}>
 				Số từ: {wordStats.words} | Số ký tự: {wordStats.characters}
 			</div>
+
+			{/* Media Library Popup */}
+			<MediaPopup
+				open={isMediaPopupOpen}
+				onClose={() => setIsMediaPopupOpen(false)}
+				onSelect={handleMediaSelect}
+				listMedia={[]} // MediaPopup sẽ tự fetch media từ API
+				onSubmit={() => {}}
+				isView={false}
+			/>
 		</>
 	);
 }

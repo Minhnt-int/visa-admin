@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
-  // Danh sách các đường dẫn không cần xác thực
+  // Danh sách các đường dẫn không cần xác thực (chính xác hơn)
   const publicPaths = [
     '/authentication/login',
     '/authentication/register',
@@ -16,35 +16,52 @@ export function middleware(request: NextRequest) {
   ];
   
   // Kiểm tra nếu đường dẫn hiện tại là public
-  const isPublicPath = publicPaths.some(pp => 
-    path === pp || path.startsWith(pp)
-  );
+  const isPublicPath = publicPaths.some(pp => {
+    if (pp === '/_next') {
+      return path.startsWith('/_next');
+    }
+    if (pp === '/api/auth') {
+      return path.startsWith('/api/auth');
+    }
+    return path === pp || path.startsWith(pp + '/');
+  });
   
   if (isPublicPath) {
     return NextResponse.next();
   }
   
-  // Kiểm tra tất cả các token có thể
+  // KIỂM TRA TOKEN - BẮT BUỘC PHẢI CÓ
+  const cookieToken = request.cookies.get('accessToken')?.value;
   const nextAuthToken = request.cookies.get('next-auth.session-token')?.value || 
                         request.cookies.get('__Secure-next-auth.session-token')?.value;
-  const cookieToken = request.cookies.get('accessToken')?.value;
-  const authHeader = request.headers.get('authorization');
-  const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   
-  const isAuthenticated = !!nextAuthToken || !!cookieToken || !!headerToken;
+  // Ưu tiên kiểm tra accessToken từ cookie (hệ thống mới)
+  const hasAccessToken = !!cookieToken && cookieToken.trim().length > 0;
+  const hasNextAuthToken = !!nextAuthToken && nextAuthToken.trim().length > 0;
   
-  console.log('Middleware check:', {
-    path,
-    isPublicPath,
-    hasToken: isAuthenticated,
-  });
+  const isAuthenticated = hasAccessToken || hasNextAuthToken;
   
-  // Nếu không có token, chuyển hướng đến trang đăng nhập
-  if (!isAuthenticated) {
-    console.log('Redirecting to login, no valid token found');
-    return NextResponse.redirect(new URL('/authentication/login', request.url));
+  // Debug log
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔒 Middleware Auth Check:', {
+      path,
+      isPublicPath,
+      hasAccessToken: !!cookieToken,
+      hasNextAuthToken: !!nextAuthToken,
+      isAuthenticated,
+    });
   }
   
+  // NẾU KHÔNG CÓ TOKEN, CHUYỂN HƯỚNG ĐẾN TRANG ĐĂNG NHẬP
+  if (!isAuthenticated) {
+    console.warn('❌ Unauthenticated access attempt, redirecting to login:', path);
+    const loginUrl = new URL('/authentication/login', request.url);
+    // Thêm redirect URL để có thể quay lại sau khi login
+    loginUrl.searchParams.set('redirect', path);
+    return NextResponse.redirect(loginUrl);
+  }
+  
+  // Có token, cho phép truy cập
   return NextResponse.next();
 }
 

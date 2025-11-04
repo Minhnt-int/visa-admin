@@ -12,29 +12,39 @@ const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          if (!process.env.NEXT_PUBLIC_API_URL) {
-            throw new Error("API URL is not configured");
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+          
+          // Backend API yêu cầu email, không phải username
+          const loginField = credentials?.username || credentials?.email;
+          
+          if (!loginField || !credentials?.password) {
+            throw new Error("Email and password are required");
           }
 
-          const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/api/auth/login-token", {
+          const res = await fetch(`${apiUrl}/api/auth/login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              username: credentials?.username,
-              password: credentials?.password,
+              email: loginField, // Backend yêu cầu email
+              password: credentials.password,
             }),
           });
           
-          const user = await res.json();
+          const data = await res.json();
           
-          if (res.ok && user) {
+          // Kiểm tra response format mới: { success: true, data: { accessToken, refreshToken, user } }
+          if (res.ok && data.success && data.data) {
+            const { accessToken, refreshToken, user } = data.data;
+            
             return {
               id: user.id,
               name: user.name,
               email: user.email,
-              accessToken: user.accessToken
+              role: user.role,
+              accessToken: accessToken,
+              refreshToken: refreshToken
             };
           }
           

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Header from "@/app/(DashboardLayout)/layout/header/Header";
 import Sidebar from "@/app/(DashboardLayout)/layout/sidebar/Sidebar";
 import { AppProvider, useAppContext } from "@/contexts/AppContext";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const MainWrapper = styled("div")(() => ({
   display: "flex",
@@ -33,46 +34,48 @@ export default function RootLayout({
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   return (
-    <AppProvider>
-      <MainWrapper className="mainwrapper">
-        {/* ------------------------------------------- */}
-        {/* Sidebar */}
-        {/* ------------------------------------------- */}
-        <Sidebar
-          isSidebarOpen={isSidebarOpen}
-          isMobileSidebarOpen={isMobileSidebarOpen}
-          onSidebarClose={() => setMobileSidebarOpen(false)}
-        />
-        {/* ------------------------------------------- */}
-        {/* Main Wrapper */}
-        {/* ------------------------------------------- */}
-        <PageWrapper className="page-wrapper">
+    <AuthGuard>
+      <AppProvider>
+        <MainWrapper className="mainwrapper">
           {/* ------------------------------------------- */}
-          {/* Header */}
+          {/* Sidebar */}
           {/* ------------------------------------------- */}
-          <Header toggleMobileSidebar={() => setMobileSidebarOpen(true)} />
+          <Sidebar
+            isSidebarOpen={isSidebarOpen}
+            isMobileSidebarOpen={isMobileSidebarOpen}
+            onSidebarClose={() => setMobileSidebarOpen(false)}
+          />
           {/* ------------------------------------------- */}
-          {/* PageContent */}
+          {/* Main Wrapper */}
           {/* ------------------------------------------- */}
-          <Container
-            sx={{
-              paddingTop: "20px",
-              maxWidth: "1200px",
-            }}
-          >
+          <PageWrapper className="page-wrapper">
             {/* ------------------------------------------- */}
-            {/* Page Route */}
+            {/* Header */}
             {/* ------------------------------------------- */}
-            <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
-              {/* Bỏ LoadingWrapper, render trực tiếp children */}
-              {children}
-            </Box>
+            <Header toggleMobileSidebar={() => setMobileSidebarOpen(true)} />
             {/* ------------------------------------------- */}
-            {/* End Page */}
+            {/* PageContent */}
             {/* ------------------------------------------- */}
-          </Container>
-        </PageWrapper>
-      </MainWrapper>
-    </AppProvider>
+            <Container
+              sx={{
+                paddingTop: "20px",
+                maxWidth: "1200px",
+              }}
+            >
+              {/* ------------------------------------------- */}
+              {/* Page Route */}
+              {/* ------------------------------------------- */}
+              <Box sx={{ minHeight: "calc(100vh - 170px)" }}>
+                {/* Bỏ LoadingWrapper, render trực tiếp children */}
+                {children}
+              </Box>
+              {/* ------------------------------------------- */}
+              {/* End Page */}
+              {/* ------------------------------------------- */}
+            </Container>
+          </PageWrapper>
+        </MainWrapper>
+      </AppProvider>
+    </AuthGuard>
   );
 }

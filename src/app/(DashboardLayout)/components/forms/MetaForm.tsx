@@ -6,8 +6,14 @@ import {
   TextField,
   Button,
   Typography,
-  Stack
+  Stack,
+  Box,
+  IconButton
 } from '@/config/mui';
+import { InputAdornment } from '@mui/material';
+import { Image as ImageIcon } from '@mui/icons-material';
+import MediaPopup from '../popup/MediaPopup';
+import { ProductMedia } from '@/data/ProductAttributes';
 
 interface MetaSEOAttributes {
   id?: number;
@@ -39,6 +45,7 @@ const MetaForm: React.FC<MetaFormProps> = ({
 }) => {
   const [form, setForm] = useState<MetaSEOAttributes>(formData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isMediaPopupOpen, setIsMediaPopupOpen] = useState(false);
 
   useEffect(() => {
     setForm(formData);
@@ -83,6 +90,21 @@ const MetaForm: React.FC<MetaFormProps> = ({
     }
     
     onSubmit(form);
+  };
+
+  // Handle media selection from MediaPopup
+  const handleMediaSelect = (media: ProductMedia) => {
+    // Build full URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const imageUrl = media.url.startsWith('http') 
+      ? media.url 
+      : media.url.startsWith('/') 
+        ? `${apiUrl}${media.url}` 
+        : `${apiUrl}/api/media/serve/${media.url}`;
+    
+    // Update ogImage with selected media URL
+    handleChange('ogImage', imageUrl);
+    setIsMediaPopupOpen(false);
   };
 
   return (
@@ -136,7 +158,7 @@ const MetaForm: React.FC<MetaFormProps> = ({
               <TextField
                 fullWidth
                 label="Description"
-                value={form.description}
+                value={form.description || ''}
                 onChange={(e) => handleChange('description', e.target.value)}
                 disabled={isView}
                 multiline
@@ -148,7 +170,7 @@ const MetaForm: React.FC<MetaFormProps> = ({
               <TextField
                 fullWidth
                 label="Keywords"
-                value={form.keywords}
+                value={form.keywords || ''}
                 onChange={(e) => handleChange('keywords', e.target.value)}
                 disabled={isView}
                 multiline
@@ -160,7 +182,7 @@ const MetaForm: React.FC<MetaFormProps> = ({
               <TextField
                 fullWidth
                 label="OG Title"
-                value={form.ogTitle}
+                value={form.ogTitle || ''}
                 onChange={(e) => handleChange('ogTitle', e.target.value)}
                 disabled={isView}
               />
@@ -170,9 +192,25 @@ const MetaForm: React.FC<MetaFormProps> = ({
               <TextField
                 fullWidth
                 label="OG Image URL"
-                value={form.ogImage}
+                value={form.ogImage || ''}
                 onChange={(e) => handleChange('ogImage', e.target.value)}
                 disabled={isView}
+                placeholder="URL của ảnh hoặc chọn từ thư viện"
+                InputProps={{
+                  endAdornment: !isView ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setIsMediaPopupOpen(true)}
+                        edge="end"
+                        aria-label="Chọn ảnh từ thư viện"
+                        size="small"
+                      >
+                        <ImageIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null
+                }}
+                helperText={!isView ? "Nhập URL hoặc click icon để chọn từ thư viện" : undefined}
               />
             </Grid>
             
@@ -180,7 +218,7 @@ const MetaForm: React.FC<MetaFormProps> = ({
               <TextField
                 fullWidth
                 label="OG Description"
-                value={form.ogDescription}
+                value={form.ogDescription || ''}
                 onChange={(e) => handleChange('ogDescription', e.target.value)}
                 disabled={isView}
                 multiline
@@ -192,7 +230,7 @@ const MetaForm: React.FC<MetaFormProps> = ({
               <TextField
                 fullWidth
                 label="Custom Head Content"
-                value={form.customHead}
+                value={form.customHead || ''}
                 onChange={(e) => handleChange('customHead', e.target.value)}
                 disabled={isView}
                 multiline
@@ -223,6 +261,16 @@ const MetaForm: React.FC<MetaFormProps> = ({
             </Grid>
           </Grid>
         </form>
+
+        {/* Media Library Popup */}
+        <MediaPopup
+          open={isMediaPopupOpen}
+          onClose={() => setIsMediaPopupOpen(false)}
+          onSelect={handleMediaSelect}
+          listMedia={[]} // MediaPopup sẽ tự fetch media từ API
+          onSubmit={() => {}}
+          isView={false}
+        />
       </CardContent>
     </Card>
   );

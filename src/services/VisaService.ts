@@ -108,9 +108,15 @@ class VisaServiceClass {
     try {
       // Create FormData for the request
       const formData = new FormData();
-      formData.append('slug', slug);
       
-      // Append all service data fields
+      // Gửi slug cũ qua field 'id' để backend biết record nào cần update
+      // (Backend sẽ dùng 'id' hoặc 'slug' đầu tiên để tìm record)
+      formData.append('id', slug);
+      
+      // Extract slug mới từ serviceData (nếu có)
+      const newSlug = serviceData.slug;
+      
+      // Append all service data fields (bao gồm cả slug mới nếu có)
       Object.keys(serviceData).forEach(key => {
         const value = serviceData[key as keyof VisaService];
         if (value !== undefined && value !== null) {
@@ -121,6 +127,13 @@ class VisaServiceClass {
           }
         }
       });
+      
+      // Nếu có slug mới và khác slug cũ, đảm bảo slug mới được gửi
+      // (slug mới đã được append ở trên, nhưng nếu không có trong serviceData thì cần append)
+      if (newSlug && newSlug !== slug) {
+        // Slug mới đã được append trong loop trên, nên không cần append thêm
+        // Chỉ cần đảm bảo rằng slug mới là giá trị cuối cùng
+      }
       
       const response = await instance.post(`${API_URL}/update`, formData, {
         headers: {

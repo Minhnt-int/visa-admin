@@ -45,22 +45,21 @@ const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
     setLoading(true);
     
     try {
-      // Gọi API login-token với full URL
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await axios.post(`${baseUrl}/api/auth/login-token`, {
+      // Gọi API login với full URL
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+      const response = await axios.post(`${baseUrl}/api/auth/login`, {
         email,
         password
       });
 
-      // Kiểm tra response
-      if (response.data.success) {
-        const accessToken = response.data.accessToken;
-        const refreshToken = response.data.refreshToken;
+      // Kiểm tra response format mới từ backend
+      if (response.data.success && response.data.data) {
+        const { accessToken, refreshToken, user } = response.data.data;
         
         // Lưu vào localStorage
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('user', JSON.stringify(user));
         
         // Đồng thời lưu vào cookie để middleware có thể đọc
         Cookies.set('accessToken', accessToken, { expires: 1, path: '/' });
@@ -70,12 +69,15 @@ const AuthLogin = ({ title, subtitle, subtext }: loginType) => {
         router.push('/');
       } else {
         // Xử lý lỗi từ API
-        setError(response.data.message || 'Đăng nhập thất bại');
+        const errorMsg = response.data.error?.message || response.data.message || 'Đăng nhập thất bại';
+        setError(errorMsg);
       }
     } catch (error: any) {
       console.error('Login error:', error);
       // Hiển thị thông báo lỗi
-      const errorMessage = error.response?.data?.message || 'Đã xảy ra lỗi khi đăng nhập';
+      const errorMessage = error.response?.data?.error?.message 
+        || error.response?.data?.message 
+        || 'Đã xảy ra lỗi khi đăng nhập';
       setError(errorMessage);
     } finally {
       setLoading(false);

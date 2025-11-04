@@ -251,20 +251,28 @@ const MetaJsonTable: React.FC = () => {
               pb: 1, 
               borderBottom: level === 0 ? '1px dashed #e0e0e0' : 'none' 
             }}>
-              <Typography variant="caption" sx={{ 
+              <Box sx={{ 
                 color: 'text.secondary',
                 fontWeight: 600,
-                display: 'block'
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 0.5
               }}>
-                {fieldKey} {isArray ? `(${(fieldValue as any[]).length} items)` : ''} 
+                <Typography variant="caption" component="span" sx={{ 
+                  color: 'text.secondary',
+                  fontWeight: 600
+                }}>
+                  {fieldKey} {isArray ? `(${(fieldValue as any[]).length} items)` : ''}
+                </Typography>
                 <Chip 
                   size="small" 
                   label={isString ? 'string' : isNumber ? 'number' : isBoolean ? 'boolean' : isArray ? 'array' : 'object'} 
                   color={isString ? 'success' : isNumber ? 'info' : isBoolean ? 'warning' : 'primary'} 
                   variant="outlined"
-                  sx={{ ml: 1, height: 20, '& .MuiChip-label': { px: 1, py: 0.25, fontSize: '0.6rem' } }}
+                  sx={{ height: 20, '& .MuiChip-label': { px: 1, py: 0.25, fontSize: '0.6rem' } }}
                 />
-              </Typography>
+              </Box>
               
               {isString && (
                 <TextField

@@ -54,8 +54,6 @@ export interface Tour {
   id: number;
   slug: string;
   name: string;
-  categoryId: number;
-  category?: TourCategory;
   country: string;
   duration: string;
   price: number;
@@ -84,8 +82,6 @@ export interface TourSummary {
   id: number;
   slug: string;
   name: string;
-  categoryId: number;
-  categoryName?: string;
   country: string;
   duration: string;
   price: number;
@@ -102,7 +98,6 @@ export interface TourFormData {
   id?: number;
   slug: string;
   name: string;
-  categoryId: number;
   country: string;
   duration: string;
   price: number;

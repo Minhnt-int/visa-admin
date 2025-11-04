@@ -47,7 +47,8 @@ export function useTokenRefresher() {
       // Token sắp hết hạn hoặc không hợp lệ, làm mới token
       setIsRefreshing(true);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh-token`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+      const response = await fetch(`${apiUrl}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
@@ -55,22 +56,28 @@ export function useTokenRefresher() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Lỗi HTTP: ${response.status}`);
+        const errorMsg = errorData.error?.message || errorData.message || `Lỗi HTTP: ${response.status}`;
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
       
-      // Lưu token mới vào localStorage
-      localStorage.setItem('accessToken', data.accessToken);
-      if (data.refreshToken) {
-        localStorage.setItem('refreshToken', data.refreshToken);
+      // Backend trả về format: { success: true, data: { accessToken } }
+      if (data.success && data.data) {
+        // Lưu token mới vào localStorage
+        localStorage.setItem('accessToken', data.data.accessToken);
+        if (data.data.refreshToken) {
+          localStorage.setItem('refreshToken', data.data.refreshToken);
+        }
+        
+        // Đồng bộ với cookie cho middleware
+        Cookies.set('accessToken', data.data.accessToken, { 
+          expires: 1, // Hết hạn sau 1 ngày
+          path: '/'
+        });
+      } else {
+        throw new Error(data.error?.message || data.message || 'Không thể refresh token');
       }
-      
-      // Đồng bộ với cookie cho middleware
-      Cookies.set('accessToken', data.accessToken, { 
-        expires: 1, // Hết hạn sau 1 ngày
-        path: '/'
-      });
       
       // Cập nhật thời gian refresh cuối cùng
       setLastRefreshed(Date.now());

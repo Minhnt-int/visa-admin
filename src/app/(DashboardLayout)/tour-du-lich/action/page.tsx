@@ -145,7 +145,7 @@ const TourActionPage = () => {
           <Grid item xs={12}>
             <TourForm 
               onChange={handleFormChange} 
-              action={currentAction.type}
+              action={currentAction.type === ActionType.EDIT ? 'edit' : currentAction.type === ActionType.CREATE ? 'create' : undefined}
               formData={formData} 
             />
             <ConfirmPopup
