@@ -3,7 +3,6 @@ import { VisaService, VisaServiceSummary, VisaServiceApiResponse, mapApiResponse
 
 const API_URL = '/api/services';
 
-// A simplified representation for API list responses
 interface ApiResponse {
     data: VisaServiceSummary[];
     pagination: {
@@ -26,8 +25,6 @@ class VisaServiceClass {
     try {
       const response = await instance.get(API_URL, { params });
       
-      // Backend response structure: { status, message, data: { data, total, page, limit, totalPages } }
-      // axios already unwraps response.data, so response.data = { status, message, data: {...} }
       const backendData = response.data;
       
       if (!backendData || !backendData.data) {
@@ -38,16 +35,12 @@ class VisaServiceClass {
         };
       }
       
-      // Check response structure - backend returns { status, message, data: { data: [...], total, ... } }
       let responseData;
       if (backendData.data && typeof backendData.data === 'object' && 'data' in backendData.data) {
-        // Standard format: backendData.data = { data: [...], total, page, limit, totalPages }
         responseData = backendData.data;
       } else if (Array.isArray(backendData.data)) {
-        // Fallback: backendData.data is directly an array
         responseData = { data: backendData.data, total: backendData.data.length, page: 1, limit: params.limit || 10 };
       } else {
-        // Fallback: try response.data directly
         responseData = backendData;
       }
       
@@ -95,7 +88,6 @@ class VisaServiceClass {
   async create(serviceData: Omit<VisaService, 'id' | 'createdAt' | 'updatedAt'>): Promise<VisaService> {
     try {
       const response = await instance.post(API_URL + '/create', serviceData);
-      // Backend response: { status: 'success', message: '...', data: {...} }
       const apiData: VisaServiceApiResponse = response.data.data;
       return mapApiResponseToVisaService(apiData);
     } catch (error) {
@@ -109,14 +101,10 @@ class VisaServiceClass {
       // Create FormData for the request
       const formData = new FormData();
       
-      // Gửi slug cũ qua field 'id' để backend biết record nào cần update
-      // (Backend sẽ dùng 'id' hoặc 'slug' đầu tiên để tìm record)
       formData.append('id', slug);
       
-      // Extract slug mới từ serviceData (nếu có)
       const newSlug = serviceData.slug;
       
-      // Append all service data fields (bao gồm cả slug mới nếu có)
       Object.keys(serviceData).forEach(key => {
         const value = serviceData[key as keyof VisaService];
         if (value !== undefined && value !== null) {
@@ -128,11 +116,7 @@ class VisaServiceClass {
         }
       });
       
-      // Nếu có slug mới và khác slug cũ, đảm bảo slug mới được gửi
-      // (slug mới đã được append ở trên, nhưng nếu không có trong serviceData thì cần append)
       if (newSlug && newSlug !== slug) {
-        // Slug mới đã được append trong loop trên, nên không cần append thêm
-        // Chỉ cần đảm bảo rằng slug mới là giá trị cuối cùng
       }
       
       const response = await instance.post(`${API_URL}/update`, formData, {
@@ -140,7 +124,6 @@ class VisaServiceClass {
           'Content-Type': 'multipart/form-data',
         },
       });
-      // Backend response: { status: 'success', message: '...', data: {...} }
       const apiData: VisaServiceApiResponse = response.data.data;
       return mapApiResponseToVisaService(apiData);
     } catch (error) {
@@ -151,13 +134,9 @@ class VisaServiceClass {
 
   async changeStatus(id: number, status: 'active' | 'inactive'): Promise<VisaService> {
     try {
-        // Ensure status is exactly 'active' or 'inactive' (trim any extra characters)
         const cleanStatus = status.trim() as 'active' | 'inactive';
-        console.log('Changing status for ID:', id, 'to:', cleanStatus);
         
-        const response = await instance.patch(`${API_URL}/by-id/${id}/status`, { status: cleanStatus });
-        console.log('Change status response:', response.data);
-        // Response format: { status: "success", message: "...", data: { id, title, oldStatus, newStatus } }
+        const response = await instance.patch(`${API_URL}/by-id/${id}/status`, { status: cleanStatus });  
         return response.data.data;
     } catch (error) {
         console.error(`Error changing status for visa service with id ${id}:`, error);
@@ -167,9 +146,7 @@ class VisaServiceClass {
 
   async getById(id: number): Promise<VisaService> {
     try {
-      // First get all services and find by ID
       const response = await instance.get(API_URL);
-      // Backend response structure: { status, message, data: { data: [...], total, page, limit, totalPages } }
       const responseData = response.data.data;
       const services = responseData.data || [];
       const service = services.find((s: any) => s.id === id);

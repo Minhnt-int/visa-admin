@@ -10,13 +10,8 @@ import {
 } from '@mui/material';
 import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
 import { useAppContext } from '@/contexts/AppContext';
-
-// API endpoint - thay đổi URL này theo endpoint thực tế của bạn
-const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/ai'; 
-
-// Cập nhật hàm stripHtml để bảo toàn xuống dòng
+  
 const stripHtml = (html: string) => {
-  // Sử dụng textContent thay vì innerText
   const temp = document.createElement('div');
   temp.innerHTML = html;
   return temp.textContent || '';
@@ -61,18 +56,13 @@ const Scoring: React.FC<ScoringProps> = ({ newsContent, analysis, onLoadingChang
     try {
       const result = await generateAIContent(newsContent, 'evaluate') as any;
       
-      // Check if result has the correct structure
       if (result && result.status === 'success' && result.data) {
-        // Data is correctly formatted, no need to set analysis here as it's passed as a prop
-        console.log('AI Analysis successful:', result.data);
       } else if (result && result.status === 'fail') {
         setError(result.message || 'Phân tích thất bại');
       } else {
-        console.log('Unexpected result format:', result);
         setError('Dữ liệu không đúng định dạng');
       }
     } catch (err) {
-      console.error('API Error:', err);
       setError('Không thể kết nối với server. Vui lòng thử lại sau.');
     } finally {
       clearInterval(progressInterval);

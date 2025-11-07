@@ -156,7 +156,6 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
   useEffect(() => {
     if (isEditMode && selectedVisaService) {
       // API service already maps the data, so we can use it directly
-      console.log('Setting service data from API:', selectedVisaService);
       setServiceData(selectedVisaService);
     }
   }, [isEditMode, selectedVisaService]);
@@ -179,7 +178,6 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setServiceData(prev => ({ ...prev, [name]: value }));
-    console.log(serviceData);
     
   };
 
@@ -317,26 +315,15 @@ const VisaServiceForm: React.FC<VisaServiceFormProps> = ({
     e.preventDefault();
     const payload = { ...serviceData, media: selectedMedia } as any;
     
-    console.log('Form submission:', {
-      isEditMode,
-      slug,
-      hasSlugParam: !!slug,
-      action: (isEditMode && slug) ? 'UPDATE' : 'CREATE',
-      payload
-    });
-    
     try {
       if (isEditMode && slug) {
-        console.log('Calling updateVisaService with slug:', slug);
         await updateVisaService(slug, payload);
       } else {
-        console.log('Calling createVisaService');
         await createVisaService(payload);
       }
       router.push('/dich-vu-visa');
     } catch (error) {
       console.error('Form submission error:', error);
-      // Handle error appropriately
     }
   };
 
